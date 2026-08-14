@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.rbxl binary
+*.rbxlx binary
+*.rbxm binary
+*.rbxmx binary
