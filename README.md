@@ -20,7 +20,7 @@ and gets out of the way.
 
 ```toml
 [dependencies]
-Muster = "shmeatley/muster@0.1.0"
+Muster = "shmeatley/muster@0.2.0"
 ```
 
 Then run:
@@ -134,7 +134,7 @@ Muster also ships a cross-server party system, built on the same store. It is
 constructed on first access to `queue.parties` and writes nothing until you use
 it, so ignoring it costs you nothing.
 
-You need it only if parties have to survive players being on *different*
+You need it only if parties have to survive players being on _different_
 servers. That happens more than you might expect:
 
 - Join-friend drops you in another server when your friend's is full
@@ -163,7 +163,7 @@ difficulty, since those servers cannot see each other.
 
 ## Ratings
 
-Muster does skill-based *matching*, not skill *rating*. Bring your own number
+Muster does skill-based _matching_, not skill _rating_. Bring your own number
 from wherever you keep it — Elo, Glicko, OpenSkill, or a stat you made up.
 
 ```lua
@@ -208,13 +208,13 @@ end
 just the one that formed the match. If none of them are here, it does not fire
 here, so your handler always has someone to act on.
 
-A match is written to MemoryStore *before* it is announced, so delivery never
+A match is written to MemoryStore _before_ it is announced, so delivery never
 depends on MessagingService:
 
-| Situation | Time to delivery |
-| --- | --- |
-| Normal | under ~200 ms |
-| A message is dropped | up to 30 s |
+| Situation                         | Time to delivery    |
+| --------------------------------- | ------------------- |
+| Normal                            | under ~200 ms       |
+| A message is dropped              | up to 30 s          |
 | MessagingService is down entirely | ~5 s, automatically |
 
 The last row is the point: Muster notices when the doorbell stops working and
@@ -255,7 +255,7 @@ mu1:ranked:idx:EMEA:n04:02
                   count lane
 ```
 
-So servers that disagree read and write *different* key spaces rather than
+So servers that disagree read and write _different_ key spaces rather than
 corrupting one, and every ticket stays exactly where its writer put it. During a
 resize, workers on the new count also read the old maps the new lane could draw
 from — one extra map when growing, two when halving — so the old and new pools
@@ -317,11 +317,11 @@ matchmaker server to elect or provision.
 
 1. **Enqueue** reserves each player's id with compare-and-set, writes the ticket,
    and indexes it in a sorted map keyed by queue time.
-2. **Acquire** takes a *lease* on the lane, carrying a monotonically increasing
+2. **Acquire** takes a _lease_ on the lane, carrying a monotonically increasing
    **fencing epoch**.
 3. **Scan** reads the oldest candidates and runs the grouping algorithm.
 4. **Commit** is two-phase: claim every ticket in sorted order, re-check the
-   lease, run `finalize`, re-check the lease *again* because it yielded, then
+   lease, run `finalize`, re-check the lease _again_ because it yielded, then
    flip the record to `Ready` with a compare-and-set guarded on the epoch. A
    server that stalled and lost its lease cannot commit, because the store itself
    rejects the write.
