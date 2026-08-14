@@ -15,8 +15,8 @@
 
 	A combination reaching `targetSize` is taken immediately. A smaller one is
 	accepted only once the anchor has waited `fallbackAfter` seconds, and then
-	the largest viable size down to `minSize` wins — so five players waiting for
-	a six-player match eventually play five-a-side.
+	the largest viable size down to `minSize` wins. Five players waiting for a
+	six-player match therefore end up playing five-a-side.
 
 	The rating window widens with the **anchor's** wait rather than each
 	candidate's. Because anchors are visited oldest first, the longest-waiting

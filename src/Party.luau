@@ -44,9 +44,9 @@
 	expires. This keeps the roster stable between the matcher reading it and the
 	match committing.
 
-	A lock whose ticket stopped being heartbeaten — because the server holding it
-	died — is cleared the next time the party is read, rather than persisting for
-	the party's full two-hour lifetime.
+	If the server holding a queued party dies, its ticket stops being
+	heartbeaten. The lock is then cleared the next time the party is read, rather
+	than persisting for the party's full two-hour lifetime.
 
 	### Records
 

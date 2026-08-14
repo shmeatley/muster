@@ -23,12 +23,12 @@
 
 	### Configuration
 
-	`name` and `size` are required; everything else has a default.
+	`name` and `size` are required. Everything else has a default.
 
 	| Field | Type | Default | Effect |
 	| --- | --- | --- | --- |
-	| `name` | `string` | — | Namespaces this queue's keys. Max 16 characters, alphanumeric plus `_` and `-`. |
-	| `size` | `number \| SizeConfig` | — | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
+	| `name` | `string` | required | Namespaces this queue's keys. Max 16 characters, alphanumeric plus `_` and `-`. |
+	| `size` | `number \| SizeConfig` | required | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
 	| `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |
 	| `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |
 	| `finalize` | `Finalizer<T>?` | `nil` | Runs once per match; its return value becomes `match.data`. |
@@ -57,7 +57,7 @@
 
 	Matches are written to MemoryStore before being announced, so delivery does
 	not depend on MessagingService. Typical latency is under 200 ms; if a message
-	is dropped, a poll finds the match within `pollIntervalMax` (30 s), and if
+	is dropped, a poll finds the match within `pollIntervalMax` (30 s). If
 	MessagingService is unavailable the poll cap tightens to 5 s automatically.
 ]=]
 
@@ -308,7 +308,7 @@ end
 	matches and is matched at its aggregate rating.
 
 	Takes userIds directly and does not involve [Party]. The first userId becomes
-	the ticket's leader, which is who may cancel or acknowledge it.
+	the ticket's leader, and is the only one who may cancel or acknowledge it.
 
 	```lua
 	queue:enqueueGroup({ leaderId, friendId }, { ratings = ratings })
@@ -506,9 +506,8 @@ end
 
 	This happens automatically on delivery unless `manualAcknowledge` is set.
 	Enable that setting to hold the reservation until you have confirmed whatever
-	follows the match — a teleport, for instance — so a failure leaves the
-	players free to re-queue rather than locked out until their reservation
-	expires.
+	follows the match, such as a teleport. A failure then leaves the players free
+	to re-queue rather than locked out until their reservation expires.
 
 	@return Result<MatchEnvelope<T>>
 	@within Matchmaker

@@ -86,7 +86,7 @@ end
 
 	The transform runs once against the value it read, that result is discarded,
 	`mutator` installs a competing write, and the transform runs again against
-	the new value — which is what `UpdateAsync` does under contention.
+	the new value, which is what `UpdateAsync` does under contention.
 
 	This is what catches a transform that fails to reset its own bookkeeping when
 	re-entered, which every conditional write in Muster depends on.

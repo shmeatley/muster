@@ -13,10 +13,10 @@
 	:::caution
 	A timed-out hook is abandoned, not cancelled. Luau cannot interrupt a thread
 	blocked in a web call, so a `finalize` that times out during
-	`ReserveServerAsync` still completes later and still allocates a server —
-	Muster has simply stopped waiting and aborted the match. Write hooks whose
-	side effects are idempotent or cheap to abandon, and release expensive ones
-	in `onAbort`.
+	`ReserveServerAsync` still completes later and still allocates a server.
+	Muster has stopped waiting and aborted the match. Write hooks whose side
+	effects are idempotent or cheap to abandon, and release expensive ones in
+	`onAbort`.
 	:::
 ]=]
 

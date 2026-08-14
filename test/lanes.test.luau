@@ -158,8 +158,8 @@ return function()
 
 	Harness.suite("a pinned odd count works")
 	do
-		-- Three lanes is not a power of two, which the scaler could not resize
-		-- across — but a pinned count never resizes, so it is perfectly usable.
+		-- Three lanes is not a power of two, so the scaler could not resize across
+		-- it. A pinned count never resizes, so it is perfectly usable.
 		local world = Harness.world({ size = 2 })
 		local server = world.server("A", { lanes = 3 })
 		local matches = world.collect()

@@ -5,12 +5,12 @@
 
 	Key layout for the queue index.
 
-	A queue is divided into partitions — whatever `partitionKey` returns, or
-	`"all"` — and each partition into lanes. A ticket is hashed into exactly one
+	A queue is divided into partitions, whatever `partitionKey` returns or `"all"`
+	by default, and each partition into lanes. A ticket is hashed into exactly one
 	lane and matched only against the other tickets in it.
 
 	Lanes trade pool size for parallelism. One lane means a single worker sees
-	every queued ticket; four lanes means four servers can match at once, each
+	every queued ticket. Four lanes means four servers can match at once, each
 	seeing a quarter of them. More lanes only help once one lane is deep enough
 	to fill matches on its own.
 
@@ -78,11 +78,11 @@ end
 
 	- **Growing** (`count > previous`): a ticket in old map `o` satisfies
 	  `h % previous == o`, so its new lane is one of `o`, `o + previous`,
-	  `o + 2*previous`, … Reading old map `lane % previous` therefore covers it.
+	  `o + 2*previous`, and so on. Reading old map `lane % previous` covers it.
 	- **Shrinking** (`count < previous`): `h % count == (h % previous) % count`,
 	  so every old map `o` with `o % count == lane` contributes.
 
-	Either way the result holds at most `previous / count` entries — one when
+	Either way the result holds at most `previous / count` entries: one when
 	growing, two on a single halving.
 
 	@within Lanes

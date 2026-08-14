@@ -105,8 +105,8 @@ distributed system where servers cannot see each other.
 - It may run **more than once for the same set of players**, under different
   matchIds, if a worker stalls and another repairs its work. **Deduplicate on
   `matchId`, never on the player set.**
-- Its side effects may **survive a match that never forms** — the lease can be
-  lost while it yields. Write it to be idempotent or cheap to abandon, and use
+- Its side effects may **survive a match that never forms**, because the lease
+  can be lost while it yields. Write it to be idempotent or cheap to abandon, and use
   `onAbort` to release anything expensive. (A leaked reserved-server access code
   costs nothing and expires on its own, which is why this is usually fine.)
 - Because of that, be careful when doing things like writing to a database.
@@ -156,7 +156,7 @@ ranked:enqueueParty(party.id, leaderUserId, { ratings = ratings })
 ```
 
 Membership is enforced by compare-and-set, so a player is never in two parties
-at once even when two servers try at the same moment — which is the whole
+at once even when two servers try at the same moment. That is the whole
 difficulty, since those servers cannot see each other.
 
 ## Ratings
@@ -204,7 +204,7 @@ end
 
 ## Delivery
 
-`matched` fires on **every server holding one of the matched players** — not
+`matched` fires on **every server holding one of the matched players**, not
 just the one that formed the match. If none of them are here, it does not fire
 here, so your handler always has someone to act on.
 
@@ -218,8 +218,8 @@ depends on MessagingService:
 | MessagingService is down entirely | ~5 s, automatically |
 
 The last row is the point: Muster notices when the doorbell stops working and
-tightens its polling until it recovers. A match is never lost — the ledger holds
-it for five minutes regardless.
+tightens its polling until it recovers. A match is never lost, since the ledger
+holds it for five minutes regardless.
 
 Polling backs off per **ticket** (2s, 4s, 8s, 16s, then capped), not per player,
 so a full minute of waiting costs a handful of reads. A server with nothing
@@ -229,7 +229,7 @@ queued costs nothing at all.
 
 A queue is split into lanes, and a ticket is matched against the others in its
 own lane. **Lanes buy parallelism by splitting the pool**, so the right number
-depends on how deep the queue actually is — and you don't have to guess.
+depends on how deep the queue actually is. You don't have to guess it.
 
 By default (`lanes = "auto"`) a queue starts on **one** lane, so two players
 match on the first scan, and it doubles only once a single lane is consistently
@@ -258,7 +258,7 @@ mu1:ranked:idx:EMEA:n04:02
 So servers that disagree read and write _different_ key spaces rather than
 corrupting one, and every ticket stays exactly where its writer put it. During a
 resize, workers on the new count also read the old maps the new lane could draw
-from — one extra map when growing, two when halving — so the old and new pools
+from, one extra when growing and two when halving, so the old and new pools
 still match against each other. Changes are spaced a full `ticketExpiration`
 apart, which guarantees an abandoned count has drained before it can be reused.
 
@@ -266,8 +266,8 @@ apart, which guarantees an abandoned count has drained before it can be reused.
 
 ## Partitions
 
-`partitionKey` splits a queue into pools that never mix — regions, skill
-brackets, mode variants, platforms:
+`partitionKey` splits a queue into pools that never mix: regions, skill
+brackets, mode variants, platforms.
 
 ```lua
 partitionKey = function(request)

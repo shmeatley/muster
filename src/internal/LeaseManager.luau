@@ -11,9 +11,9 @@
 	A lease alone is not sufficient. A server can stall on a long yield, a GC
 	pause or a slow web call, lose its lease to the timeout, and resume still
 	believing it holds one. So every lease carries a monotonically increasing
-	`epoch`, and the commit checks that epoch inside its own transform — a
-	stalled server's write is rejected by the store rather than by a check it
-	could skip.
+	`epoch`, and the commit checks that epoch inside its own transform. A stalled
+	server's write is then rejected by the store itself, rather than by a check
+	it could skip.
 
 	Three properties keep the epoch meaningful:
 

@@ -205,7 +205,7 @@ function Config.resolve(raw: any): (any, string?)
 	--
 	-- A pinned count may be any integer in range. The power-of-two rule exists
 	-- only so the scaler can map old lanes onto new ones exactly when it
-	-- resizes, and a pinned count never resizes — it has no previous count, so
+	-- resizes, and a pinned count never resizes. With no previous count,
 	-- `Lanes.legacyMaps` is never reached. The invariant stays enforced where it
 	-- is actually load-bearing, inside LaneScaler.
 	local laneMode = "auto"
@@ -308,7 +308,7 @@ function Config.resolve(raw: any): (any, string?)
 		-- Two clocks on purpose. `clock` is wall time and must agree across
 		-- servers, because it is written into leases, claims and TTLs. `monotonic`
 		-- is local and only paces this server's own loops, so it wants resolution
-		-- rather than agreement — os.time() is whole seconds and would quantize
+		-- rather than agreement. os.time() is whole seconds, which would quantize
 		-- every scan delay and poll interval to 1s.
 		clock = raw.clock or os.time,
 		monotonic = raw.monotonic or os.clock,

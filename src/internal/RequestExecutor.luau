@@ -6,11 +6,11 @@
 	Wraps every store and messaging call in a retry policy, tracks per-structure
 	health, and trips a circuit breaker on structures that keep failing.
 
-	Requests carry a priority, where lower is more important:
+	Requests carry a priority. Lower is more important:
 
 	| Priority | Used by | Attempts | Circuit-broken? |
 	| --- | --- | --- | --- |
-	| 1 | The commit path — claims, the Ready CAS | 5 | Never |
+	| 1 | The commit path: claims and the Ready CAS | 5 | Never |
 	| 2 | Leases | 5 | Never |
 	| 3 | Ticket writes, party mutations | 5 | Never |
 	| 4-6 | Lane index writes, range scans, reads | 3 | Yes |

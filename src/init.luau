@@ -8,8 +8,8 @@
 	Muster forms matches across servers: it shards a queue into lanes, elects a
 	worker per lane, groups tickets by size and rating, and delivers the result
 	to every server holding a matched player. It does not teleport players,
-	reserve servers, or compute ratings — those attach through the `finalize`
-	hook and the rating you supply.
+	reserve servers, or compute ratings. Those attach through the `finalize` hook
+	and the rating you supply.
 
 	```lua
 	local Muster = require(ReplicatedStorage.Packages.Muster)
@@ -163,7 +163,7 @@ local Muster = {
 		@readonly
 
 		The components a [Matchmaker] is assembled from. Useful for building on
-		individual pieces. Not covered by semantic versioning — treat
+		individual pieces. Not covered by semantic versioning, so treat
 		[Matchmaker] as the stable surface.
 	]=]
 	internal = table.freeze({
