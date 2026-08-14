@@ -3,17 +3,18 @@
 --[=[
 	@class Hash
 
-	FNV-1a, 32-bit. Muster uses it to spread tickets across lanes and to fold
-	over-long partition keys down to a fixed size; it is exposed because a
-	deterministic string hash is broadly useful and Luau has none built in.
+	FNV-1a, 32 bit.
+
+	Muster uses this to assign tickets to lanes and to fold over-long partition
+	keys to a fixed length. Results are stable across servers and sessions, which
+	is what lets two servers independently agree on a ticket's lane.
 
 	```lua
 	local lane = Muster.hash.partition(ticketId, 8) -- 0..7
 	```
 
 	:::caution
-	This is not a cryptographic hash. Do not use it for anything security
-	sensitive.
+	Not a cryptographic hash. Do not use it for anything security sensitive.
 	:::
 ]=]
 
@@ -37,8 +38,7 @@ local function multiplyPrime(value: number): number
 end
 
 --[=[
-	Hashes a string to a 32-bit unsigned integer. Stable across platforms and
-	across sessions, which is what makes lane assignment agree between servers.
+	Hashes a string to a 32-bit unsigned integer.
 
 	@within Hash
 ]=]
@@ -54,6 +54,7 @@ end
 --[=[
 	Maps a string into `[0, count)`.
 
+	@error "Hash.partition count must be a positive integer" -- Invalid count.
 	@within Hash
 ]=]
 function Hash.partition(value: string, count: number): number

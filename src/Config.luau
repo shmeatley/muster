@@ -3,13 +3,12 @@
 --[=[
 	@class Config
 
-	Validates and normalizes a [MatchmakerConfig] into the frozen settings table
-	every other module reads.
+	Validates a queue configuration and normalizes it into the frozen settings
+	table every other module reads.
 
-	`resolve` returns `(settings, problem)` rather than throwing, so the
-	validation rules are directly testable and so the error surfaces at the
-	caller's `Muster.new(...)` line rather than somewhere inside this module.
-	[Matchmaker] turns a non-nil `problem` into an `error(problem, 2)`.
+	`resolve` returns `(settings, problem)` rather than throwing, so validation
+	is directly testable and so [Matchmaker] can raise the error at the caller's
+	own `Muster.new` line rather than from inside this module.
 ]=]
 
 local Defaults = require(script.Parent.Defaults)
@@ -135,9 +134,11 @@ local FUNCTION_FIELDS = {
 }
 
 --[=[
-	Folds a partition key down to something a MemoryStore name can hold. Short
-	keys pass through unchanged so lane names stay readable in logs; anything
-	longer or containing awkward characters is hashed.
+	Folds a partition key to something a MemoryStore name can hold.
+
+	Keys of 32 characters or fewer made up of letters, digits, underscores and
+	hyphens pass through unchanged, which keeps lane names readable in logs.
+	Anything else is replaced by a hash.
 
 	@within Config
 ]=]
@@ -151,8 +152,8 @@ end
 --[=[
 	Validates a raw config and fills in every default.
 
-	@return any -- The frozen settings table, or nil when `problem` is set.
-	@return string? -- A human-readable validation failure.
+	@return any -- The frozen settings table, or `nil` when `problem` is set.
+	@return string? -- The validation failure, naming the offending field.
 	@within Config
 ]=]
 function Config.resolve(raw: any): (any, string?)

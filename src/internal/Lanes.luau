@@ -5,19 +5,17 @@
 
 	Key layout for the queue index.
 
-	A queue is split into `partition` values (whatever `partitionKey` returns,
-	or `"all"`), and each partition into some number of lanes. A ticket is hashed
-	into exactly one lane and is matched against the other tickets in it.
+	A queue is divided into partitions — whatever `partitionKey` returns, or
+	`"all"` — and each partition into lanes. A ticket is hashed into exactly one
+	lane and matched only against the other tickets in it.
 
-	**Lanes buy parallelism by splitting the pool.** One lane means one worker
-	sees every queued ticket and matches on its first scan; four lanes means four
-	servers can match simultaneously, each seeing a quarter of the queue. That
-	trade only pays once a single lane is deep enough to fill matches on its own
-	— a two-player queue split across 64 lanes would leave its two players in
-	different lanes, never matching.
+	Lanes trade pool size for parallelism. One lane means a single worker sees
+	every queued ticket; four lanes means four servers can match at once, each
+	seeing a quarter of them. More lanes only help once one lane is deep enough
+	to fill matches on its own.
 
-	Because the right number depends on live queue depth, [LaneScaler] adjusts it
-	at runtime and the count is **stamped into every key**:
+	[LaneScaler] adjusts the count at runtime, so the count is stamped into every
+	key:
 
 	```
 	mu1:ranked:idx:EMEA:n04:02
@@ -25,14 +23,13 @@
 	                   count lane
 	```
 
-	That stamp is what makes changing the count safe. Two servers that disagree
-	about the count are not fighting over one key space; they are reading and
-	writing different ones, and every ticket stays exactly where its writer put
-	it. Nothing is ever stranded by a resize — the worst case is that two pools
-	briefly do not see each other, which `legacyMaps` closes.
+	The stamp is what makes changing the count safe: servers that disagree about
+	it read and write separate key spaces rather than one shared space, and a
+	ticket always stays in the lane its writer chose. `legacyMaps` covers the
+	window where both counts hold live tickets.
 
-	Sort keys are queue timestamps, so an ascending range read is oldest-first
-	and matching is fair by default.
+	Sort keys are queue timestamps, so an ascending range read returns the oldest
+	tickets first.
 ]=]
 
 local Hash = require(script.Parent.Parent.Hash)
@@ -59,8 +56,8 @@ function Lanes.name(settings: any, partition: string, count: number, lane: numbe
 end
 
 --[=[
-	Which lane a ticket belongs to at a given count. Deterministic across
-	servers, so two servers on the same count always agree.
+	Which lane a ticket belongs to at a given count. Deterministic, so two
+	servers using the same count agree without coordinating.
 
 	@within Lanes
 ]=]
@@ -72,12 +69,12 @@ function Lanes.laneFor(count: number, ticketId: string): number
 end
 
 --[=[
-	The maps from `previous` that could hold tickets whose lane, at `count`, is
-	`lane`.
+	The maps from `previous` that may hold tickets belonging to `lane` at
+	`count`. A worker reads these alongside its own lane while the old count
+	drains.
 
-	Only [LaneScaler] resizes, and it only ever doubles or halves from one, so
-	both counts here are always powers of two. That is what makes this exact
-	rather than approximate. A ticket hashes to `h % count`:
+	Both counts are powers of two, since [LaneScaler] only doubles or halves from
+	one, which makes this exact. A ticket hashes to `h % count`:
 
 	- **Growing** (`count > previous`): a ticket in old map `o` satisfies
 	  `h % previous == o`, so its new lane is one of `o`, `o + previous`,
@@ -152,8 +149,7 @@ function Lanes.allFor(settings: any, partition: string, count: number, previous:
 end
 
 --[=[
-	Rounds to the nearest power of two within `[min, max]`. Counts must be powers
-	of two for [Lanes.legacyMaps] to be exact.
+	Rounds `count` down to a power of two, clamped to `[min, max]`.
 
 	@within Lanes
 ]=]
@@ -166,6 +162,9 @@ function Lanes.clamp(count: number, min: number, max: number): number
 end
 
 --[=[
+	Whether `count` is a power of two. Accepts any type, since it validates
+	values read back from the store.
+
 	@within Lanes
 ]=]
 function Lanes.isPowerOfTwo(count: any): boolean

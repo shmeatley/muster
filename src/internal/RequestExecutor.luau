@@ -6,7 +6,7 @@
 	Wraps every store and messaging call in a retry policy, tracks per-structure
 	health, and trips a circuit breaker on structures that keep failing.
 
-	Requests carry a **priority**, where lower is more important:
+	Requests carry a priority, where lower is more important:
 
 	| Priority | Used by | Attempts | Circuit-broken? |
 	| --- | --- | --- | --- |
@@ -15,12 +15,13 @@
 	| 3 | Ticket writes, party mutations | 5 | Never |
 	| 4-6 | Lane index writes, range scans, reads | 3 | Yes |
 
-	The split matters: shedding a lane scan under load is fine and self-corrects
-	on the next pass, but abandoning a half-committed match leaves tickets stuck
-	until their claim expires. Critical work always gets to try.
+	The split matters because shedding a lane scan under load self-corrects on
+	the next pass, while abandoning a half-committed match leaves tickets stuck
+	until their claims expire.
 
-	Throttling is detected by matching the error text, because that is the only
-	signal Roblox exposes.
+	Retries use exponential backoff from 0.25 s, doubling to a 4 s ceiling, with
+	20% jitter. Throttling is detected by matching the error text, which is the
+	only signal Roblox exposes.
 ]=]
 
 local Types = require(script.Parent.Parent.Types)
@@ -89,8 +90,10 @@ function RequestExecutor.healthFor(self: RequestExecutor, structure: string): He
 end
 
 --[=[
-	Runs `callback`, retrying with jittered exponential backoff. Returns
-	`(true, result)` or `(false, message)` — never throws.
+	Runs `callback`, retrying with jittered exponential backoff.
+
+	@return boolean -- Whether the call eventually succeeded.
+	@return any -- The result, or the final error message. Never throws.
 
 	@within RequestExecutor
 ]=]
@@ -153,9 +156,10 @@ function RequestExecutor.execute(
 end
 
 --[=[
-	True once at least 1% of all observed requests came back throttled. The
-	engine reacts by declining to lease new lanes and doubling its scan delay,
-	shedding parallelism before it slows the critical path.
+	True once at least 1% of observed requests have come back throttled.
+
+	The engine responds by declining to lease new lanes and doubling its scan
+	delay, shedding parallelism before slowing the commit path.
 
 	@within RequestExecutor
 ]=]
@@ -170,7 +174,8 @@ function RequestExecutor.isThrottled(self: RequestExecutor): boolean
 end
 
 --[=[
-	A snapshot of per-structure health, for logging or a debug command.
+	A copy of per-structure health: successes, failures, throttles, mean latency,
+	and the circuit-breaker deadline.
 
 	@within RequestExecutor
 ]=]

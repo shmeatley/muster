@@ -3,25 +3,31 @@
 --[=[
 	@class LeaseManager
 
-	A distributed lock with a **fencing token**, built on compare-and-set.
+	A distributed lock with a fencing token, built on compare-and-set.
 
-	Only the server holding a lane's lease scans it, which is what stops two
-	servers forming overlapping matches out of the same tickets. A lease alone
-	is not enough, though: a server can stall — a long yield, a GC pause, a slow
-	web call — lose its lease to a timeout, and wake up still believing it owns
-	the lane. So every lease carries a monotonically increasing `epoch`, and the
-	commit that matters re-checks the epoch inside its own transform. A stalled
-	server's write is rejected by the store itself rather than by a check it
-	might skip.
+	Only the server holding a lane's lease scans it, which stops two servers
+	forming overlapping matches from the same tickets.
 
-	Three details make the epoch trustworthy:
+	A lease alone is not sufficient. A server can stall on a long yield, a GC
+	pause or a slow web call, lose its lease to the timeout, and resume still
+	believing it holds one. So every lease carries a monotonically increasing
+	`epoch`, and the commit checks that epoch inside its own transform — a
+	stalled server's write is rejected by the store rather than by a check it
+	could skip.
 
-	- Taking over an expired lease **increments** the epoch, so the old holder's
-	  token is permanently stale.
-	- Re-acquiring your own live lease **keeps** the epoch, so renewal is not a
-	  takeover.
-	- Releasing writes a tombstone rather than deleting the key, so the counter
-	  survives a clean handoff and never restarts at 1.
+	Three properties keep the epoch meaningful:
+
+	- Taking over an expired lease increments it, so the previous holder's token
+	  is permanently stale.
+	- Re-acquiring a lease you already hold keeps it, so renewal is not treated
+	  as a takeover.
+	- Releasing writes a tombstone instead of deleting the key, so the counter
+	  survives a clean handoff rather than restarting at 1.
+
+	Leases last `LEASE_DURATION` (15 s) and are renewed every
+	`LEASE_RENEW_INTERVAL` (5 s), giving three attempts before expiry. The stored
+	record lives three times as long as the lease so an idle gap cannot lose the
+	epoch to expiry.
 ]=]
 
 local Defaults = require(script.Parent.Parent.Defaults)
@@ -42,6 +48,10 @@ LeaseManager.__index = LeaseManager
 export type LeaseManager = typeof(setmetatable({} :: LeaseProps, LeaseManager))
 
 --[=[
+	Creates a lease manager over a store structure.
+
+	@param ownerServerId -- Identifies this holder; leases are only renewable and releasable by their owner.
+	@param options -- `clock` and `duration`.
 	@within LeaseManager
 ]=]
 function LeaseManager.new(store: any, name: string, ownerServerId: string, options: any?): LeaseManager
@@ -56,8 +66,10 @@ function LeaseManager.new(store: any, name: string, ownerServerId: string, optio
 end
 
 --[=[
-	Takes the lease if it is free or expired, or refreshes it if we already hold
-	it. Returns the lease (carrying the epoch to fence with) or `nil`.
+	Takes the lease if it is free or expired, or refreshes it if this owner
+	already holds it.
+
+	@return Lease? -- The lease and its epoch, or `nil` if another owner holds it.
 
 	@within LeaseManager
 ]=]
@@ -96,8 +108,10 @@ function LeaseManager.acquire(self: LeaseManager, key: string): Lease?
 end
 
 --[=[
-	Extends a lease we hold at a known epoch. Fails if anyone else took it, or
-	if it was taken and returned — in which case the epoch has moved on.
+	Extends a lease held at a known epoch.
+
+	Fails if another owner took it, or if it was taken and returned, since the
+	epoch will have moved on.
 
 	@within LeaseManager
 ]=]
@@ -121,8 +135,8 @@ function LeaseManager.renew(self: LeaseManager, key: string, epoch: number): Lea
 end
 
 --[=[
-	A read-only check that we still hold `key` at `epoch`. Called before and
-	after anything that yields.
+	Whether this owner still holds `key` at `epoch`. A read, not a write; called
+	before and after anything that yields.
 
 	@within LeaseManager
 ]=]
@@ -136,10 +150,10 @@ function LeaseManager.validate(self: LeaseManager, key: string, epoch: number): 
 end
 
 --[=[
-	Hands the lane back immediately instead of letting it time out.
+	Releases the lane immediately rather than letting it time out.
 
-	Writes a tombstone rather than removing the key: the next acquirer reads the
-	stored epoch and increments it, so fencing tokens stay monotonic across a
+	Writes a tombstone instead of removing the key, so the next acquirer reads
+	the stored epoch and increments it and fencing tokens stay monotonic across a
 	clean handoff.
 
 	@within LeaseManager

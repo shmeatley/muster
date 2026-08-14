@@ -3,10 +3,12 @@
 --[=[
 	@class Defaults
 
-	Every tunable in one table, with the reasoning attached. Anything here that
-	is worth changing per game is exposed on [MatchmakerConfig]; the rest are
-	protocol constants that all servers must agree on, and changing one means
-	draining the queue first.
+	Protocol constants and tuning values.
+
+	Values worth varying per game are exposed on [Matchmaker]'s configuration.
+	The rest are protocol constants that every server must agree on: changing one
+	requires draining the queue first, since servers running different values
+	will disagree about expiry and ownership.
 
 	```lua
 	print(Muster.Defaults.LEASE_DURATION) -- 15
@@ -115,8 +117,8 @@ Defaults.MAX_NAME_LENGTH = 16
 Defaults.MAX_PARTITION_LENGTH = 32
 
 --[=[
-	Party rating from its members' ratings: the mean pulled `PARTY_RATING_MAX_BIAS`
-	of the way toward the highest member.
+	The default party rating: the mean of its members pulled
+	`PARTY_RATING_MAX_BIAS` of the way toward the highest.
 
 	@within Defaults
 ]=]
@@ -135,8 +137,8 @@ function Defaults.aggregate(ratings: { number }): number
 end
 
 --[=[
-	How wide the rating window is after waiting `waitSeconds`. Linear growth from
-	`window` at `relax` per second, uncapped once `unbounded` is reached.
+	The rating window after waiting `waitSeconds`: linear growth from `window` at
+	`relax` per second, becoming unbounded at `unbounded`.
 
 	@within Defaults
 ]=]
@@ -148,9 +150,9 @@ function Defaults.ratingWindow(rating: any, waitSeconds: number): number
 end
 
 --[=[
-	How long to wait before the next scan of a lane. Busy lanes are scanned
-	aggressively; empty ones back off, and everything halves its rate when the
-	store reports throttling.
+	Delay before the next scan of a lane. Busy lanes are scanned more often,
+	empty ones back off, and every delay doubles while the store reports
+	throttling.
 
 	@within Defaults
 ]=]
@@ -165,8 +167,8 @@ function Defaults.scanDelay(candidateCount: number, throttled: boolean): number
 end
 
 --[=[
-	How many candidates to read on the next scan, sized from the previous one so
-	a quiet queue does not pay for a large range read.
+	Candidates to read on the next scan, sized from the previous one so a quiet
+	queue does not pay for a large range read.
 
 	@within Defaults
 ]=]

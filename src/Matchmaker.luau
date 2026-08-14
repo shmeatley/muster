@@ -3,12 +3,9 @@
 --[=[
 	@class Matchmaker
 
-	A queue. Construct one per game mode, enqueue players, and listen for
-	matches.
+	A single queue. Construct one per game mode.
 
 	```lua
-	local Muster = require(ReplicatedStorage.Packages.Muster)
-
 	local duels = Muster.new({ name = "duels", size = 2 })
 
 	duels.matched:connect(function(match)
@@ -20,64 +17,48 @@
 	duels:enqueue(player.UserId)
 	```
 
-	That is the whole setup. The worker starts itself, subscribes for
-	cross-server delivery, cleans up when players leave, and matches on its
-	first scan.
+	Constructing a queue starts its worker thread, subscribes it for cross-server
+	delivery, and connects `Players.PlayerRemoving` to cancel tickets. Each of
+	those can be disabled with `autoStart`, `broadcast`, and `autoCancelOnLeave`.
 
-	### The finalize hook
+	### Configuration
 
-	Muster stops at the match envelope: it never teleports and never reserves
-	servers, because every game wants that done differently. Instead, `finalize`
-	runs once per match on whichever server formed it, and whatever it returns
-	is attached to the envelope as `match.data` and delivered to everyone.
+	`name` and `size` are required; everything else has a default.
 
-	```lua
-	local ranked = Muster.new({
-		name = "ranked",
-		size = { min = 4, target = 8, max = 8 },
-		rating = { window = 150, relax = 25, default = 1000 },
+	| Field | Type | Default | Effect |
+	| --- | --- | --- | --- |
+	| `name` | `string` | — | Namespaces this queue's keys. Max 16 characters, alphanumeric plus `_` and `-`. |
+	| `size` | `number \| SizeConfig` | — | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
+	| `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |
+	| `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |
+	| `finalize` | `Finalizer<T>?` | `nil` | Runs once per match; its return value becomes `match.data`. |
+	| `finalizeTimeout` | `number` | `5` | Seconds. Must not exceed 15. |
+	| `onAbort` | `AbortHandler?` | `nil` | Called when a match fails after its hook ran. Requires `finalize`. |
+	| `partitionKey` | `function?` | `nil` | Returns a partition name per ticket. Partitions never match each other. |
+	| `lanes` | `"auto" \| number` | `"auto"` | Pinning a number disables runtime scaling. See [LaneScaler]. |
+	| `broadcast` | `boolean` | `true` | Publish match notifications over MessagingService. |
+	| `autoStart` | `boolean` | `true` | Start the worker thread on construction. |
+	| `autoCancelOnLeave` | `boolean` | `true` | Cancel a player's ticket when they leave. |
+	| `manualAcknowledge` | `boolean` | `false` | Require [Matchmaker:acknowledge] to release matched players. |
+	| `ticketExpiration` | `number` | `180` | Seconds a ticket survives without a heartbeat. Minimum 30. |
+	| `maxMetadataBytes` | `number` | `1024` | Per-ticket metadata budget. |
+	| `maxMatchDataBytes` | `number` | `4096` | Budget for the finalizer's return value. |
+	| `namespace` | `string` | `"mu"` | Change to run independent deployments in one universe. |
 
-		finalize = function(match)
-			return {
-				accessCode = TeleportService:ReserveServerAsync(ARENA_PLACE),
-				map = pickMap(match.size),
-			}
-		end,
-	})
-
-	ranked.matched:connect(function(match)
-		local present = {}
-		for _, member in match.members do
-			local player = Players:GetPlayerByUserId(member.userId)
-			if player then table.insert(present, player) end
-		end
-		if #present == 0 then return end
-		TeleportService:TeleportToPrivateServer(ARENA_PLACE, match.data.accessCode, present)
-	end)
-	```
-
-	The contract for that hook, which is worth reading before you write one:
-
-	- It runs **exactly once per matchId**, never concurrently for the same one.
-	- It may run **more than once for the same set of players** under different
-	  matchIds, if a worker stalls and another repairs its work. **Deduplicate on
-	  `matchId`, never on the player set.**
-	- Its side effects may **survive a match that never forms** — the lease can
-	  be lost during the yield. Write it to be idempotent or cheap to abandon,
-	  and use `onAbort` to release anything expensive.
-	- If it throws, times out, or returns something unstorable, the match aborts
-	  cleanly and every player goes back in the queue.
+	These accept injected implementations, primarily for tests: `store`,
+	`messaging`, `players`, `matcher`, `layout`, `logger`, `metrics`, `clock`,
+	`monotonic`, `random`, `sleep`, `spawn`, `id`, `serverId`.
 
 	### Delivery
 
-	`matched` fires on **every server holding one of the matched players**, not
-	just the one that formed the match. If none of the players are on this
-	server, it does not fire here at all — so the handler can assume it has
-	someone to act on.
+	`matched` fires on every server holding at least one of the matched players.
+	A server holding none of them does not receive the event, so a handler can
+	assume it has someone to act on.
 
-	A match is written to MemoryStore before it is announced, so delivery does
-	not depend on MessagingService: typically it arrives in under 200 ms, and
-	if messaging is down entirely a poll finds it within a few seconds.
+	Matches are written to MemoryStore before being announced, so delivery does
+	not depend on MessagingService. Typical latency is under 200 ms; if a message
+	is dropped, a poll finds the match within `pollIntervalMax` (30 s), and if
+	MessagingService is unavailable the poll cap tightens to 5 s automatically.
 ]=]
 
 local Config = require(script.Parent.Config)
@@ -135,10 +116,52 @@ local function buildMessaging(settings: any, executor: any): any?
 end
 
 --[=[
-	Builds a queue. Every field except `name` and `size` has a default.
+	@prop matched Signal<MatchEnvelope<T>>
+	@within Matchmaker
+
+	Fires on every server holding at least one of the matched players. Does not
+	fire on a server holding none of them.
+]=]
+
+--[=[
+	@prop aborted Signal<AbortContext>
+	@within Matchmaker
+
+	Fires when a match that had already claimed its tickets failed to commit. Its
+	players return to the queue. See [AbortReason].
+]=]
+
+--[=[
+	@prop queued Signal<Ticket>
+	@within Matchmaker
+
+	Fires on this server when a ticket is successfully enqueued here.
+]=]
+
+--[=[
+	@prop cancelled Signal<Ticket>
+	@within Matchmaker
+
+	Fires on this server when a ticket it was tracking is cancelled.
+]=]
+
+--[=[
+	@prop parties Party
+	@within Matchmaker
+
+	Cross-server parties sharing this queue's store. Built on first access and
+	writes nothing until used; see [Party].
+]=]
+
+--[=[
+	Builds a queue. `name` and `size` are required; see the configuration table
+	on [Matchmaker] for the rest.
+
+	Configuration problems throw rather than returning a `Result`, since they
+	cannot be recovered from at runtime.
 
 	@param config MatchmakerConfig
-	@error "Muster: ..." -- Any configuration problem, reported at your call site.
+	@error "Muster: ..." -- Reported at the call site, naming the offending field.
 	@within Matchmaker
 ]=]
 function Matchmaker.new(config: any): any
@@ -249,9 +272,15 @@ function Matchmaker._resolveRating(self: any, userId: number, supplied: number?)
 end
 
 --[=[
-	Queues one player.
+	Queues one player as a one-member ticket.
+
+	On a rated queue, `options.rating` is required unless `rating.default` is
+	configured; on an unrated queue, supplying one throws.
 
 	@param options EnqueueOptions?
+	@return Result<Ticket>
+	@error "Muster: queue \"<name>\" is rated but no rating was given" -- No rating and no default.
+	@error "Muster: queue \"<name>\" is unrated, so `rating` cannot be supplied" -- Rating passed to an unrated queue.
 	@within Matchmaker
 ]=]
 function Matchmaker.enqueue(self: any, userId: number, options: any?): any
@@ -275,19 +304,21 @@ function Matchmaker.enqueue(self: any, userId: number, options: any?): any
 end
 
 --[=[
-	Queues a set of players as one indivisible ticket: never split across
-	matches, matched at the group's aggregate rating.
+	Queues a set of players as one ticket. The group is never split across
+	matches and is matched at its aggregate rating.
 
-	**This is the usual way to queue a group.** It needs no party system at all —
-	pass whatever userIds you have, from your own squad code or from a party that
-	lives in a table on this server. Reach for [Party] only when a party has to
-	survive its members being on different servers.
+	Takes userIds directly and does not involve [Party]. The first userId becomes
+	the ticket's leader, which is who may cancel or acknowledge it.
 
 	```lua
 	queue:enqueueGroup({ leaderId, friendId }, { ratings = ratings })
 	```
 
+	Groups larger than `size.max` are rejected with `InvalidPartySize`, and a
+	repeated userId with `DuplicateMember`.
+
 	@param options GroupOptions?
+	@return Result<Ticket>
 	@within Matchmaker
 ]=]
 function Matchmaker.enqueueGroup(self: any, userIds: { number }, options: any?): any
@@ -315,10 +346,14 @@ function Matchmaker.enqueueGroup(self: any, userIds: { number }, options: any?):
 end
 
 --[=[
-	Queues a Muster party. Only its leader may do this, and the party's
-	membership is frozen until the ticket resolves.
+	Queues a [Party] by id. Only the party's leader may call this.
 
-	@param options GroupOptions?
+	The party's membership is locked for the lifetime of the ticket: invites,
+	kicks, leaves, leadership transfers and disbanding all return `PartyLocked`
+	until the ticket matches, is cancelled, or expires.
+
+	@param options GroupOptions? -- `ratings` is keyed by userId.
+	@return Result<Ticket>
 	@within Matchmaker
 ]=]
 function Matchmaker.enqueueParty(self: any, partyId: string, requesterUserId: number, options: any?): any
@@ -390,9 +425,12 @@ function Matchmaker._partitionFor(self: any, options: any, userIds: { number }):
 end
 
 --[=[
-	Cancels a ticket. Only its leader may do so, and only while it is still
-	queued — a ticket already claimed for a match cannot be pulled back.
+	Cancels a ticket.
 
+	Only the ticket's leader may cancel it, and only while its state is
+	`Queued`. A ticket already claimed for a match returns `NotQueued`.
+
+	@return Result<true>
 	@within Matchmaker
 ]=]
 function Matchmaker.cancel(self: any, requesterUserId: number, ticketId: string): any
@@ -400,10 +438,13 @@ function Matchmaker.cancel(self: any, requesterUserId: number, ticketId: string)
 end
 
 --[=[
-	Cancels whatever ticket a user holds, if any. Wired to `PlayerRemoving`
-	automatically unless `autoCancelOnLeave` is off.
+	Cancels whatever ticket a user currently holds, if any.
 
-	@return Result<boolean> -- Whether a ticket was actually cancelled.
+	Unlike [Matchmaker:cancel], this looks the ticket up and cancels it as its
+	leader, so it works for any member of a group. Connected to
+	`Players.PlayerRemoving` unless `autoCancelOnLeave` is disabled.
+
+	@return Result<boolean> -- True if a ticket was cancelled, false if the user had none queued.
 	@within Matchmaker
 ]=]
 function Matchmaker.cancelForUser(self: any, userId: number): any
@@ -424,6 +465,12 @@ function Matchmaker.cancelForUser(self: any, userId: number): any
 end
 
 --[=[
+	The ticket a user currently holds, or `nil`.
+
+	Tickets are exclusive across every queue sharing a namespace, so this returns
+	a ticket even if the user queued somewhere else.
+
+	@return Result<Ticket?>
 	@within Matchmaker
 ]=]
 function Matchmaker.getTicket(self: any, userId: number): any
@@ -431,6 +478,10 @@ function Matchmaker.getTicket(self: any, userId: number): any
 end
 
 --[=[
+	The state of a ticket: `Queued`, `Claiming`, `Matched`, `Cancelled`, or
+	`Expired`. A `Matched` status carries the envelope.
+
+	@return Result<QueueStatus<T>>
 	@within Matchmaker
 ]=]
 function Matchmaker.getStatus(self: any, ticketId: string): any
@@ -438,9 +489,11 @@ function Matchmaker.getStatus(self: any, ticketId: string): any
 end
 
 --[=[
-	Reads a finalized match by id — useful for a player who rejoined on a new
-	server and needs the envelope again.
+	Reads a committed match by id, or `nil` if there is no ready match under that
+	id. Matches remain readable for `matchExpiration` (300 s), which covers a
+	player who rejoined on another server and needs the envelope again.
 
+	@return Result<MatchEnvelope<T>?>
 	@within Matchmaker
 ]=]
 function Matchmaker.getMatch(self: any, matchId: string): any
@@ -448,10 +501,16 @@ function Matchmaker.getMatch(self: any, matchId: string): any
 end
 
 --[=[
-	Releases a ticket's players so they can queue again, and unlocks its party.
-	Done for you unless `manualAcknowledge` is set, which is what you want if
-	teleporting can fail and you need the option to re-queue.
+	Releases a matched ticket's players so they may queue again, and unlocks its
+	party.
 
+	This happens automatically on delivery unless `manualAcknowledge` is set.
+	Enable that setting to hold the reservation until you have confirmed whatever
+	follows the match — a teleport, for instance — so a failure leaves the
+	players free to re-queue rather than locked out until their reservation
+	expires.
+
+	@return Result<MatchEnvelope<T>>
 	@within Matchmaker
 ]=]
 function Matchmaker.acknowledge(self: any, requesterUserId: number, ticketId: string): any
@@ -459,8 +518,11 @@ function Matchmaker.acknowledge(self: any, requesterUserId: number, ticketId: st
 end
 
 --[=[
-	Runs one worker pass. The loop calls this for you; call it directly in tests
-	to advance the system a step at a time.
+	Runs one worker pass: ticket upkeep, lane acquisition, then a scan of each
+	held lane.
+
+	The worker thread calls this on a loop. Calling it directly advances the
+	system one step, which is how the test suite drives it without yielding.
 
 	@within Matchmaker
 ]=]
@@ -469,6 +531,10 @@ function Matchmaker.step(self: any)
 end
 
 --[=[
+	Starts the worker thread and subscribes for cross-server delivery. Called by
+	the constructor unless `autoStart` is disabled. Calling it twice does
+	nothing.
+
 	@within Matchmaker
 ]=]
 function Matchmaker.start(self: any)
@@ -476,9 +542,9 @@ function Matchmaker.start(self: any)
 end
 
 --[=[
-	Stops the worker and hands back every lease, so another server picks the
-	work up at once rather than waiting for a timeout. Call it from
-	`BindToClose`.
+	Stops the worker and releases every lane lease this server holds, so another
+	server can take them immediately instead of waiting out the 15-second
+	timeout. Suitable for `game:BindToClose`.
 
 	@within Matchmaker
 ]=]
@@ -487,7 +553,8 @@ function Matchmaker.stop(self: any)
 end
 
 --[=[
-	Stops everything and drops all signal handlers.
+	Calls [Matchmaker:stop], disconnects the `PlayerRemoving` connection, and
+	drops every signal handler.
 
 	@within Matchmaker
 ]=]
@@ -504,9 +571,22 @@ function Matchmaker.destroy(self: any)
 end
 
 --[=[
-	A snapshot for logging or a debug command: how many tickets this server has
-	queued, how many lanes it is working, whether broadcasts look healthy, and
-	per-structure request health.
+	A snapshot of this server's view of the queue, for logging or a debug
+	command.
+
+	| Field | Meaning |
+	| --- | --- |
+	| `localTickets` | Tickets this server enqueued and is still tracking. |
+	| `ownedLanes` | Lane leases this server currently holds. |
+	| `laneMode` | `"auto"` or `"fixed"`. |
+	| `laneCount` | Lanes the default partition is sharded into. |
+	| `laneChanges` | Resizes this server has applied. |
+	| `throttled` | True once 1% of requests have come back throttled. |
+	| `broadcastHealthy` | False while message delivery looks unreliable. |
+	| `broadcastsSent` / `broadcastsReceived` | Message counts since start. |
+	| `requests` | Per-structure successes, failures, throttles and mean latency. |
+
+	Values are local to this server, not fleet-wide.
 
 	@within Matchmaker
 ]=]

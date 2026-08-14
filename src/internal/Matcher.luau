@@ -3,34 +3,32 @@
 --[=[
 	@class Matcher
 
-	The grouping algorithm. Pure: no store, no clock, no Roblox globals — it
-	takes candidates and a policy and returns groups, which is what makes match
-	quality testable without a queue around it.
+	The grouping algorithm.
 
-	Candidates are processed oldest-first, and each unused one becomes an
-	*anchor*. For an anchor, a subset-sum walk over party sizes finds the best
-	combination that fills the match, where "best" is the policy's `score`:
-	smallest rating spread, then shortest total wait. Parties enter the walk as
-	single indivisible candidates, so a party is never split.
+	Pure: no store, no clock, no Roblox globals. It takes candidates and a policy
+	and returns groups, so match quality can be tested without a queue.
 
-	A group at `targetSize` commits immediately. A smaller one is only accepted
-	once the anchor has waited `fallbackAfter` seconds, and then the largest
-	viable size down to `minSize` wins — so a queue with five players waiting for
-	a six-player match eventually plays five-a-side rather than waiting forever.
+	Candidates are sorted oldest first, ties broken by ticket id. Each unused
+	candidate in turn becomes an *anchor*, and a subset-sum walk over ticket
+	sizes looks for a combination that fills the match. Tickets are indivisible,
+	so a group is never split across matches.
 
-	The rating window widens with the **anchor's** wait, not each candidate's.
-	Since anchors are oldest-first, the player who has waited longest searches
-	the widest, and a lone high-rated outlier who cannot be matched never blocks
-	the compatible players behind it.
+	A combination reaching `targetSize` is taken immediately. A smaller one is
+	accepted only once the anchor has waited `fallbackAfter` seconds, and then
+	the largest viable size down to `minSize` wins — so five players waiting for
+	a six-player match eventually play five-a-side.
+
+	The rating window widens with the **anchor's** wait rather than each
+	candidate's. Because anchors are visited oldest first, the longest-waiting
+	player searches the widest, and an unmatched outlier does not block the
+	compatible players behind it.
 
 	:::note Which full match wins
-	The walk stops at the **first** combination that reaches `targetSize` rather
-	than continuing to look for a tighter one. Since candidates are visited
-	oldest-first, that means the longest-waiting players get in, and rating
-	spread is already bounded by the window every candidate had to pass. The
-	alternative — scanning all of them to shave a few rating points — costs a
-	full pass per anchor on every scan of every lane, which is not a trade worth
-	making on a server that is also running a game.
+	The walk stops at the first combination reaching `targetSize` rather than
+	continuing to find a tighter one. Candidates are visited oldest first, so
+	this favours the longest wait, and rating spread is already bounded by the
+	window each candidate had to pass. Scanning the rest would cost a full pass
+	per anchor on every scan of every lane.
 	:::
 ]=]
 
@@ -43,13 +41,14 @@ type MatcherPolicy = Types.MatcherPolicy
 local Matcher = {}
 
 --[=[
-	Rating spread across every individual member, then total queue time. Spread
-	is measured per member rather than per ticket so a party with a wide internal
-	skill gap is correctly penalized.
+	The default scoring function: rating spread across individual members, then
+	total queue time. Both are minimised, compared in that order.
 
-	Returns a spread of 0 when no candidate carries ratings, which makes the
-	tie-break on queue time the whole ordering — the right policy for an unrated
-	queue.
+	Spread is measured per member rather than per ticket, so a group with a wide
+	internal skill gap is penalised accordingly.
+
+	Returns a spread of 0 when no candidate carries a rating, leaving queue time
+	as the whole ordering, which is the behaviour an unrated queue wants.
 
 	@within Matcher
 ]=]
@@ -73,8 +72,8 @@ function Matcher.spreadScore(candidates: { Candidate }, indexes: { number }): (n
 end
 
 --[=[
-	Builds the policy a resolved config implies: a widening rating window on a
-	rated queue, or unconditional compatibility on an unrated one.
+	Builds the [MatcherPolicy] a resolved config implies: a widening rating
+	window on a rated queue, or unconditional compatibility on an unrated one.
 
 	@within Matcher
 ]=]
@@ -178,8 +177,10 @@ local function chooseForAnchor(
 end
 
 --[=[
-	Groups candidates into matches. Every returned group is disjoint, and any
-	candidate that could not be placed is simply absent — it stays queued.
+	Groups candidates into matches.
+
+	Returned groups are disjoint. A candidate that could not be placed is absent
+	from the result and stays queued.
 
 	@param now -- Wall-clock seconds, compared against each candidate's `queuedAt`.
 	@within Matcher

@@ -3,19 +3,20 @@
 --[=[
 	@class Finalizer
 
-	Runs the consumer's `finalize` hook under a deadline.
+	Runs the `finalize` hook under a deadline.
 
-	The hook is expected to yield — reserving a server is a web call — so it runs
-	on its own thread while the caller waits for either completion or the
-	deadline. Both the thread spawner and the clock are injected, which lets the
-	suite drive the timeout path without any real time passing.
+	The hook is expected to yield, so it runs on its own thread while the caller
+	waits for completion or the deadline, whichever comes first. The spawner and
+	clock are injected, which lets tests drive the timeout path without real time
+	passing.
 
-	:::caution What a timeout can and cannot do
-	Luau cannot cancel a thread blocked in a Roblox web call. A `finalize` that
-	times out mid-`ReserveServerAsync` still completes later and still allocates
-	a server; Muster simply stops waiting for it and aborts the match. That is
-	why `onAbort` exists, and why the hook contract asks for side effects that
-	are idempotent or cheap to abandon.
+	:::caution
+	A timed-out hook is abandoned, not cancelled. Luau cannot interrupt a thread
+	blocked in a web call, so a `finalize` that times out during
+	`ReserveServerAsync` still completes later and still allocates a server —
+	Muster has simply stopped waiting and aborted the match. Write hooks whose
+	side effects are idempotent or cheap to abandon, and release expensive ones
+	in `onAbort`.
 	:::
 ]=]
 
@@ -31,7 +32,8 @@ export type Outcome = {
 --[=[
 	Invokes `callback(context)`, waiting at most `timeout` seconds.
 
-	@return Outcome -- `ok` with the return value, or a `FinalizerError` / `FinalizerTimeout` reason.
+	@param services -- `monotonic`, `sleep` and `spawn`.
+	@return Outcome -- `ok` with the return value, or a reason of `FinalizerError` or `FinalizerTimeout`.
 	@within Finalizer
 ]=]
 function Finalizer.run(callback: (any) -> any, context: any, timeout: number, services: any): Outcome

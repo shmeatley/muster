@@ -3,9 +3,10 @@
 --[=[
 	@class Types
 
-	Every type Muster exposes, in one place with no runtime dependencies. The
-	aggregator re-exports all of these, so consumers should write
-	`Muster.MatchEnvelope` rather than reaching in here.
+	Every type Muster exposes. Has no runtime dependencies.
+
+	These are re-exported from the package root, so write `Muster.MatchEnvelope`
+	rather than requiring this module directly.
 ]=]
 
 local Types = {}
@@ -14,9 +15,12 @@ local Types = {}
 	@type Metadata { [string]: any }
 	@within Types
 
-	Arbitrary consumer data carried on a ticket. Must survive a JSON round trip
-	through MemoryStore: strings, numbers, booleans, and tables of those. No
-	functions, no Instances, no cycles.
+	Caller-supplied data carried on a ticket.
+
+	Must survive a JSON round trip through MemoryStore: strings, numbers,
+	booleans, and tables of those. Functions, Instances, cycles, and tables
+	mixing array and dictionary keys are rejected at enqueue with
+	`InvalidMetadata`. Limited to `maxMetadataBytes` (1024).
 ]=]
 export type Metadata = { [string]: any }
 
@@ -24,14 +28,15 @@ export type Metadata = { [string]: any }
 	@interface Member
 	@within Types
 	.userId number
-	.serverId string -- JobId of the server that enqueued them. The broadcast address.
+	.serverId string -- JobId of the server that enqueued them; where their match is delivered.
 	.rating number? -- Present if and only if the queue is rated.
 	.provisional boolean? -- True when `rating.default` was substituted for a missing rating.
 	.metadata Metadata?
 
-	One player inside a ticket or a finalized match. `serverId` is per-member
-	rather than per-ticket because a party can span several servers, and each
-	member's own server is the one that needs to hear about the match.
+	One player within a ticket or a match.
+
+	`serverId` is per-member rather than per-ticket because a party's members can
+	be on different servers, and each is notified on their own.
 ]=]
 export type Member = {
 	userId: number,
@@ -58,10 +63,10 @@ export type Member = {
 	.state "Queued" | "Claimed" | "Matched" | "Cancelled"
 	.matchId string?
 	.lane number -- Index within the partition.
-	.laneCount number -- The lane count in force when it was written; lanes scale at runtime.
+	.laneCount number -- Lane count in force when the ticket was written; lanes scale at runtime.
 
-	A queue entry. One ticket covers one solo player or one whole party — parties
-	are never split across matches.
+	A queue entry covering one player or one group. A ticket is never split
+	across matches.
 ]=]
 export type Ticket = {
 	id: string,
@@ -93,14 +98,15 @@ export type Ticket = {
 	.members { Member }
 	.ticketIds { string }
 	.partyIds { string }
-	.data T -- Whatever your `finalize` hook returned.
+	.data T -- The `finalize` hook's return value, or an empty table if there is no hook.
 
-	A finalized match, delivered to every server holding one of its members.
-	Generic over the finalizer's return type, so `match.data.accessCode` is
-	typed and autocompletes.
+	A committed match, delivered to every server holding one of its members.
 
-	Deduplicate on `matchId`, never on the set of players — see the `finalize`
-	contract on [Matchmaker].
+	Generic over the finalizer's return type, so `match.data.accessCode` is typed
+	and autocompletes.
+
+	Deduplicate on `matchId`. The same set of players may appear under a second
+	matchId if a worker stalled and its work was repaired.
 ]=]
 export type MatchEnvelope<T> = {
 	v: number,
@@ -129,8 +135,8 @@ export type MatchEnvelope<T> = {
 	.createdAt number
 	.deadline number -- Monotonic time the hook must return by.
 
-	What a `finalize` hook receives. Everything about the match except the
-	decoration the hook itself is about to produce.
+	The argument to a `finalize` hook: everything known about the match before the
+	hook's own return value is attached.
 ]=]
 export type MatchContext = {
 	matchId: string,
@@ -149,14 +155,17 @@ export type MatchContext = {
 	@type AbortReason "FinalizerError" | "FinalizerTimeout" | "FinalizerTooLarge" | "LeaseLost" | "StoreUnavailable" | "TicketStolen"
 	@within Types
 
-	Why a match that had already claimed its tickets failed to commit.
+	Why a match that had already claimed its tickets failed to commit. Its
+	players return to the queue in every case.
 
-	- `FinalizerError` — the hook threw.
-	- `FinalizerTimeout` — the hook did not return within `finalizeTimeout`.
-	- `FinalizerTooLarge` — the hook's return value failed validation or exceeded `maxMatchDataBytes`.
-	- `LeaseLost` — another server took over this lane while the hook was yielding.
-	- `StoreUnavailable` — MemoryStore rejected the final commit.
-	- `TicketStolen` — a ticket was claimed by another match between selection and commit.
+	| Reason | Cause |
+	| --- | --- |
+	| `FinalizerError` | The hook threw. |
+	| `FinalizerTimeout` | The hook did not return within `finalizeTimeout`. |
+	| `FinalizerTooLarge` | The hook's return value failed validation or exceeded `maxMatchDataBytes`. |
+	| `LeaseLost` | Another server took the lane while the hook was yielding. |
+	| `StoreUnavailable` | MemoryStore rejected the commit. |
+	| `TicketStolen` | A ticket was claimed by another match between selection and commit. |
 ]=]
 export type AbortReason =
 	"FinalizerError"
@@ -177,9 +186,10 @@ export type AbortReason =
 	.message string? -- The hook's error text, when `reason` is `FinalizerError`.
 	.data any? -- The hook's return value, if it produced one before the abort.
 
-	Passed to `onAbort`. When `data` is present the hook ran to completion and
-	its side effects survived a match that never formed — that is what this
-	callback is for.
+	The argument to `onAbort`.
+
+	When `data` is present, the hook ran to completion and its side effects
+	outlived a match that never formed.
 ]=]
 export type AbortContext = {
 	matchId: string,
@@ -195,9 +205,11 @@ export type AbortContext = {
 	@type Finalizer (context: MatchContext) -> T
 	@within Types
 
-	Runs exactly once per `matchId`, on whichever server formed the match, after
-	its tickets are claimed and before it commits. Yielding is expected — this is
-	where `TeleportService:ReserveServerAsync` goes.
+	Runs once per `matchId`, on the server that formed the match, after its
+	tickets are claimed and before it commits. Expected to yield.
+
+	The same set of players may be finalized again under a different matchId if
+	this match aborts, so deduplicate on `matchId`.
 ]=]
 export type Finalizer<T> = (context: MatchContext) -> T
 
@@ -222,8 +234,8 @@ export type QueueStatus<T> =
 	@type ErrorCode string
 	@within Types
 
-	The closed set of codes on a [ServiceError]. Switch on this rather than on
-	the message text.
+	The codes a [ServiceError] can carry. Switch on this rather than on the
+	message text, which is not stable.
 ]=]
 export type ErrorCode =
 	-- Transport
@@ -266,8 +278,8 @@ export type ServiceError = {
 	@type Result { ok: true, value: T } | { ok: false, error: ServiceError }
 	@within Types
 
-	Returned by every method that touches the network. Programming mistakes throw
-	instead — see the error-handling section of the README.
+	Returned by every method that touches the network. Invalid configuration and
+	invalid arguments throw instead. See [Result].
 ]=]
 export type Result<T> = { ok: true, value: T } | { ok: false, error: ServiceError }
 
@@ -284,12 +296,13 @@ export type SortedItem = { key: string, value: any, sortKey: number }
 	@interface Store
 	@within Types
 
-	The storage contract. `Muster.stores.MemoryStore` implements it against
-	Roblox MemoryStore; `Muster.stores.InMemory` implements it in a table for
-	tests. Every method returns `(success, value)` and never throws.
+	The storage contract, implemented by `Muster.stores.MemoryStore` against
+	Roblox MemoryStore and by `Muster.stores.InMemory` against tables.
+
+	Every method returns `(success, value)` and must not throw.
 
 	`update` must be a compare-and-set: the transform may be invoked more than
-	once, and returning `nil` from it must abort the write.
+	once for a single call, and returning `nil` from it must abort the write.
 ]=]
 export type Store = {
 	get: (self: any, name: string, key: string, priority: number?) -> (boolean, any),
@@ -327,8 +340,8 @@ export type Subscription = { disconnect: (self: any) -> () }
 	@interface Messaging
 	@within Types
 
-	The notification contract. Delivery is assumed best-effort and unordered —
-	Muster never depends on a message arriving.
+	The notification contract. Delivery is assumed to be best-effort and
+	unordered; Muster never depends on a message arriving.
 ]=]
 export type Messaging = {
 	publish: (self: any, topic: string, payload: any) -> (boolean, any),
@@ -345,9 +358,8 @@ export type Messaging = {
 	.ratings { number }
 	.queuedAt number
 
-	The denormalized view of a ticket that the matcher sees. Deliberately small:
-	it is what gets written into the lane index, and it is read far more often
-	than the ticket itself.
+	The reduced view of a ticket held in the lane index and passed to [Matcher].
+	Kept small because it is read far more often than the ticket record itself.
 ]=]
 export type Candidate = {
 	ticketId: string,
@@ -368,11 +380,14 @@ export type Candidate = {
 	.compatible (anchor: Candidate, candidate: Candidate, waitSeconds: number) -> boolean
 	.score (candidates: { Candidate }, indexes: { number }) -> (number, number)
 
-	Everything the grouping algorithm knows. Supply your own to replace the
-	rating window with role composition, region affinity, or anything else.
+	Everything [Matcher] knows about how to group candidates. Supply one through
+	the `matcher` config field to replace the rating window with role
+	composition, region affinity, or any other rule.
 
-	`score` returns `(primary, secondary)`, both minimized, compared in order.
-	The built-in policies use rating spread then total queue time.
+	`compatible` decides whether a candidate may join an anchor's group.
+
+	`score` returns `(primary, secondary)`, both minimized and compared in that
+	order. The built-in policy uses rating spread, then total queue time.
 ]=]
 export type MatcherPolicy = {
 	minSize: number,
@@ -393,8 +408,11 @@ export type MatcherPolicy = {
 	.default number? -- Substituted when a caller omits a rating. Default nil, which makes omission an error.
 	.aggregate (({ number }) -> number)? -- Party rating from member ratings. Default is a max-biased mean.
 
-	Presence of this table is what makes a queue rated. Omit it entirely for an
-	unrated queue, where tickets carry no rating and matching is oldest-first.
+	Supplying this table makes a queue rated. Omit it for an unrated queue, where
+	tickets carry no rating and matching is oldest-first.
+
+	Rated and unrated is a per-queue property: a rated queue requires a rating
+	for every player, and an unrated one rejects them.
 ]=]
 export type RatingConfig = {
 	window: number?,
@@ -412,9 +430,12 @@ export type RatingConfig = {
 	.target number?
 	.max number?
 
-	Match sizing. `Muster.new{ size = 6 }` is shorthand for all three being 6.
-	A group at `target` commits immediately; a smaller one waits `fallbackAfter`
-	seconds before it will settle for anything down to `min`.
+	Match sizing. `size = 6` is shorthand for all three being 6, and `target`
+	defaults to `max`.
+
+	A group reaching `target` commits immediately. A smaller one waits
+	`fallbackAfter` seconds, after which the largest group down to `min` is
+	accepted.
 ]=]
 export type SizeConfig = { min: number, target: number?, max: number? }
 
@@ -423,8 +444,8 @@ export type SizeConfig = { min: number, target: number?, max: number? }
 	@within Types
 	.rating number? -- Required on a rated queue unless `rating.default` is set. Throws on an unrated queue.
 	.metadata Metadata?
-	.partition string? -- Overrides `partitionKey` for this ticket.
-	.serverId string? -- Overrides the broadcast address. You almost never want this.
+	.partition string? -- Overrides `partitionKey` for this ticket. Partitions never match each other.
+	.serverId string? -- Overrides where this member's match is delivered. Defaults to this server.
 ]=]
 export type EnqueueOptions = {
 	rating: number?,
@@ -438,8 +459,8 @@ export type EnqueueOptions = {
 	@within Types
 	.ratings { [number]: number }? -- Per-userId ratings, required on a rated queue without a default.
 	.metadata Metadata?
-	.partition string?
-	.serverIds { [number]: string }? -- Per-userId broadcast addresses, for members on other servers.
+	.partition string? -- Overrides `partitionKey` for this ticket.
+	.serverIds { [number]: string }? -- Per-userId delivery addresses, for members on other servers.
 ]=]
 export type GroupOptions = {
 	ratings: { [number]: number }?,
@@ -483,7 +504,7 @@ export type PartyQueue = {
 	.leaderUserId number
 	.members { PartyMember }
 	.createdAt number
-	.version number -- Bumped on every mutation; use it to detect staleness.
+	.version number -- Incremented on every mutation; compare it to detect a stale read.
 	.queue PartyQueue? -- Non-nil while queued, during which membership is frozen.
 ]=]
 export type PartyView = {

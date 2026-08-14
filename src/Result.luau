@@ -3,14 +3,12 @@
 --[=[
 	@class Result
 
-	Muster splits failures by cause: **if it's your bug, it throws; if it's the
-	network's fault, it's a `Result`.**
+	The return type of every method that touches the network.
 
-	Bad configuration and bad arguments raise an error at level 2, so the
-	traceback points at your call. Anything that depends on MemoryStore being
-	reachable — enqueueing, cancelling, party mutations — returns a `Result`
-	instead, because those genuinely fail in production and a correct program
-	has to branch on them.
+	Muster splits failures by cause. Invalid configuration and invalid arguments
+	throw at level 2, so the traceback points at the call site. Anything that
+	depends on MemoryStore being reachable returns a `Result` instead, since
+	those failures occur in normal operation and callers must branch on them.
 
 	```lua
 	local result = queue:enqueue(player.UserId, { rating = 1200 })
@@ -22,6 +20,9 @@
 	end
 	print("queued as", result.value.id)
 	```
+
+	`result.error` carries an [ErrorCode], a message, and `retryable`. It also
+	defines `__tostring` as `"<code>: <message>"`.
 ]=]
 
 local Types = require(script.Parent.Types)
@@ -48,9 +49,11 @@ function Result.ok<T>(value: T): Result<T>
 end
 
 --[=[
-	Builds a failure. `retryable` marks errors where the same call may succeed
-	later — store outages and throttles — as opposed to ones that never will,
-	like `AlreadyQueued`.
+	Builds a failure.
+
+	`retryable` marks errors where the same call may succeed on a later attempt,
+	such as a store outage, as opposed to ones that will not, such as
+	`AlreadyQueued`.
 
 	@within Result
 ]=]
@@ -73,8 +76,9 @@ function Result.isOk<T>(result: Result<T>): boolean
 end
 
 --[=[
-	Returns the value, or throws with the error's code and message. For call
-	sites where a failure genuinely is unrecoverable — a startup path, or a
+	Returns the value, or throws with the error's code and message.
+
+	For call sites where a failure is unrecoverable, such as startup code or a
 	test.
 
 	@error "<code>: <message>" -- The wrapped ServiceError.

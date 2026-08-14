@@ -6,11 +6,11 @@
 	The production [Messaging] adapter: MessagingService behind a
 	[RequestExecutor].
 
-	Muster treats delivery as best-effort. A finalized match is written to
-	MemoryStore *before* any message is published, so a dropped, delayed, or
-	duplicated message costs latency and nothing else.
+	Delivery is treated as best-effort. A committed match is written to
+	MemoryStore before anything is published, so a dropped, delayed or duplicated
+	message costs latency only.
 
-	The relevant platform limits, which shape the per-server topic scheme:
+	The platform limits that shape the per-server topic scheme:
 
 	| Limit | Value |
 	| --- | --- |
@@ -46,9 +46,9 @@ function RobloxMessaging.new(executor: any): RobloxMessaging
 end
 
 --[=[
-	Publishes at priority 4, so it is circuit-broken under sustained failure
-	rather than retried forever — the ledger is the source of truth and the
-	receiver's poll will find the match regardless.
+	Publishes at priority 4, so sustained failure trips the circuit breaker
+	rather than retrying indefinitely. The receiver's poll finds the match
+	regardless.
 
 	@within RobloxMessaging
 ]=]

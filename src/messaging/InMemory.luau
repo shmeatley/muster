@@ -3,12 +3,12 @@
 --[=[
 	@class InMemoryMessaging
 
-	An in-process [Messaging] bus with the failure modes of the real one:
+	An in-process [Messaging] bus reproducing the real one's failure modes:
 	messages can be dropped, delayed, or delivered twice.
 
-	Several Muster instances sharing one bus simulate several servers, which is
-	how the suite exercises cross-server delivery without a single Roblox API
-	call.
+	Several [Matchmaker] instances sharing one bus stand in for several servers,
+	which is how the suite exercises cross-server delivery with no Roblox API
+	calls.
 
 	```lua
 	local bus = Muster.messaging.InMemory.new()
@@ -71,7 +71,7 @@ end
 
 --[=[
 	Holds every subsequent message until [InMemoryMessaging:release], modelling
-	delivery that arrives after the receiver has already started polling.
+	delivery arriving after the receiver has already begun polling.
 
 	@within InMemoryMessaging
 ]=]
@@ -146,7 +146,7 @@ function InMemoryMessaging.subscribe(self: InMemoryMessaging, topic: string, han
 end
 
 --[=[
-	How many messages have been published to `topic`, dropped ones included.
+	Messages published to `topic`, including dropped ones.
 
 	@within InMemoryMessaging
 ]=]

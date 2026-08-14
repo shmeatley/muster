@@ -3,40 +3,38 @@
 --[=[
 	@class Broadcaster
 
-	Cross-server delivery of finalized matches.
+	Cross-server delivery of committed matches.
 
-	**MemoryStore is the ledger; MessagingService is the doorbell.** A match is
-	written and flipped to `Ready` before any message is published, so the
-	message only ever says "go look" sooner than polling would have. Drop every
-	message and the system still works — it just gets slower, and it notices.
+	MemoryStore is the source of truth; MessagingService only shortens the wait.
+	A match is written and flipped to `Ready` before anything is published, so
+	losing every message costs latency and nothing else.
 
 	### Addressing
 
-	One topic per server, `<namespace><version>:<serverId>`, and each instance
-	subscribes to exactly one. A match publishes only to the distinct servers
-	holding its members, which is typically two to six.
+	One topic per server, named `<namespace><version>:<serverId>`, with each
+	instance subscribed to exactly one. A match is published only to the distinct
+	servers holding its members, typically two to six.
 
-	The alternative — one shared topic every server filters — looks simpler and
-	scales far worse. Roblox's per-universe receive budget is `400 + 200 x
-	servers` per minute, and a shared topic spends `servers` of that on every
-	single match, which pins the whole experience at roughly 200 matches per
-	minute no matter how large it grows. Per-server topics spend a handful per
-	match regardless of fleet size.
+	A single shared topic would instead deliver every match to every server. With
+	Roblox's per-universe receive budget of `400 + 200 x servers` per minute,
+	that caps the experience at roughly 200 matches per minute regardless of
+	size, so per-server topics are used instead.
+
+	`topicShards` folds servers into a fixed number of topics if topic
+	cardinality ever needs limiting; `0`, the default, means one per server.
 
 	### Payload
 
-	Small envelopes ride along inside the message, saving the receiver a read.
-	Larger ones send just the matchId and the receiver fetches from the ledger.
-	Either way the message is advisory, so an envelope that arrives inline is
-	safe to trust: it only exists because the commit already succeeded.
+	Envelopes under `inlineBroadcastBytes` (600) are sent inside the message,
+	saving the receiver a read. Larger ones send only the matchId and the
+	receiver reads the ledger. An inline envelope is safe to trust because it
+	exists only after the commit succeeded.
 
 	### Health
 
-	If a publish fails, or a match is discovered by polling that a doorbell
-	should have announced, the broadcaster marks itself unhealthy for a while.
-	Tickets react by tightening their poll cap, so a MessagingService outage
-	costs seconds of extra latency instead of minutes — and costs nothing at all
-	while things are working.
+	A failed publish, or a match found by polling that should have arrived as a
+	message, marks delivery unhealthy for `BROADCAST_UNHEALTHY_DURATION` (300 s).
+	While unhealthy, tickets poll on a much tighter cap.
 ]=]
 
 local Defaults = require(script.Parent.Parent.Defaults)
@@ -83,9 +81,7 @@ function Broadcaster.new(settings: any, messaging: any, onEnvelope: (any, string
 end
 
 --[=[
-	The topic a given server listens on. With `topicShards` set, servers are
-	folded into a fixed number of topics instead — a lever that exists in case
-	topic cardinality ever becomes a constraint, and which nothing needs today.
+	The topic a given server listens on.
 
 	@within Broadcaster
 ]=]
@@ -99,9 +95,10 @@ function Broadcaster.topicFor(settings: any, serverId: string): string
 end
 
 --[=[
-	Records a matchId and reports whether it is new. Bounded to
-	`Defaults.SEEN_CAPACITY` entries, evicted oldest-first, so a server that
-	lives for days does not accumulate them.
+	Records a matchId and reports whether it had not been seen before.
+
+	Bounded to `Defaults.SEEN_CAPACITY` (256) entries, evicted oldest first, so a
+	long-lived server does not accumulate them.
 
 	@within Broadcaster
 ]=]
@@ -131,9 +128,7 @@ function Broadcaster.isHealthy(self: Broadcaster): boolean
 end
 
 --[=[
-	Marks delivery as unreliable for `BROADCAST_UNHEALTHY_DURATION` seconds.
-	Called on a failed publish, and when a poll finds a match that a doorbell
-	should have delivered first.
+	Marks delivery unreliable for `BROADCAST_UNHEALTHY_DURATION` seconds.
 
 	@within Broadcaster
 ]=]
@@ -142,7 +137,7 @@ function Broadcaster.markUnhealthy(self: Broadcaster)
 end
 
 --[=[
-	Subscribes to this server's topic. Safe to call twice.
+	Subscribes to this server's topic. Calling it twice does nothing.
 
 	@within Broadcaster
 ]=]
@@ -190,8 +185,8 @@ function Broadcaster._receive(self: Broadcaster, payload: any)
 end
 
 --[=[
-	Publishes a finalized match to every other server holding one of its
-	members. Never called before the match is committed.
+	Publishes a committed match to every other server holding one of its members.
+	Called only after the match has reached `Ready`.
 
 	@within Broadcaster
 ]=]
@@ -232,10 +227,11 @@ function Broadcaster.announce(self: Broadcaster, envelope: any)
 end
 
 --[=[
-	How long a ticket should wait before its next poll, given how many polls it
-	has already done. Doubles from `pollInterval`, capped at `pollIntervalMax`
-	while broadcasts look healthy and at the much tighter
-	`pollIntervalUnhealthy` while they do not.
+	How long a ticket waits before its next poll, given how many it has already
+	made.
+
+	Doubles from `pollInterval` (2 s), capped at `pollIntervalMax` (30 s) while
+	delivery is healthy and at `pollIntervalUnhealthy` (5 s) while it is not.
 
 	@within Broadcaster
 ]=]

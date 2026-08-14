@@ -3,11 +3,13 @@
 --[=[
 	@class Signal
 
-	A minimal signal, so the package has no runtime dependencies. Handlers fire
-	synchronously in connection order, and each is wrapped so one that throws
-	cannot stop the others or the worker loop that fired them.
+	A minimal event, used for [Matchmaker]'s `matched`, `aborted`, `queued` and
+	`cancelled`. Muster ships its own so the package has no runtime dependencies.
 
-	Disconnecting during a fire is safe — the fire iterates a snapshot.
+	Handlers fire synchronously, in connection order, on the thread that raised
+	the event. A handler that throws is reported and skipped; the remaining
+	handlers still run. Disconnecting from inside a handler is safe, because each
+	fire iterates a snapshot of the handler list.
 
 	```lua
 	local connection = queue.matched:connect(function(match)
@@ -34,7 +36,9 @@ Signal.__index = Signal
 export type Signal<T> = typeof(setmetatable({} :: SignalProps<T>, Signal))
 
 --[=[
-	@param onError -- Called with the traceback when a handler throws. Defaults to `warn`.
+	Creates a signal.
+
+	@param onError -- Called with the error text when a handler throws. Defaults to `warn`.
 	@within Signal
 ]=]
 function Signal.new<T>(onError: ((string) -> ())?): Signal<T>
@@ -45,6 +49,9 @@ function Signal.new<T>(onError: ((string) -> ())?): Signal<T>
 end
 
 --[=[
+	Registers a handler and returns a connection to remove it with.
+
+	@error "Signal:connect expects a function" -- The handler was not callable.
 	@within Signal
 ]=]
 function Signal.connect<T>(self: Signal<T>, handler: (T) -> ()): Connection
@@ -71,8 +78,7 @@ function Signal.connect<T>(self: Signal<T>, handler: (T) -> ()): Connection
 end
 
 --[=[
-	Fires every connected handler with `value`. A handler that throws is
-	reported and skipped; the rest still run.
+	Calls every connected handler with `value`.
 
 	@within Signal
 ]=]
@@ -96,6 +102,8 @@ function Signal.fire<T>(self: Signal<T>, value: T)
 end
 
 --[=[
+	Removes every handler.
+
 	@within Signal
 ]=]
 function Signal.disconnectAll<T>(self: Signal<T>)

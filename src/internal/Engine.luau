@@ -3,38 +3,32 @@
 --[=[
 	@class Engine
 
-	The coordination layer. [Matchmaker] is the public face of this; everything
-	interesting happens here.
+	The coordination layer behind [Matchmaker].
 
-	### How a match forms
+	Every server runs the same loop and acts as both producer and worker; there
+	is no dedicated matchmaker server.
 
-	Every server runs the same loop and is both a producer and an opportunistic
-	worker — there is no dedicated matchmaker server to elect, provision, or
-	lose.
+	### The loop
 
-	1. **Enqueue.** Reserve each member's userId (compare-and-set, so a player
-	   cannot hold two tickets), write the ticket, then write a small denormalized
-	   copy into the lane's sorted map keyed by queue time.
-	2. **Acquire.** The server tries to lease the lanes its own tickets landed in.
-	   Whoever wins does the matching for that lane.
-	3. **Scan.** Read the oldest candidates, run the pure [Matcher], and commit
-	   each group it returns.
-	4. **Commit.** A two-phase, fenced protocol — see `_commit`.
-	5. **Deliver.** Publish a doorbell to the servers holding the matched players.
-	   Every one of them also polls, so delivery is guaranteed by the ledger and
-	   merely made fast by the message.
+	1. **Enqueue.** Reserve each member's userId by compare-and-set so a player
+	   cannot hold two tickets, write the ticket, then write a denormalized copy
+	   into the lane's sorted map, keyed by queue time.
+	2. **Acquire.** Take leases on the lanes this server's own tickets landed in.
+	   The lease holder does the matching for that lane.
+	3. **Scan.** Read the oldest candidates and run [Matcher] over them.
+	4. **Commit.** Two-phase and fenced; see `_commit`.
+	5. **Deliver.** Announce the match to the servers holding its players. Those
+	   servers also poll, so delivery does not depend on the announcement.
 
-	### What happens when a server dies
+	### Recovery
 
-	Nothing cleans up, and nothing needs to. Every piece of state has a TTL that
-	makes the failure self-correcting:
+	State is recovered by expiry rather than cleanup:
 
 	| Failure | Recovery |
 	| --- | --- |
-	| Worker dies holding a lease | Lease expires in 15s; the next acquirer's epoch fences out any late write from the dead one |
-	| Worker dies mid-commit | Claims expire; another worker repairs them, adopting the match if it committed and aborting it if it did not |
-	| Producer dies with tickets queued | Heartbeats stop, tickets self-evict within `ticketExpiration` |
-	| Everything dies | The queue drains itself and the next server starts clean |
+	| Worker dies holding a lease | The lease expires after 15 s and the next holder takes it at a higher epoch, which rejects any late write from the dead one |
+	| Worker dies mid-commit | Claims expire; the next worker adopts the match if it committed, and aborts it if it did not |
+	| Producer dies with tickets queued | Heartbeats stop and the tickets expire within `ticketExpiration` |
 ]=]
 
 local Broadcaster = require(script.Parent.Broadcaster)
@@ -608,14 +602,17 @@ function Engine._fireAbort(self: any, context: any, reason: string, data: any?, 
 end
 
 --[=[
-	Moves one ticket from `Queued` to `Claimed`, and repairs stale claims left
-	by a worker that stopped.
+	Moves one ticket from `Queued` to `Claimed`, repairing stale claims on the
+	way.
 
-	The repair is the subtle part. A claim past its deadline means its owner is
-	gone, but *what* it left behind depends on how far it got: if its match
-	reached `Ready` the players really are matched, so this adopts that result
-	instead of stealing the ticket; if it is still `Claiming` past its deadline
-	it never committed, so this marks it aborted and takes the ticket.
+	A claim past its deadline means its owner stopped. What it left behind
+	depends on how far it got: if the referenced match reached `Ready`, the
+	players are genuinely matched, so the ticket is finalized under that match
+	rather than stolen. If the match is still `Claiming` past its own deadline it
+	never committed, so it is marked `Aborted` and the ticket is taken.
+
+	Tickets whose origin server has stopped heartbeating are refused, since a
+	match containing them could not be delivered.
 
 	@within Engine
 	@private
@@ -704,28 +701,26 @@ function Engine._cleanupTicket(self: any, ticket: any)
 end
 
 --[=[
-	Turns a group of candidates into a committed match, or into nothing at all.
+	Turns a group of candidates into a committed match, or into nothing.
 
-	The ordering is load-bearing at every step:
+	The order of these steps is load-bearing:
 
-	1. **Sorted ticket ids.** Two workers racing for overlapping tickets take
-	   them in the same order, so they cannot deadlock holding half of each
-	   other's set.
-	2. **`Claiming` record first**, so a crash leaves evidence another worker can
-	   find and resolve rather than orphaned claims pointing at nothing.
-	3. **Claim every ticket.** Any refusal aborts and rolls the rest back. No
-	   hook has run yet, so there is nothing to compensate.
-	4. **Fence.** Re-check the lease before doing anything expensive.
-	5. **Run `finalize`** — the only step that yields, and the only one with side
-	   effects outside Muster. Renew the lease first so a slow hook cannot
-	   outlive it, validate and budget what it returns, then **fence again**,
-	   because the world moved while it ran.
-	6. **Flip `Claiming` to `Ready`.** This compare-and-set is guarded on the
-	   server id, the lease epoch *and* the deadline, so a worker that was fenced
-	   out cannot commit even if it somehow reached this line. It is the single
-	   linearization point: before it, nothing happened; after it, the match
-	   exists.
-	7. **Only then** mark tickets matched, unlock parties, and ring the doorbell.
+	1. **Sort the ticket ids.** Two workers contending for overlapping tickets
+	   acquire them in the same order and so cannot deadlock.
+	2. **Write the `Claiming` record.** A crash after this leaves a record
+	   another worker can resolve, rather than claims pointing at nothing.
+	3. **Claim every ticket.** Any refusal aborts and returns the rest to
+	   `Queued`. No hook has run yet, so nothing needs compensating.
+	4. **Validate the lease** before doing anything expensive.
+	5. **Run `finalize`.** The only step that yields and the only one with side
+	   effects outside Muster. The lease is renewed first so a slow hook cannot
+	   outlive it, the return value is validated and size-checked, and the lease
+	   is validated **again** afterwards because time passed.
+	6. **Compare-and-set `Claiming` to `Ready`.** Guarded on server id, lease
+	   epoch and deadline together, so a worker that lost its lease cannot commit
+	   even if it reaches this line. This is the linearization point: before it
+	   the match does not exist, after it it does.
+	7. **Then** mark tickets matched, unlock parties, and announce.
 
 	@within Engine
 	@private
@@ -931,9 +926,10 @@ end
 --------------------------------------------------------------------------------
 
 --[=[
-	Hands a finalized match to this server, if this server holds any of its
-	players. Deduplicated on matchId, so the same match arriving by commit, by
-	doorbell and by poll fires once.
+	Delivers a committed match to this server, if it holds any of the players.
+
+	Deduplicated on matchId, so a match arriving by commit, by announcement and
+	by poll fires the signal once.
 
 	@within Engine
 	@private
@@ -1040,9 +1036,8 @@ function Engine._scan(self: any, key: string, owned: any, now: number, mono: num
 end
 
 --[=[
-	One pass: upkeep on our own tickets, then try to take on lanes, then scan
-	the lanes we hold. Call it directly in tests to advance the system
-	deterministically without a scheduler.
+	One pass: upkeep on local tickets, lane acquisition, then a scan of each held
+	lane.
 
 	@within Engine
 ]=]
@@ -1081,8 +1076,8 @@ function Engine.start(self: any)
 end
 
 --[=[
-	Stops the loop and hands back every lease, so another server picks the lanes
-	up immediately instead of after a 15-second timeout.
+	Stops the loop and releases every lease this server holds, so another server
+	can take the lanes immediately rather than after the 15-second timeout.
 
 	@within Engine
 ]=]

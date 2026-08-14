@@ -3,14 +3,13 @@
 --[=[
 	@class Muster
 
-	Cross-server matchmaking for Roblox.
+	Package entry point.
 
-	Players and parties go into a queue; Muster handles the distributed part —
-	sharded queue lanes, worker election, skill-windowed grouping, and delivery
-	of the result to every server holding a matched player. It stops at the
-	match envelope: it does not teleport, does not reserve servers, and does not
-	compute or store ratings. Those are yours, and `finalize` is where they
-	attach.
+	Muster forms matches across servers: it shards a queue into lanes, elects a
+	worker per lane, groups tickets by size and rating, and delivers the result
+	to every server holding a matched player. It does not teleport players,
+	reserve servers, or compute ratings — those attach through the `finalize`
+	hook and the rating you supply.
 
 	```lua
 	local Muster = require(ReplicatedStorage.Packages.Muster)
@@ -24,8 +23,8 @@
 	duels:enqueue(player.UserId)
 	```
 
-	See [Matchmaker] for the queue itself, [Party] for cross-server parties, and
-	[Result] for the error convention.
+	Start at [Matchmaker]. [Party] covers cross-server parties, [Result] the
+	error convention, and [Types] every exported type.
 ]=]
 
 local Config = require(script.Config)
@@ -91,8 +90,8 @@ local Muster = {
 		@within Muster
 		@readonly
 
-		Cross-server parties, usable on their own. A [Matchmaker] exposes its own
-		instance as `queue.parties`.
+		Cross-server party state. A [Matchmaker] exposes its own instance as
+		`queue.parties`; this export is for using parties without a queue.
 	]=]
 	Party = Party,
 
@@ -115,7 +114,7 @@ local Muster = {
 		@within Muster
 		@readonly
 
-		Every tunable and its reasoning.
+		Protocol constants and tuning values.
 	]=]
 	Defaults = Defaults,
 
@@ -131,7 +130,7 @@ local Muster = {
 		@within Muster
 		@readonly
 
-		The deterministic string hash used for lane assignment.
+		FNV-1a string hashing, used for lane assignment.
 	]=]
 	hash = Hash,
 
@@ -140,8 +139,8 @@ local Muster = {
 		@within Muster
 		@readonly
 
-		Storage backends. `InMemory` ships so your own tests can run against a
-		real implementation with a synthetic clock and fault injection.
+		Storage backends. `MemoryStore` is the production one; `InMemory` is a
+		complete implementation backed by tables, for tests.
 	]=]
 	stores = table.freeze({
 		MemoryStore = MemoryStore,
@@ -163,8 +162,9 @@ local Muster = {
 		@within Muster
 		@readonly
 
-		The pieces a [Matchmaker] is assembled from, for building something
-		Muster does not do. Not covered by semver — treat the facade as the API.
+		The components a [Matchmaker] is assembled from. Useful for building on
+		individual pieces. Not covered by semantic versioning — treat
+		[Matchmaker] as the stable surface.
 	]=]
 	internal = table.freeze({
 		Broadcaster = Broadcaster,
@@ -180,7 +180,8 @@ local Muster = {
 }
 
 --[=[
-	Builds a queue. See [Matchmaker] for the full configuration surface.
+	Builds a queue. Alias of [Matchmaker.new], where the configuration is
+	documented.
 
 	@function new
 	@param config MatchmakerConfig

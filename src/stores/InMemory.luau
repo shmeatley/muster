@@ -3,10 +3,11 @@
 --[=[
 	@class InMemoryStore
 
-	A complete [Store] in a table, with a synthetic clock, working TTL expiry,
-	call counting, and fault injection. Muster's own suite runs entirely against
-	it, and it ships publicly so your tests can too — no MemoryStore, no Studio,
-	no waiting.
+	A complete [Store] backed by tables, with a synthetic clock, working TTL
+	expiry, call counting and fault injection.
+
+	Muster's own suite runs against it, and it ships publicly so consumers can
+	test without MemoryStore, Studio, or real time passing.
 
 	```lua
 	local now = 0
@@ -25,9 +26,8 @@
 	now += 200            -- everything expires exactly like it would live
 	```
 
-	Two hooks exist purely for tests: [InMemoryStore:failNext] makes the next
-	calls fail, and [InMemoryStore:conflictNext] makes an update lose a
-	compare-and-set race.
+	[InMemoryStore:failNext] and [InMemoryStore:conflictNext] inject the two
+	failure modes worth testing against.
 ]=]
 
 local Types = require(script.Parent.Parent.Types)
@@ -71,6 +71,7 @@ end
 
 --[=[
 	Makes the next `count` calls to `operation` fail, as a store outage would.
+
 	Operation names are the method names: `get`, `set`, `update`, `remove`,
 	`sortedSet`, `sortedRemove`, `sortedRange`.
 
@@ -81,15 +82,16 @@ function InMemoryStore.failNext(self: InMemoryStore, operation: string, count: n
 end
 
 --[=[
-	Makes the next `count` updates lose a compare-and-set race: the transform
-	runs once against the value it read, that result is thrown away, `mutator`
-	installs a competing write, and the transform runs again against the new
-	value — which is what MemoryStore's `UpdateAsync` does under contention.
+	Makes the next `count` updates lose a compare-and-set race.
 
-	This is the only way to catch a transform that forgets to reset its own
-	bookkeeping on re-entry, which every conditional write in Muster depends on.
+	The transform runs once against the value it read, that result is discarded,
+	`mutator` installs a competing write, and the transform runs again against
+	the new value — which is what `UpdateAsync` does under contention.
 
-	@param mutator -- Receives the current value, returns the competing writer's value. Omit to re-run against unchanged state.
+	This is what catches a transform that fails to reset its own bookkeeping when
+	re-entered, which every conditional write in Muster depends on.
+
+	@param mutator -- Receives the current value and returns the competing writer's value. Omit to re-run against unchanged state.
 	@within InMemoryStore
 ]=]
 function InMemoryStore.conflictNext(self: InMemoryStore, operation: string, count: number?, mutator: ((any) -> any)?)
@@ -276,8 +278,8 @@ function InMemoryStore.sortedRange(
 end
 
 --[=[
-	Total calls made, by operation. Muster's suite asserts against this to keep
-	the request budget from regressing.
+	Calls made, for one operation or in total. Muster's suite asserts against
+	this to keep its request budget from regressing.
 
 	@within InMemoryStore
 ]=]

@@ -3,12 +3,12 @@
 --[=[
 	@class MemoryStore
 
-	The production [Store]: Roblox MemoryStore hash maps and sorted maps behind
-	a [RequestExecutor].
+	The production [Store]: Roblox MemoryStore hash maps and sorted maps behind a
+	[RequestExecutor].
 
-	Muster builds one of these for you. Construct it yourself only when you want
-	several queues to share one executor, so their health tracking and circuit
-	breakers are pooled:
+	A [Matchmaker] builds one automatically. Construct it directly to share a
+	single executor across several queues, which pools their health tracking and
+	circuit breakers:
 
 	```lua
 	local executor = Muster.internal.RequestExecutor.new({ logger = log })
@@ -113,9 +113,9 @@ end
 	ascending order is first-come-first-served.
 
 	:::note
-	MemoryStore caps a range read at 200 items. A lane holding more than that is
-	only ever matched from its oldest 200 — correct, but it biases the rating
-	window, and it is the point at which raising `lanes` starts to pay off.
+	MemoryStore caps a range read at 200 items. A lane holding more is matched
+	only from its oldest 200, which biases the rating window. [LaneScaler] treats
+	a full batch as the signal to add lanes.
 	:::
 
 	@within MemoryStore

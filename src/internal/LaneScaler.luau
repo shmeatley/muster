@@ -3,48 +3,46 @@
 --[=[
 	@class LaneScaler
 
-	Decides how many lanes a partition should have, and moves it there safely.
+	Chooses how many lanes a partition is divided into, and changes it at
+	runtime.
+
+	Active when `lanes` is `"auto"`, which is the default. A pinned count skips
+	this entirely: no record is written and no resize occurs.
 
 	### The shared record
 
 	One MemoryStore entry per partition holds `{ count, previous, changedAt }`.
-	Every server reads it (cached for `LANE_STATE_REFRESH` seconds) to know where
-	to write tickets, and any worker may propose a change through a
-	compare-and-set. There is no coordinator.
+	Servers read it to decide where to write tickets, cached for
+	`LANE_STATE_REFRESH` (30 s), and any worker may change it by compare-and-set.
+	There is no coordinator. A missing or malformed record falls back to the last
+	value this server saw, or to one lane.
 
-	### Why resizing is safe
+	### Resize rules
 
-	The count is stamped into every lane key, so servers that disagree about it
-	write to *different* key spaces rather than corrupting one. A ticket is
-	always readable in the lane its writer put it in — the writer keeps scanning
-	that lane for as long as the ticket lives, and workers on the new count also
-	read the old maps through `Lanes.legacyMaps`. Nothing is stranded, and the
-	two pools see each other throughout.
+	- **Grow**, doubling, after `LANE_SATURATED_PASSES` (3) consecutive scans that
+	  return a full batch. A saturated lane means the worker sees only its oldest
+	  slice.
+	- **Shrink**, halving, after `LANE_STARVED_PASSES` (5) consecutive scans below
+	  `LANE_STARVED_DEPTH` (8) candidates, while the count is above one.
+	- Changes are at least `ticketExpiration` apart.
 
-	The cooldown between changes is a full `ticketExpiration`. That is deliberate:
-	it guarantees every ticket written under an abandoned count has expired or
-	matched before that count can come back into use, so a lane name is never
-	reused while stale entries sit in it.
+	Each worker judges only the lane it holds. Because lanes are hashed
+	uniformly, one lane's depth multiplied by the count approximates the queue.
 
-	Counts the scaler chooses are always powers of two, because it only ever
-	starts at one and doubles or halves. That is what makes `Lanes.legacyMaps`
-	exact. A **pinned** count is under no such constraint — it never resizes, so
-	it has no previous count to map from.
+	Counts are therefore always powers of two, starting from one, which is what
+	makes `Lanes.legacyMaps` exact.
 
-	### When it changes
+	### Why a resize does not lose tickets
 
-	Each worker judges only the lane it holds. Lanes are hashed uniformly, so one
-	lane's depth times the count estimates the whole queue.
+	The count is stamped into every lane key, so servers holding different counts
+	read and write separate key spaces. A ticket stays in the lane its writer
+	chose, and that writer keeps scanning the lane for as long as the ticket
+	lives. Workers on the new count additionally read the old maps their lane
+	draws from, so tickets written under either count can still match each other.
 
-	- **Grow** (double) after `LANE_SATURATED_PASSES` consecutive scans that come
-	  back at the batch cap. A saturated lane means the worker is only seeing the
-	  oldest slice of it, which biases matching.
-	- **Shrink** (halve) after `LANE_STARVED_PASSES` consecutive scans below
-	  `LANE_STARVED_DEPTH`, when the count is above 1. Over-sharding is the worse
-	  failure: it scatters a thin queue so nobody matches at all.
-
-	Both directions are gated on consecutive observations, so a single burst or
-	lull does not move anything.
+	The cooldown exists so an abandoned count fully drains before it can be
+	chosen again, which means a lane name is never reused while stale entries
+	remain in it.
 ]=]
 
 local Defaults = require(script.Parent.Parent.Defaults)
@@ -104,11 +102,12 @@ local function sanitize(settings: any, raw: any): LaneState?
 end
 
 --[=[
-	The lane count to use for `partition` right now.
+	The lane count to use for `partition`, cached for `LANE_STATE_REFRESH`
+	seconds.
 
-	Cached, because this is read on the enqueue path. A stale read is harmless:
-	the ticket goes into the previous count's lane, which its writer keeps
-	scanning and which the new count's workers read as a legacy map.
+	A stale value is safe: the ticket is written into the previous count's lane,
+	which its writer continues to scan and which workers on the new count read as
+	a legacy map.
 
 	@within LaneScaler
 ]=]
@@ -138,11 +137,11 @@ function LaneScaler.current(self: LaneScaler, partition: string): LaneState
 end
 
 --[=[
-	Feeds one scan's result in. Returns the new count if this observation caused
-	a change, otherwise `nil`.
+	Records one scan's result and resizes if the thresholds are met.
 
 	@param depth -- Candidates the scan returned.
-	@param cap -- The batch size it asked for; reaching it means the lane is saturated.
+	@param cap -- Depth at which the lane counts as saturated.
+	@return number? -- The new count, if this observation triggered a change.
 	@within LaneScaler
 ]=]
 function LaneScaler.observe(self: LaneScaler, partition: string, count: number, depth: number, cap: number): number?
@@ -185,9 +184,11 @@ function LaneScaler.observe(self: LaneScaler, partition: string, count: number, 
 end
 
 --[=[
-	Moves a partition to `target`, if nobody beat us to it and the cooldown has
-	elapsed. The compare-and-set is what makes several servers proposing at once
-	safe: exactly one wins and the rest see the result on their next read.
+	Moves a partition to `target` if the count still matches `from` and the
+	cooldown has elapsed.
+
+	The compare-and-set means several servers proposing at once is safe: one
+	wins, and the others observe the result on their next read.
 
 	@within LaneScaler
 	@private
@@ -230,8 +231,8 @@ function LaneScaler._apply(self: LaneScaler, partition: string, from: number, ta
 end
 
 --[=[
-	Whether the count that `state` replaced could still hold live tickets. Once
-	false, workers stop reading legacy maps.
+	The previous count, while it could still hold live tickets. Returns `nil`
+	once it has drained, at which point workers stop reading legacy maps.
 
 	@within LaneScaler
 ]=]

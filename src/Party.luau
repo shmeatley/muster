@@ -3,51 +3,57 @@
 --[=[
 	@class Party
 
-	Cross-server parties: a group of players who queue together and are never
-	split across matches.
+	Party state that persists across servers, stored in MemoryStore.
 
-	:::tip Do you need this?
-	Probably not. `Matchmaker:enqueueGroup({ userIds })` already queues any set
-	of players as one indivisible ticket, and if your parties form in a single
-	lobby they can live in a plain table on that server.
-
-	This exists for parties that must survive members being on **different**
-	servers: join-friend landing someone in another server because your own is
-	full, inviting a player who is not in your lobby yet, or a party regrouping
-	after a match scatters everyone across lobbies. If none of those describe
-	your game, use `enqueueGroup` instead.
-
-	A [Matchmaker] builds this on first access to `queue.parties`, and it writes
-	nothing to the store until you call something on it.
-	:::
-
-	Membership is enforced by a **single-slot index per user**, written with
-	compare-and-set. A player belongs to at most one party, and two servers
-	racing to add the same player will see exactly one of them win — which is
-	the whole problem, since the two servers cannot see each other.
-
-	Accepting an invite is a two-phase reservation: a short-lived `Reserved`
-	slot is taken first, the party record is updated second, and the slot is
-	promoted to `Active` only once the join actually succeeded. A crash between
-	the phases leaves a reservation that expires in 20 seconds rather than a
-	player wedged in a party that never got them.
-
-	While a party is queued its membership is **frozen** — invites, kicks,
-	leaves, leader transfers and disbands all fail with `PartyLocked` — so the
-	roster the matchmaker matched cannot change underneath it. An abandoned
-	queue lock repairs itself on the next read rather than freezing the party
-	forever.
+	Use this when a party must survive its members being on different servers.
+	To queue a group of players who are already together on one server,
+	[Matchmaker:enqueueGroup] takes userIds directly and does not touch any of
+	this. A [Matchmaker] builds its `parties` instance on first access, and
+	nothing is written to the store until a method is called.
 
 	```lua
-	local parties = Muster.Party.new(store)
+	local parties = queue.parties
 
 	local party = Muster.Result.unwrap(parties:create(leaderUserId))
 	parties:invite(leaderUserId, friendUserId)
 
-	-- On the friend's server, possibly a different one entirely:
+	-- On the friend's server, which may be a different one:
 	local invites = Muster.Result.unwrap(parties:listInvites(friendUserId))
 	parties:acceptInvite(friendUserId, invites[1].id)
 	```
+
+	### Rules
+
+	- A player belongs to at most one party. Membership is a single-slot index
+	  per userId written with compare-and-set, so two servers adding the same
+	  player concurrently produce exactly one winner; the loser gets
+	  `AlreadyInParty`.
+	- Parties hold up to `maxMembers` (default 8; a [Matchmaker] passes its
+	  `size.max`).
+	- Only the leader may invite, kick, transfer leadership, disband, or queue
+	  the party.
+	- When the leader leaves, the longest-standing remaining member inherits.
+	  Removing the last member deletes the party.
+	- Invites live in an inbox keyed by the **target** userId, capped at 20 and
+	  expiring after 60 seconds.
+
+	### While queued
+
+	A queued party is locked: `invite`, `leave`, `kick`, `transferLeader` and
+	`disband` all return `PartyLocked` until the ticket matches, is cancelled, or
+	expires. This keeps the roster stable between the matcher reading it and the
+	match committing.
+
+	A lock whose ticket stopped being heartbeaten — because the server holding it
+	died — is cleared the next time the party is read, rather than persisting for
+	the party's full two-hour lifetime.
+
+	### Records
+
+	Parties expire after 2 hours without activity. Accepting an invite first
+	takes a 20-second `Reserved` membership slot and only promotes it to `Active`
+	once the party record has been updated, so a failure between the two leaves a
+	slot that clears itself rather than a player stuck in neither state.
 ]=]
 
 local Defaults = require(script.Parent.Defaults)
@@ -118,7 +124,13 @@ local function memberIndex(party: PartyView, userId: number): number?
 end
 
 --[=[
-	@param options -- `clock`, `id`, `namespace`, `maxMembers`. A [Matchmaker] passes its own.
+	Creates a party service over a store.
+
+	A [Matchmaker] constructs one automatically as `queue.parties`, passing its
+	own clock, id generator and key namespace. Construct one directly only to use
+	parties without a queue.
+
+	@param options -- `clock`, `id`, `namespace`, `keys`, `maxMembers`, and the expiration values.
 	@within Party
 ]=]
 function Party.new(store: any, options: any?): Party
@@ -144,11 +156,12 @@ function Party.new(store: any, options: any?): Party
 end
 
 --[=[
-	Reads a party, repairing an abandoned queue lock on the way out.
+	Reads a party by id.
 
-	The repair matters: a server that queued a party and then died would
-	otherwise leave it locked until the record itself expired, two hours later.
+	If the party holds a queue lock whose ticket has stopped being heartbeaten,
+	the lock is cleared before returning.
 
+	@return Result<PartyView> -- `PartyNotFound` if it does not exist.
 	@within Party
 ]=]
 function Party.get(self: Party, partyId: string): any
@@ -187,9 +200,12 @@ function Party.get(self: Party, partyId: string): any
 end
 
 --[=[
-	The party a user belongs to, or `nil`. Clears a membership pointing at a
-	party that no longer contains them.
+	The party a user belongs to, or `nil` if they are not in one.
 
+	A membership record pointing at a deleted party, or at one that no longer
+	lists the user, is cleared and treated as `nil`.
+
+	@return Result<PartyView?>
 	@within Party
 ]=]
 function Party.getForUser(self: Party, userId: number): any
@@ -217,6 +233,10 @@ function Party.getForUser(self: Party, userId: number): any
 end
 
 --[=[
+	Creates a party with `leaderUserId` as its only member and leader.
+
+	@param serverId -- The member's current server, used to address match delivery.
+	@return Result<PartyView> -- `AlreadyInParty` if the user already belongs to one.
 	@within Party
 ]=]
 function Party.create(self: Party, leaderUserId: number, serverId: string?): any
@@ -265,10 +285,14 @@ function Party.create(self: Party, leaderUserId: number, serverId: string?): any
 end
 
 --[=[
-	Invites are an inbox keyed by the **target**, so a player sees their invites
-	on whatever server they happen to be on. Capped at
-	`Defaults.MAX_PARTY_INVITES` per user, oldest evicted first.
+	Invites a player to the caller's party.
 
+	The invite is written to an inbox keyed by the target's userId, so they can
+	read it from whichever server they are on. Inboxes hold 20 invites, evicting
+	the oldest, and entries expire after 60 seconds. A second invite from the
+	same party replaces the first.
+
+	@return Result<PartyInvite> -- `NotLeader`, `PartyLocked`, `PartyFull`, or `InvalidTarget` for a self-invite.
 	@within Party
 ]=]
 function Party.invite(self: Party, leaderUserId: number, targetUserId: number): any
@@ -328,6 +352,9 @@ function Party.invite(self: Party, leaderUserId: number, targetUserId: number): 
 end
 
 --[=[
+	A user's unexpired invites, oldest first.
+
+	@return Result<{ PartyInvite }>
 	@within Party
 ]=]
 function Party.listInvites(self: Party, userId: number): any
@@ -360,6 +387,10 @@ function Party._removeInvite(self: Party, userId: number, inviteId: string)
 end
 
 --[=[
+	Removes an invite from a user's inbox. Succeeds whether or not the invite was
+	still present.
+
+	@return Result<true>
 	@within Party
 ]=]
 function Party.declineInvite(self: Party, userId: number, inviteId: string): any
@@ -368,9 +399,13 @@ function Party.declineInvite(self: Party, userId: number, inviteId: string): any
 end
 
 --[=[
-	Joins the inviting party, reserving the user's membership slot before
-	touching the party so two competing invites cannot both succeed.
+	Accepts an invite and joins the party.
 
+	The user's membership slot is reserved before the party record is touched, so
+	accepting two invites concurrently admits them to exactly one party.
+
+	@param serverId -- The member's current server, used to address match delivery.
+	@return Result<PartyView> -- `InviteNotFound`, `AlreadyInParty`, or `PartyUnavailable` if the party filled, queued, or vanished.
 	@within Party
 ]=]
 function Party.acceptInvite(self: Party, userId: number, inviteId: string, serverId: string?): any
@@ -534,6 +569,12 @@ function Party._removeMember(self: Party, actorUserId: number, targetUserId: num
 end
 
 --[=[
+	Removes the caller from their party.
+
+	If they were the leader, the longest-standing remaining member inherits. If
+	they were the last member, the party is deleted.
+
+	@return Result<PartyView?> -- `nil` when the party was deleted. `PartyLocked` while queued.
 	@within Party
 ]=]
 function Party.leave(self: Party, userId: number): any
@@ -541,6 +582,9 @@ function Party.leave(self: Party, userId: number): any
 end
 
 --[=[
+	Removes another member from the caller's party. Leader only.
+
+	@return Result<PartyView?> -- `NotLeader`, `PartyLocked`, or `InvalidTarget` if the leader targets themselves.
 	@within Party
 ]=]
 function Party.kick(self: Party, leaderUserId: number, targetUserId: number): any
@@ -551,6 +595,9 @@ function Party.kick(self: Party, leaderUserId: number, targetUserId: number): an
 end
 
 --[=[
+	Hands leadership to another member of the caller's party.
+
+	@return Result<PartyView> -- `NotLeader`, `NotMember` if the target is not in the party, or `PartyLocked`.
 	@within Party
 ]=]
 function Party.transferLeader(self: Party, leaderUserId: number, targetUserId: number): any
@@ -598,9 +645,12 @@ function Party.transferLeader(self: Party, leaderUserId: number, targetUserId: n
 end
 
 --[=[
-	Refreshes a member's TTL and records which server they are currently on, so
-	a match involving them is delivered to the right place.
+	Refreshes a member's records and updates the server they are on.
 
+	Call this when a member changes servers, otherwise a match involving them is
+	announced to the server they were on when they joined the party.
+
+	@return Result<PartyView?> -- `nil` if the user is not in a party.
 	@within Party
 ]=]
 function Party.heartbeat(self: Party, userId: number, serverId: string?): any
@@ -640,9 +690,10 @@ function Party.heartbeat(self: Party, userId: number, serverId: string?): any
 end
 
 --[=[
-	Freezes membership against a queue ticket. Called by [Matchmaker] — you do
-	not normally call this yourself.
+	Locks the party against a queue ticket, freezing its membership. Called by
+	[Matchmaker:enqueueParty].
 
+	@return Result<PartyView> -- `PartyLocked` if already queued or the caller is not the leader.
 	@within Party
 	@private
 ]=]
@@ -680,6 +731,9 @@ function Party.lockQueue(self: Party, partyId: string, leaderUserId: number, tic
 end
 
 --[=[
+	Releases the queue lock held against `ticketId`.
+
+	@return Result<PartyView> -- `PartyChanged` if the party is not locked to this ticket.
 	@within Party
 	@private
 ]=]
@@ -713,6 +767,10 @@ function Party.unlockQueue(self: Party, partyId: string, ticketId: string): any
 end
 
 --[=[
+	Extends a queue lock's deadline. Called alongside the ticket's own heartbeat;
+	when it stops, [Party:get] clears the lock.
+
+	@return Result<PartyView> -- `PartyChanged` if the party is not locked to this ticket.
 	@within Party
 	@private
 ]=]
@@ -749,6 +807,10 @@ function Party.heartbeatQueue(self: Party, partyId: string, ticketId: string): a
 end
 
 --[=[
+	Moves a queue lock from `Queued` to `Matched` and extends it to the match's
+	lifetime. The party stays locked until acknowledged.
+
+	@return Result<PartyView> -- `PartyChanged` if the party is not locked to this ticket.
 	@within Party
 	@private
 ]=]
@@ -787,6 +849,9 @@ function Party.markMatched(self: Party, partyId: string, ticketId: string, match
 end
 
 --[=[
+	Releases the lock held for a matched party, letting it queue again.
+
+	@return Result<PartyView> -- `MatchMismatch` if the party is not locked to this match.
 	@within Party
 	@private
 ]=]
@@ -803,6 +868,10 @@ function Party.acknowledgeMatch(self: Party, partyId: string, matchId: string): 
 end
 
 --[=[
+	Deletes the caller's party and clears every member's membership record.
+	Leader only.
+
+	@return Result<true> -- `NotLeader` or `PartyLocked` while queued.
 	@within Party
 ]=]
 function Party.disband(self: Party, leaderUserId: number): any

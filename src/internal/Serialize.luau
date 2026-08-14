@@ -3,19 +3,21 @@
 --[=[
 	@class Serialize
 
-	Validates and copies consumer data on its way into a stored record.
+	Validates and deep-copies data on its way into a stored record: ticket
+	metadata and the `finalize` hook's return value.
 
-	Deliberately hand-written rather than `HttpService:JSONEncode`: it must
-	behave identically under Lune and in Studio, it must report *which* field is
-	the problem, and it must be able to stop early once a value is obviously
-	over budget. It also copies, so a consumer mutating their table after
-	returning it cannot alter a match that has already been committed.
+	Copying means a caller mutating their table afterwards cannot alter a
+	committed match.
 
-	Rejected: functions, userdata (Instances, Vector3, Color3, ...), threads,
-	cycles, NaN and infinity, non-string/number keys, tables mixing array and
-	hash keys, and anything nested deeper than `Defaults.MAX_DATA_DEPTH`. Every
-	one of those either fails to survive MemoryStore's JSON round trip or comes
-	back a different shape than it went in.
+	Rejected, because none of it survives MemoryStore's JSON round trip
+	unchanged: functions, userdata such as Instances and Vector3, threads,
+	cycles, NaN and infinity, keys that are not strings or numbers, tables mixing
+	array and dictionary keys, and nesting deeper than
+	`Defaults.MAX_DATA_DEPTH` (8).
+
+	Written by hand rather than using `HttpService:JSONEncode` so it behaves the
+	same under Lune as in Studio, names the offending field, and can stop as soon
+	as a value exceeds its budget.
 ]=]
 
 local Defaults = require(script.Parent.Parent.Defaults)
@@ -115,12 +117,13 @@ local function walkValue(walk: Walk, value: any, path: string, depth: number): a
 end
 
 --[=[
-	Validates `value` and returns a deep copy of it.
+	Validates `value` and returns a deep copy of it. `nil` is accepted and
+	becomes an empty table.
 
 	@param budget -- Maximum estimated encoded size, in bytes.
 	@return boolean -- Whether the value is storable.
 	@return any -- The copy, when valid.
-	@return string? -- What was wrong and where, when not.
+	@return string? -- The offending field path and reason, when not.
 	@within Serialize
 ]=]
 function Serialize.validate(value: any, budget: number): (boolean, any, string?)
@@ -140,8 +143,8 @@ function Serialize.validate(value: any, budget: number): (boolean, any, string?)
 end
 
 --[=[
-	The estimated encoded size of an already-validated value. Used to decide
-	whether a match envelope fits inside a broadcast payload.
+	The estimated encoded size of an already-validated value, used to decide
+	whether an envelope fits inside a message payload.
 
 	@within Serialize
 ]=]
