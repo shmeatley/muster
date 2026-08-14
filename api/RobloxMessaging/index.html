@@ -6,11 +6,11 @@
 <title data-rh="true">RobloxMessaging | Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/RobloxMessaging"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="RobloxMessaging | Muster"><meta data-rh="true" name="description" content="The production [Messaging] adapter: MessagingService behind a
 [RequestExecutor].
 
-Muster treats delivery as best-effort. A finalized match is written to
-MemoryStore *before* any message is published, so a dropped, delayed, or
-duplicated message costs latency and nothing else.
+Delivery is treated as best-effort. A committed match is written to
+MemoryStore before anything is published, so a dropped, delayed or duplicated
+message costs latency only.
 
-The relevant platform limits, which shape the per-server topic scheme:
+The platform limits that shape the per-server topic scheme:
 
 | Limit | Value |
 | --- | --- |
@@ -21,11 +21,11 @@ The relevant platform limits, which shape the per-server topic scheme:
 | Messages received per universe | 400 + 200 x servers / min |"><meta data-rh="true" property="og:description" content="The production [Messaging] adapter: MessagingService behind a
 [RequestExecutor].
 
-Muster treats delivery as best-effort. A finalized match is written to
-MemoryStore *before* any message is published, so a dropped, delayed, or
-duplicated message costs latency and nothing else.
+Delivery is treated as best-effort. A committed match is written to
+MemoryStore before anything is published, so a dropped, delayed or duplicated
+message costs latency only.
 
-The relevant platform limits, which shape the per-server topic scheme:
+The platform limits that shape the per-server topic scheme:
 
 | Limit | Value |
 | --- | --- |
@@ -34,8 +34,8 @@ The relevant platform limits, which shape the per-server topic scheme:
 | Messages sent per server | 600 + 240 x players / min |
 | Messages received per topic | 40 + 80 x servers / min |
 | Messages received per universe | 400 + 200 x servers / min |"><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/RobloxMessaging"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/RobloxMessaging" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/RobloxMessaging" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.7941d82f.js" defer="defer"></script>
-<script src="/muster/assets/js/main.e62c8263.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.99176041.js" defer="defer"></script>
+<script src="/muster/assets/js/main.3d46a123.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -47,11 +47,11 @@ The relevant platform limits, which shape the per-server topic scheme:
   <a href="/muster/api/RequestExecutor">RequestExecutor</a>.
 </p>
 <p>
-  Muster treats delivery as best-effort. A finalized match is written to
-  MemoryStore <em>before</em> any message is published, so a dropped, delayed, or
-  duplicated message costs latency and nothing else.
+  Delivery is treated as best-effort. A committed match is written to
+  MemoryStore before anything is published, so a dropped, delayed or duplicated
+  message costs latency only.
 </p>
-<p>The relevant platform limits, which shape the per-server topic scheme:</p>
+<p>The platform limits that shape the per-server topic scheme:</p>
 <table>
   <thead>
     <tr>
@@ -84,9 +84,9 @@ The relevant platform limits, which shape the per-server topic scheme:
 </table>
 </div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/messaging/Roblox.luau#L41"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RobloxMessaging<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><code>executor<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RobloxMessaging">RobloxMessaging</a></code></div><div></div><h3>Errors</h3><table class="errorTable_jfN8"><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>&quot;MessagingService is unavailable&quot;</td><td>Raised outside Roblox; inject a bus, or set `broadcast = false`.</td></tr></tbody></table><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="publish"><code style="text-decoration:none">publish</code><a href="#publish" class="hash-link" aria-label="Direct link to publish" title="Direct link to publish" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/messaging/Roblox.luau#L55"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RobloxMessaging<!-- -->.</code><code class="green_DgR4">publish</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RobloxMessaging">RobloxMessaging</a></code><code>,</code></div><div><code>topic<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>payload<!-- -->: </code><code class="blue_P4bS">any</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">boolean</code><code>,</code></div><div><code class="blue_P4bS">any</code></div></div><code>)</code></div><div>
 <p>
-  Publishes at priority 4, so it is circuit-broken under sustained failure
-  rather than retried forever — the ledger is the source of truth and the
-  receiver's poll will find the match regardless.
+  Publishes at priority 4, so sustained failure trips the circuit breaker
+  rather than retrying indefinitely. The receiver's poll finds the match
+  regardless.
 </p>
 </div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="subscribe"><code style="text-decoration:none">subscribe</code><a href="#subscribe" class="hash-link" aria-label="Direct link to subscribe" title="Direct link to subscribe" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/messaging/Roblox.luau#L64"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RobloxMessaging<!-- -->.</code><code class="green_DgR4">subscribe</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RobloxMessaging">RobloxMessaging</a></code><code>,</code></div><div><code>topic<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>handler<!-- -->: </code><code class="purple_ieR2">(</code><code class="blue_P4bS">any</code><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="purple_ieR2">(</code><code class="purple_ieR2">)</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div></div></article></div><details><summary>Show raw api</summary><pre style="max-width:100%;white-space:pre-wrap">{
     &quot;functions&quot;: [
@@ -120,7 +120,7 @@ The relevant platform limits, which shape the per-server topic scheme:
         },
         {
             &quot;name&quot;: &quot;publish&quot;,
-            &quot;desc&quot;: &quot;Publishes at priority 4, so it is circuit-broken under sustained failure\nrather than retried forever — the ledger is the source of truth and the\nreceiver&#x27;s poll will find the match regardless.&quot;,
+            &quot;desc&quot;: &quot;Publishes at priority 4, so sustained failure trips the circuit breaker\nrather than retrying indefinitely. The receiver&#x27;s poll finds the match\nregardless.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,
@@ -190,7 +190,7 @@ The relevant platform limits, which shape the per-server topic scheme:
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;RobloxMessaging&quot;,
-    &quot;desc&quot;: &quot;The production [Messaging] adapter: MessagingService behind a\n[RequestExecutor].\n\nMuster treats delivery as best-effort. A finalized match is written to\nMemoryStore *before* any message is published, so a dropped, delayed, or\nduplicated message costs latency and nothing else.\n\nThe relevant platform limits, which shape the per-server topic scheme:\n\n| Limit | Value |\n| --- | --- |\n| Payload size | 1 kB, including framing |\n| Subscriptions per server | 20 + 8 x players |\n| Messages sent per server | 600 + 240 x players / min |\n| Messages received per topic | 40 + 80 x servers / min |\n| Messages received per universe | 400 + 200 x servers / min |&quot;,
+    &quot;desc&quot;: &quot;The production [Messaging] adapter: MessagingService behind a\n[RequestExecutor].\n\nDelivery is treated as best-effort. A committed match is written to\nMemoryStore before anything is published, so a dropped, delayed or duplicated\nmessage costs latency only.\n\nThe platform limits that shape the per-server topic scheme:\n\n| Limit | Value |\n| --- | --- |\n| Payload size | 1 kB, including framing |\n| Subscriptions per server | 20 + 8 x players |\n| Messages sent per server | 600 + 240 x players / min |\n| Messages received per topic | 40 + 80 x servers / min |\n| Messages received per universe | 400 + 200 x servers / min |&quot;,
     &quot;source&quot;: {
         &quot;line&quot;: 23,
         &quot;path&quot;: &quot;src/messaging/Roblox.luau&quot;

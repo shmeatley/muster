@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.10.1">
-<title data-rh="true">InMemoryStore | Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/InMemoryStore"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="InMemoryStore | Muster"><meta data-rh="true" name="description" content="A complete [Store] in a table, with a synthetic clock, working TTL expiry,
-call counting, and fault injection. Muster&#x27;s own suite runs entirely against
-it, and it ships publicly so your tests can too — no MemoryStore, no Studio,
-no waiting.
+<title data-rh="true">InMemoryStore | Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/InMemoryStore"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="InMemoryStore | Muster"><meta data-rh="true" name="description" content="A complete [Store] backed by tables, with a synthetic clock, working TTL
+expiry, call counting and fault injection.
+
+Muster&#x27;s own suite runs against it, and it ships publicly so consumers can
+test without MemoryStore, Studio, or real time passing.
 
 ```lua
 local now = 0
@@ -25,12 +26,12 @@ queue:step()          -- matched, deterministically, with no yielding
 now += 200            -- everything expires exactly like it would live
 ```
 
-Two hooks exist purely for tests: [InMemoryStore:failNext] makes the next
-calls fail, and [InMemoryStore:conflictNext] makes an update lose a
-compare-and-set race."><meta data-rh="true" property="og:description" content="A complete [Store] in a table, with a synthetic clock, working TTL expiry,
-call counting, and fault injection. Muster&#x27;s own suite runs entirely against
-it, and it ships publicly so your tests can too — no MemoryStore, no Studio,
-no waiting.
+[InMemoryStore:failNext] and [InMemoryStore:conflictNext] inject the two
+failure modes worth testing against."><meta data-rh="true" property="og:description" content="A complete [Store] backed by tables, with a synthetic clock, working TTL
+expiry, call counting and fault injection.
+
+Muster&#x27;s own suite runs against it, and it ships publicly so consumers can
+test without MemoryStore, Studio, or real time passing.
 
 ```lua
 local now = 0
@@ -49,11 +50,10 @@ queue:step()          -- matched, deterministically, with no yielding
 now += 200            -- everything expires exactly like it would live
 ```
 
-Two hooks exist purely for tests: [InMemoryStore:failNext] makes the next
-calls fail, and [InMemoryStore:conflictNext] makes an update lose a
-compare-and-set race."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/InMemoryStore"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/InMemoryStore" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/InMemoryStore" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.7941d82f.js" defer="defer"></script>
-<script src="/muster/assets/js/main.e62c8263.js" defer="defer"></script>
+[InMemoryStore:failNext] and [InMemoryStore:conflictNext] inject the two
+failure modes worth testing against."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/InMemoryStore"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/InMemoryStore" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/InMemoryStore" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
+<script src="/muster/assets/js/runtime~main.99176041.js" defer="defer"></script>
+<script src="/muster/assets/js/main.3d46a123.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -61,10 +61,12 @@ compare-and-set race."><link data-rh="true" rel="canonical" href="https://shmeat
 </defs></svg>
 <script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")),document.documentElement.setAttribute("data-theme-choice",t||"system")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/muster/"><b class="navbar__title text--truncate">Muster</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/muster/api/">API</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/shmeatley/muster" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search"><span aria-label="expand searchbar" role="button" class="search-icon" tabindex="0"></span><input id="search_input_react" type="search" placeholder="Loading..." aria-label="Search" class="navbar__search-input search-bar" disabled=""></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0 docPageContainer_wNNk"><div class="docPage_Dpn1"><div class="docSidebarContainer_o_re"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Broadcaster"><span title="​Broadcaster" class="linkLabel_WmDU">​Broadcaster</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Config"><span title="​Config" class="linkLabel_WmDU">​Config</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Defaults"><span title="​Defaults" class="linkLabel_WmDU">​Defaults</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Engine"><span title="​Engine" class="linkLabel_WmDU">​Engine</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Finalizer"><span title="​Finalizer" class="linkLabel_WmDU">​Finalizer</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Hash"><span title="​Hash" class="linkLabel_WmDU">​Hash</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/InMemoryMessaging"><span title="​In​Memory​Messaging" class="linkLabel_WmDU">​In​Memory​Messaging</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" href="/muster/api/InMemoryStore"><span title="​In​Memory​Store" class="linkLabel_WmDU">​In​Memory​Store</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/LaneScaler"><span title="​Lane​Scaler" class="linkLabel_WmDU">​Lane​Scaler</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Lanes"><span title="​Lanes" class="linkLabel_WmDU">​Lanes</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/LeaseManager"><span title="​Lease​Manager" class="linkLabel_WmDU">​Lease​Manager</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Matcher"><span title="​Matcher" class="linkLabel_WmDU">​Matcher</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Matchmaker"><span title="​Matchmaker" class="linkLabel_WmDU">​Matchmaker</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/MemoryStore"><span title="​Memory​Store" class="linkLabel_WmDU">​Memory​Store</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Muster"><span title="​Muster" class="linkLabel_WmDU">​Muster</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Party"><span title="​Party" class="linkLabel_WmDU">​Party</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/RequestExecutor"><span title="​Request​Executor" class="linkLabel_WmDU">​Request​Executor</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Result"><span title="​Result" class="linkLabel_WmDU">​Result</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/RobloxMessaging"><span title="​Roblox​Messaging" class="linkLabel_WmDU">​Roblox​Messaging</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Runtime"><span title="​Runtime" class="linkLabel_WmDU">​Runtime</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Serialize"><span title="​Serialize" class="linkLabel_WmDU">​Serialize</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Signal"><span title="​Signal" class="linkLabel_WmDU">​Signal</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Types"><span title="​Types" class="linkLabel_WmDU">​Types</span></a></li></ul></nav></div></div><main class="docMainContainer_HJE1"><div class="container padding-vert--lg"><div class="row"><div class="col docItemCol_MU3C"><div class="docItemContainer_Wv98"><article><div class="member_J0w1 markdown"><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_oUs_"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><header><h1 class="docTitle_mZRt" style="text-decoration:none"><span style="display:inline-block">In</span><span style="display:inline-block">Memory</span><span style="display:inline-block">Store</span></h1><div class="luaClassTags_EipM"></div><div>
 <p>
-  A complete <a href="/muster/api/Types#Store">Store</a> in a table, with a synthetic clock, working TTL expiry,
-  call counting, and fault injection. Muster's own suite runs entirely against
-  it, and it ships publicly so your tests can too — no MemoryStore, no Studio,
-  no waiting.
+  A complete <a href="/muster/api/Types#Store">Store</a> backed by tables, with a synthetic clock, working TTL
+  expiry, call counting and fault injection.
+</p>
+<p>
+  Muster's own suite runs against it, and it ships publicly so consumers can
+  test without MemoryStore, Studio, or real time passing.
 </p>
 <pre class="language-lua"><code class="language-lua"><span class="token keyword">local</span> now <span class="token operator">=</span> <span class="token number">0</span>
 <span class="token keyword">local</span> store <span class="token operator">=</span> Muster<span class="token punctuation">.</span>stores<span class="token punctuation">.</span>InMemory<span class="token punctuation">.</span><span class="token function">new</span><span class="token punctuation">(</span><span class="token keyword">function</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">return</span> now <span class="token keyword">end</span><span class="token punctuation">)</span>
@@ -82,35 +84,34 @@ queue<span class="token punctuation">:</span><span class="token function">step</
 now <span class="token operator">+</span><span class="token operator">=</span> <span class="token number">200</span>            <span class="token comment">-- everything expires exactly like it would live</span>
 </code></pre>
 <p>
-  Two hooks exist purely for tests: <a href="/muster/api/InMemoryStore#failNext">InMemoryStore:failNext</a> makes the next
-  calls fail, and <a href="/muster/api/InMemoryStore#conflictNext">InMemoryStore:conflictNext</a> makes an update lose a
-  compare-and-set race.
+  <a href="/muster/api/InMemoryStore#failNext">InMemoryStore:failNext</a> and <a href="/muster/api/InMemoryStore#conflictNext">InMemoryStore:conflictNext</a> inject the two
+  failure modes worth testing against.
 </p>
 </div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/InMemory.luau#L61"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>InMemoryStore<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><div class="inset_uKQm"><div><code>clock<!-- -->: </code><code class="blue_P4bS">Clock?</code><span class="inlineDescription_G7Er">-- <span>
 <p>Defaults to <code>os.time</code>. Pass a closure over a local for full control.</p>
-</span></span></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/InMemoryStore">InMemoryStore</a></code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="failNext"><code style="text-decoration:none">failNext</code><a href="#failNext" class="hash-link" aria-label="Direct link to failNext" title="Direct link to failNext" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/InMemory.luau#L79"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>InMemoryStore<!-- -->.</code><code class="green_DgR4">failNext</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/InMemoryStore">InMemoryStore</a></code><code>,</code></div><div><code>operation<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>count<!-- -->: </code><code class="blue_P4bS">number?</code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+</span></span></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/InMemoryStore">InMemoryStore</a></code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="failNext"><code style="text-decoration:none">failNext</code><a href="#failNext" class="hash-link" aria-label="Direct link to failNext" title="Direct link to failNext" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/InMemory.luau#L80"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>InMemoryStore<!-- -->.</code><code class="green_DgR4">failNext</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/InMemoryStore">InMemoryStore</a></code><code>,</code></div><div><code>operation<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>count<!-- -->: </code><code class="blue_P4bS">number?</code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Makes the next <code>count</code> calls to <code>operation</code> fail, as a store outage would.</p>
 <p>
-  Makes the next <code>count</code> calls to <code>operation</code> fail, as a store outage would.
   Operation names are the method names: <code>get</code>, <code>set</code>, <code>update</code>, <code>remove</code>,
   <code>sortedSet</code>, <code>sortedRemove</code>, <code>sortedRange</code>.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="conflictNext"><code style="text-decoration:none">conflictNext</code><a href="#conflictNext" class="hash-link" aria-label="Direct link to conflictNext" title="Direct link to conflictNext" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/InMemory.luau#L95"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>InMemoryStore<!-- -->.</code><code class="green_DgR4">conflictNext</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/InMemoryStore">InMemoryStore</a></code><code>,</code></div><div><code>operation<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>count<!-- -->: </code><code class="blue_P4bS">number?</code><code>,</code></div><div><code>mutator<!-- -->: </code><code class="purple_ieR2">(</code><code class="green_DgR4">(</code><code class="blue_P4bS">any</code><code class="green_DgR4">)</code><code class="green_DgR4"> → </code><code class="blue_P4bS">any</code><code class="purple_ieR2">)</code><code class="blue_P4bS">?</code><span class="inlineDescription_G7Er">-- <span>
-<p>Receives the current value, returns the competing writer's value. Omit to re-run against unchanged state.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="conflictNext"><code style="text-decoration:none">conflictNext</code><a href="#conflictNext" class="hash-link" aria-label="Direct link to conflictNext" title="Direct link to conflictNext" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/InMemory.luau#L97"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>InMemoryStore<!-- -->.</code><code class="green_DgR4">conflictNext</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/InMemoryStore">InMemoryStore</a></code><code>,</code></div><div><code>operation<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>count<!-- -->: </code><code class="blue_P4bS">number?</code><code>,</code></div><div><code>mutator<!-- -->: </code><code class="purple_ieR2">(</code><code class="green_DgR4">(</code><code class="blue_P4bS">any</code><code class="green_DgR4">)</code><code class="green_DgR4"> → </code><code class="blue_P4bS">any</code><code class="purple_ieR2">)</code><code class="blue_P4bS">?</code><span class="inlineDescription_G7Er">-- <span>
+<p>Receives the current value and returns the competing writer's value. Omit to re-run against unchanged state.</p>
 </span></span></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Makes the next <code>count</code> updates lose a compare-and-set race.</p>
 <p>
-  Makes the next <code>count</code> updates lose a compare-and-set race: the transform
-  runs once against the value it read, that result is thrown away, <code>mutator</code>
-  installs a competing write, and the transform runs again against the new
-  value — which is what MemoryStore's <code>UpdateAsync</code> does under contention.
+  The transform runs once against the value it read, that result is discarded,
+  <code>mutator</code> installs a competing write, and the transform runs again against
+  the new value — which is what <code>UpdateAsync</code> does under contention.
 </p>
 <p>
-  This is the only way to catch a transform that forgets to reset its own
-  bookkeeping on re-entry, which every conditional write in Muster depends on.
+  This is what catches a transform that fails to reset its own bookkeeping when
+  re-entered, which every conditional write in Muster depends on.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="callCount"><code style="text-decoration:none">callCount</code><a href="#callCount" class="hash-link" aria-label="Direct link to callCount" title="Direct link to callCount" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/InMemory.luau#L284"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>InMemoryStore<!-- -->.</code><code class="green_DgR4">callCount</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/InMemoryStore">InMemoryStore</a></code><code>,</code></div><div><code>operation<!-- -->: </code><code class="blue_P4bS">string?</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="callCount"><code style="text-decoration:none">callCount</code><a href="#callCount" class="hash-link" aria-label="Direct link to callCount" title="Direct link to callCount" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/InMemory.luau#L286"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>InMemoryStore<!-- -->.</code><code class="green_DgR4">callCount</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/InMemoryStore">InMemoryStore</a></code><code>,</code></div><div><code>operation<!-- -->: </code><code class="blue_P4bS">string?</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
 <p>
-  Total calls made, by operation. Muster's suite asserts against this to keep
-  the request budget from regressing.
+  Calls made, for one operation or in total. Muster's suite asserts against
+  this to keep its request budget from regressing.
 </p>
 </div></div></article></div><details><summary>Show raw api</summary><pre style="max-width:100%;white-space:pre-wrap">{
     &quot;functions&quot;: [
@@ -138,7 +139,7 @@ now <span class="token operator">+</span><span class="token operator">=</span> <
         },
         {
             &quot;name&quot;: &quot;failNext&quot;,
-            &quot;desc&quot;: &quot;Makes the next `count` calls to `operation` fail, as a store outage would.\nOperation names are the method names: `get`, `set`, `update`, `remove`,\n`sortedSet`, `sortedRemove`, `sortedRange`.&quot;,
+            &quot;desc&quot;: &quot;Makes the next `count` calls to `operation` fail, as a store outage would.\n\nOperation names are the method names: `get`, `set`, `update`, `remove`,\n`sortedSet`, `sortedRemove`, `sortedRange`.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,
@@ -159,13 +160,13 @@ now <span class="token operator">+</span><span class="token operator">=</span> <
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 79,
+                &quot;line&quot;: 80,
                 &quot;path&quot;: &quot;src/stores/InMemory.luau&quot;
             }
         },
         {
             &quot;name&quot;: &quot;conflictNext&quot;,
-            &quot;desc&quot;: &quot;Makes the next `count` updates lose a compare-and-set race: the transform\nruns once against the value it read, that result is thrown away, `mutator`\ninstalls a competing write, and the transform runs again against the new\nvalue — which is what MemoryStore&#x27;s `UpdateAsync` does under contention.\n\nThis is the only way to catch a transform that forgets to reset its own\nbookkeeping on re-entry, which every conditional write in Muster depends on.&quot;,
+            &quot;desc&quot;: &quot;Makes the next `count` updates lose a compare-and-set race.\n\nThe transform runs once against the value it read, that result is discarded,\n`mutator` installs a competing write, and the transform runs again against\nthe new value — which is what `UpdateAsync` does under contention.\n\nThis is what catches a transform that fails to reset its own bookkeeping when\nre-entered, which every conditional write in Muster depends on.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,
@@ -184,20 +185,20 @@ now <span class="token operator">+</span><span class="token operator">=</span> <
                 },
                 {
                     &quot;name&quot;: &quot;mutator&quot;,
-                    &quot;desc&quot;: &quot;Receives the current value, returns the competing writer&#x27;s value. Omit to re-run against unchanged state.&quot;,
+                    &quot;desc&quot;: &quot;Receives the current value and returns the competing writer&#x27;s value. Omit to re-run against unchanged state.&quot;,
                     &quot;lua_type&quot;: &quot;((any) -&gt; any)?&quot;
                 }
             ],
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 95,
+                &quot;line&quot;: 97,
                 &quot;path&quot;: &quot;src/stores/InMemory.luau&quot;
             }
         },
         {
             &quot;name&quot;: &quot;callCount&quot;,
-            &quot;desc&quot;: &quot;Total calls made, by operation. Muster&#x27;s suite asserts against this to keep\nthe request budget from regressing.&quot;,
+            &quot;desc&quot;: &quot;Calls made, for one operation or in total. Muster&#x27;s suite asserts against\nthis to keep its request budget from regressing.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,
@@ -218,7 +219,7 @@ now <span class="token operator">+</span><span class="token operator">=</span> <
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 284,
+                &quot;line&quot;: 286,
                 &quot;path&quot;: &quot;src/stores/InMemory.luau&quot;
             }
         }
@@ -226,7 +227,7 @@ now <span class="token operator">+</span><span class="token operator">=</span> <
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;InMemoryStore&quot;,
-    &quot;desc&quot;: &quot;A complete [Store] in a table, with a synthetic clock, working TTL expiry,\ncall counting, and fault injection. Muster&#x27;s own suite runs entirely against\nit, and it ships publicly so your tests can too — no MemoryStore, no Studio,\nno waiting.\n\n```lua\nlocal now = 0\nlocal store = Muster.stores.InMemory.new(function() return now end)\n\nlocal queue = Muster.new({\n\tname = \&quot;test\&quot;, size = 2,\n\tstore = store, clock = function() return now end,\n\tautoStart = false, broadcast = false,\n})\n\nqueue:enqueue(1)\nqueue:enqueue(2)\nqueue:step()          -- matched, deterministically, with no yielding\n\nnow += 200            -- everything expires exactly like it would live\n```\n\nTwo hooks exist purely for tests: [InMemoryStore:failNext] makes the next\ncalls fail, and [InMemoryStore:conflictNext] makes an update lose a\ncompare-and-set race.&quot;,
+    &quot;desc&quot;: &quot;A complete [Store] backed by tables, with a synthetic clock, working TTL\nexpiry, call counting and fault injection.\n\nMuster&#x27;s own suite runs against it, and it ships publicly so consumers can\ntest without MemoryStore, Studio, or real time passing.\n\n```lua\nlocal now = 0\nlocal store = Muster.stores.InMemory.new(function() return now end)\n\nlocal queue = Muster.new({\n\tname = \&quot;test\&quot;, size = 2,\n\tstore = store, clock = function() return now end,\n\tautoStart = false, broadcast = false,\n})\n\nqueue:enqueue(1)\nqueue:enqueue(2)\nqueue:step()          -- matched, deterministically, with no yielding\n\nnow += 200            -- everything expires exactly like it would live\n```\n\n[InMemoryStore:failNext] and [InMemoryStore:conflictNext] inject the two\nfailure modes worth testing against.&quot;,
     &quot;source&quot;: {
         &quot;line&quot;: 32,
         &quot;path&quot;: &quot;src/stores/InMemory.luau&quot;

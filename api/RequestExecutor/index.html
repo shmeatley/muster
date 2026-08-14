@@ -6,7 +6,7 @@
 <title data-rh="true">RequestExecutor | Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/RequestExecutor"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="RequestExecutor | Muster"><meta data-rh="true" name="description" content="Wraps every store and messaging call in a retry policy, tracks per-structure
 health, and trips a circuit breaker on structures that keep failing.
 
-Requests carry a **priority**, where lower is more important:
+Requests carry a priority, where lower is more important:
 
 | Priority | Used by | Attempts | Circuit-broken? |
 | --- | --- | --- | --- |
@@ -15,15 +15,16 @@ Requests carry a **priority**, where lower is more important:
 | 3 | Ticket writes, party mutations | 5 | Never |
 | 4-6 | Lane index writes, range scans, reads | 3 | Yes |
 
-The split matters: shedding a lane scan under load is fine and self-corrects
-on the next pass, but abandoning a half-committed match leaves tickets stuck
-until their claim expires. Critical work always gets to try.
+The split matters because shedding a lane scan under load self-corrects on
+the next pass, while abandoning a half-committed match leaves tickets stuck
+until their claims expire.
 
-Throttling is detected by matching the error text, because that is the only
-signal Roblox exposes."><meta data-rh="true" property="og:description" content="Wraps every store and messaging call in a retry policy, tracks per-structure
+Retries use exponential backoff from 0.25 s, doubling to a 4 s ceiling, with
+20% jitter. Throttling is detected by matching the error text, which is the
+only signal Roblox exposes."><meta data-rh="true" property="og:description" content="Wraps every store and messaging call in a retry policy, tracks per-structure
 health, and trips a circuit breaker on structures that keep failing.
 
-Requests carry a **priority**, where lower is more important:
+Requests carry a priority, where lower is more important:
 
 | Priority | Used by | Attempts | Circuit-broken? |
 | --- | --- | --- | --- |
@@ -32,14 +33,15 @@ Requests carry a **priority**, where lower is more important:
 | 3 | Ticket writes, party mutations | 5 | Never |
 | 4-6 | Lane index writes, range scans, reads | 3 | Yes |
 
-The split matters: shedding a lane scan under load is fine and self-corrects
-on the next pass, but abandoning a half-committed match leaves tickets stuck
-until their claim expires. Critical work always gets to try.
+The split matters because shedding a lane scan under load self-corrects on
+the next pass, while abandoning a half-committed match leaves tickets stuck
+until their claims expire.
 
-Throttling is detected by matching the error text, because that is the only
-signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/RequestExecutor"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/RequestExecutor" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/RequestExecutor" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.7941d82f.js" defer="defer"></script>
-<script src="/muster/assets/js/main.e62c8263.js" defer="defer"></script>
+Retries use exponential backoff from 0.25 s, doubling to a 4 s ceiling, with
+20% jitter. Throttling is detected by matching the error text, which is the
+only signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/RequestExecutor"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/RequestExecutor" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/RequestExecutor" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
+<script src="/muster/assets/js/runtime~main.99176041.js" defer="defer"></script>
+<script src="/muster/assets/js/main.3d46a123.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -50,7 +52,7 @@ signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://shmea
   Wraps every store and messaging call in a retry policy, tracks per-structure
   health, and trips a circuit breaker on structures that keep failing.
 </p>
-<p>Requests carry a <strong>priority</strong>, where lower is more important:</p>
+<p>Requests carry a priority, where lower is more important:</p>
 <table>
   <thead>
     <tr>
@@ -88,27 +90,32 @@ signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://shmea
   </tbody>
 </table>
 <p>
-  The split matters: shedding a lane scan under load is fine and self-corrects
-  on the next pass, but abandoning a half-committed match leaves tickets stuck
-  until their claim expires. Critical work always gets to try.
+  The split matters because shedding a lane scan under load self-corrects on
+  the next pass, while abandoning a half-committed match leaves tickets stuck
+  until their claims expire.
 </p>
 <p>
-  Throttling is detected by matching the error text, because that is the only
-  signal Roblox exposes.
+  Retries use exponential backoff from 0.25 s, doubling to a 4 s ceiling, with
+  20% jitter. Throttling is detected by matching the error text, which is the
+  only signal Roblox exposes.
 </p>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/RequestExecutor.luau#L63"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RequestExecutor<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><code>options<!-- -->: </code><code class="blue_P4bS">any?</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RequestExecutor">RequestExecutor</a></code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="execute"><code style="text-decoration:none">execute</code><a href="#execute" class="hash-link" aria-label="Direct link to execute" title="Direct link to execute" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/RequestExecutor.luau#L97"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RequestExecutor<!-- -->.</code><code class="green_DgR4">execute</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RequestExecutor">RequestExecutor</a></code><code>,</code></div><div><code>priority<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>structure<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>callback<!-- -->: </code><code class="purple_ieR2">(</code><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="blue_P4bS">any</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">boolean</code><code>,</code></div><div><code class="blue_P4bS">any</code></div></div><code>)</code></div><div>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/RequestExecutor.luau#L64"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RequestExecutor<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><code>options<!-- -->: </code><code class="blue_P4bS">any?</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RequestExecutor">RequestExecutor</a></code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="execute"><code style="text-decoration:none">execute</code><a href="#execute" class="hash-link" aria-label="Direct link to execute" title="Direct link to execute" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/RequestExecutor.luau#L100"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RequestExecutor<!-- -->.</code><code class="green_DgR4">execute</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RequestExecutor">RequestExecutor</a></code><code>,</code></div><div><code>priority<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>structure<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>callback<!-- -->: </code><code class="purple_ieR2">(</code><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="blue_P4bS">any</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">boolean</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+<p>Whether the call eventually succeeded.</p>
+</span></span></div><div><code class="blue_P4bS">any</code><span class="inlineDescription_G7Er">-- <span>
+<p>The result, or the final error message. Never throws.</p>
+</span></span></div></div><code>)</code></div><div>
+<p>Runs <code>callback</code>, retrying with jittered exponential backoff.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="isThrottled"><code style="text-decoration:none">isThrottled</code><a href="#isThrottled" class="hash-link" aria-label="Direct link to isThrottled" title="Direct link to isThrottled" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/RequestExecutor.luau#L166"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RequestExecutor<!-- -->.</code><code class="green_DgR4">isThrottled</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RequestExecutor">RequestExecutor</a></code><code>) → </code><code class="blue_P4bS">boolean</code></div><div>
+<p>True once at least 1% of observed requests have come back throttled.</p>
 <p>
-  Runs <code>callback</code>, retrying with jittered exponential backoff. Returns
-  <code>(true, result)</code> or <code>(false, message)</code> — never throws.
+  The engine responds by declining to lease new lanes and doubling its scan
+  delay, shedding parallelism before slowing the commit path.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="isThrottled"><code style="text-decoration:none">isThrottled</code><a href="#isThrottled" class="hash-link" aria-label="Direct link to isThrottled" title="Direct link to isThrottled" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/RequestExecutor.luau#L162"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RequestExecutor<!-- -->.</code><code class="green_DgR4">isThrottled</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RequestExecutor">RequestExecutor</a></code><code>) → </code><code class="blue_P4bS">boolean</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="snapshot"><code style="text-decoration:none">snapshot</code><a href="#snapshot" class="hash-link" aria-label="Direct link to snapshot" title="Direct link to snapshot" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/RequestExecutor.luau#L182"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RequestExecutor<!-- -->.</code><code class="green_DgR4">snapshot</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RequestExecutor">RequestExecutor</a></code><code>) → </code><code class="purple_ieR2">{</code><span><code>[</code><code class="blue_P4bS">string</code><code>]</code></span><code>: </code><code class="blue_P4bS">Health</code><code class="purple_ieR2">}</code></div><div>
 <p>
-  True once at least 1% of all observed requests came back throttled. The
-  engine reacts by declining to lease new lanes and doubling its scan delay,
-  shedding parallelism before it slows the critical path.
+  A copy of per-structure health: successes, failures, throttles, mean latency,
+  and the circuit-breaker deadline.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="snapshot"><code style="text-decoration:none">snapshot</code><a href="#snapshot" class="hash-link" aria-label="Direct link to snapshot" title="Direct link to snapshot" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/RequestExecutor.luau#L177"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>RequestExecutor<!-- -->.</code><code class="green_DgR4">snapshot</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RequestExecutor">RequestExecutor</a></code><code>) → </code><code class="purple_ieR2">{</code><span><code>[</code><code class="blue_P4bS">string</code><code>]</code></span><code>: </code><code class="blue_P4bS">Health</code><code class="purple_ieR2">}</code></div><div>
-<p>A snapshot of per-structure health, for logging or a debug command.</p>
 </div></div></article></div><details><summary>Show raw api</summary><pre style="max-width:100%;white-space:pre-wrap">{
     &quot;functions&quot;: [
         {
@@ -129,13 +136,13 @@ signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://shmea
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 63,
+                &quot;line&quot;: 64,
                 &quot;path&quot;: &quot;src/internal/RequestExecutor.luau&quot;
             }
         },
         {
             &quot;name&quot;: &quot;execute&quot;,
-            &quot;desc&quot;: &quot;Runs `callback`, retrying with jittered exponential backoff. Returns\n`(true, result)` or `(false, message)` — never throws.&quot;,
+            &quot;desc&quot;: &quot;Runs `callback`, retrying with jittered exponential backoff.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,
@@ -160,23 +167,23 @@ signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://shmea
             ],
             &quot;returns&quot;: [
                 {
-                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;desc&quot;: &quot;Whether the call eventually succeeded.&quot;,
                     &quot;lua_type&quot;: &quot;boolean&quot;
                 },
                 {
-                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;desc&quot;: &quot;The result, or the final error message. Never throws.&quot;,
                     &quot;lua_type&quot;: &quot;any&quot;
                 }
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 97,
+                &quot;line&quot;: 100,
                 &quot;path&quot;: &quot;src/internal/RequestExecutor.luau&quot;
             }
         },
         {
             &quot;name&quot;: &quot;isThrottled&quot;,
-            &quot;desc&quot;: &quot;True once at least 1% of all observed requests came back throttled. The\nengine reacts by declining to lease new lanes and doubling its scan delay,\nshedding parallelism before it slows the critical path.&quot;,
+            &quot;desc&quot;: &quot;True once at least 1% of observed requests have come back throttled.\n\nThe engine responds by declining to lease new lanes and doubling its scan\ndelay, shedding parallelism before slowing the commit path.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,
@@ -192,13 +199,13 @@ signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://shmea
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 162,
+                &quot;line&quot;: 166,
                 &quot;path&quot;: &quot;src/internal/RequestExecutor.luau&quot;
             }
         },
         {
             &quot;name&quot;: &quot;snapshot&quot;,
-            &quot;desc&quot;: &quot;A snapshot of per-structure health, for logging or a debug command.&quot;,
+            &quot;desc&quot;: &quot;A copy of per-structure health: successes, failures, throttles, mean latency,\nand the circuit-breaker deadline.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,
@@ -214,7 +221,7 @@ signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://shmea
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 177,
+                &quot;line&quot;: 182,
                 &quot;path&quot;: &quot;src/internal/RequestExecutor.luau&quot;
             }
         }
@@ -222,9 +229,9 @@ signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://shmea
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;RequestExecutor&quot;,
-    &quot;desc&quot;: &quot;Wraps every store and messaging call in a retry policy, tracks per-structure\nhealth, and trips a circuit breaker on structures that keep failing.\n\nRequests carry a **priority**, where lower is more important:\n\n| Priority | Used by | Attempts | Circuit-broken? |\n| --- | --- | --- | --- |\n| 1 | The commit path — claims, the Ready CAS | 5 | Never |\n| 2 | Leases | 5 | Never |\n| 3 | Ticket writes, party mutations | 5 | Never |\n| 4-6 | Lane index writes, range scans, reads | 3 | Yes |\n\nThe split matters: shedding a lane scan under load is fine and self-corrects\non the next pass, but abandoning a half-committed match leaves tickets stuck\nuntil their claim expires. Critical work always gets to try.\n\nThrottling is detected by matching the error text, because that is the only\nsignal Roblox exposes.&quot;,
+    &quot;desc&quot;: &quot;Wraps every store and messaging call in a retry policy, tracks per-structure\nhealth, and trips a circuit breaker on structures that keep failing.\n\nRequests carry a priority, where lower is more important:\n\n| Priority | Used by | Attempts | Circuit-broken? |\n| --- | --- | --- | --- |\n| 1 | The commit path — claims, the Ready CAS | 5 | Never |\n| 2 | Leases | 5 | Never |\n| 3 | Ticket writes, party mutations | 5 | Never |\n| 4-6 | Lane index writes, range scans, reads | 3 | Yes |\n\nThe split matters because shedding a lane scan under load self-corrects on\nthe next pass, while abandoning a half-committed match leaves tickets stuck\nuntil their claims expire.\n\nRetries use exponential backoff from 0.25 s, doubling to a 4 s ceiling, with\n20% jitter. Throttling is detected by matching the error text, which is the\nonly signal Roblox exposes.&quot;,
     &quot;source&quot;: {
-        &quot;line&quot;: 25,
+        &quot;line&quot;: 26,
         &quot;path&quot;: &quot;src/internal/RequestExecutor.luau&quot;
     }
 }</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#execute" class="table-of-contents__link toc-highlight">.execute</a></li><li><a href="#isThrottled" class="table-of-contents__link toc-highlight">.isThrottled</a></li><li><a href="#new" class="table-of-contents__link toc-highlight">.new</a></li><li><a href="#snapshot" class="table-of-contents__link toc-highlight">.snapshot</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 shmeatley. Built with Moonwave and Docusaurus.</div></div></div></footer></div>
