@@ -5,16 +5,9 @@
 [![Docs](https://img.shields.io/badge/docs-moonwave-blue)](https://shmeatley.github.io/muster)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Cross-server matchmaking for Roblox, in fully-typed Luau.
+Cross-server matchmaking for Roblox
 
-Players and parties go into a queue. Muster does the distributed part — sharded
-queue lanes, worker election, skill-windowed grouping, and delivery of the
-finished match to every server holding one of its players.
-
-**It stops at the match envelope.** Muster does not teleport, does not reserve
-servers, and does not compute or store ratings, because every game wants those
-done differently. It hands you a validated roster with your own data attached,
-and gets out of the way.
+Muster aims to be a drag and drop cross-server matchmaking solution that is extremely customizable, along with scalable architecture that can handle thousands of players in a queue without any extra work on your part. It is designed to be a library, not a service, so you can use it with your own rating system, teleportation system, and server reservation system. That does result in more work on your part, but it also means you can use it with whatever systems you already have in place, and you can change those systems without having to change Muster.
 
 ## Installation
 
@@ -51,11 +44,15 @@ end)
 That is the whole setup. The worker starts itself, subscribes for cross-server
 delivery, cleans up when players leave, and matches on its first scan.
 
-## Reserved servers, teams, maps — the `finalize` hook
+## Reserved servers, teams, and the `finalize` hook
 
 Muster never teleports, but it makes teleporting easy. `finalize` runs **once
 per match**, on whichever server formed it, and whatever it returns is attached
-to the envelope as `match.data` and delivered to everyone.
+to the envelope as `match.data` and delivered to everyone. This is where you can reserve a server, pick a map, and assign teams. For example:
+
+To be clear, `finalize` is not a hook that runs on every server, it runs only on the server that formed the match. The data it returns is then sent to all servers that have players in the match.
+
+`matched` fires on every server that has at least one player in the match, so you can teleport them all to the reserved server.
 
 ```lua
 local ranked = Muster.new({
@@ -112,13 +109,14 @@ distributed system where servers cannot see each other.
   lost while it yields. Write it to be idempotent or cheap to abandon, and use
   `onAbort` to release anything expensive. (A leaked reserved-server access code
   costs nothing and expires on its own, which is why this is usually fine.)
+- Because of that, be careful when doing things like writing to a database.
 - If it throws, exceeds `finalizeTimeout`, or returns something unstorable, the
   match aborts cleanly and every player goes back in the queue.
 
 ## Queueing a group
 
-If you already have parties — or your parties form in one lobby and live in a
-table on that server — just hand Muster the userIds:
+If you already have parties, or your parties form in one lobby and live in a
+table on that server, just hand Muster the userIds:
 
 ```lua
 ranked:enqueueGroup({ leaderId, friendId }, { ratings = ratings })
@@ -164,7 +162,7 @@ difficulty, since those servers cannot see each other.
 ## Ratings
 
 Muster does skill-based _matching_, not skill _rating_. Bring your own number
-from wherever you keep it — Elo, Glicko, OpenSkill, or a stat you made up.
+from wherever you keep it.
 
 ```lua
 rating = {
@@ -182,7 +180,9 @@ two in one lane has no defensible behaviour, so it is rejected loudly at your
 call site instead of silently producing bad matches.
 
 A party queues at its mean rating pulled halfway toward its strongest member, so
-a good player cannot hide behind low-rated friends.
+a good player cannot hide behind low-rated friends. This will help combat the "boosting" problem in your game, but it is not a rating system, but it does not
+compute or store ratings, and it does not prevent a player from queuing with
+someone who is much stronger than them. That is up to your own rating system.
 
 ## Error handling
 
@@ -244,7 +244,7 @@ entirely and writes no lane record.
 
 Changing a lane count naively is a good way to strand players: a ticket written
 under 2 lanes lives in `hash % 2`, and a server that has moved to 4 lanes looks
-in `hash % 4` and never finds it. It doesn't error — the player just waits until
+in `hash % 4` and never finds it. It doesn't error, the player just waits until
 their ticket expires.
 
 Muster stamps the count into every key:
