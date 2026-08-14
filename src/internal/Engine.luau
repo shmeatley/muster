@@ -40,6 +40,7 @@
 local Broadcaster = require(script.Parent.Broadcaster)
 local Defaults = require(script.Parent.Parent.Defaults)
 local Finalizer = require(script.Parent.Finalizer)
+local LaneScaler = require(script.Parent.LaneScaler)
 local Lanes = require(script.Parent.Lanes)
 local LeaseManager = require(script.Parent.LeaseManager)
 local Matcher = require(script.Parent.Matcher)
@@ -101,6 +102,7 @@ function Engine.new(settings: any, deps: any)
 		}),
 		_matcher = settings.matcher or Matcher.policy(settings),
 		_layout = settings.layout or Lanes,
+		_scaler = LaneScaler.new(settings, deps.store),
 
 		_localTickets = {},
 		_work = {},
@@ -257,7 +259,11 @@ function Engine.enqueue(self: any, request: any): any
 
 	local now = self._clock()
 	local partition = request.partition or "all"
-	local lane = self._layout.forTicket(settings, partition, ticketId)
+	-- Read the partition's current lane count (cached) so this ticket lands
+	-- where the rest of the fleet is looking.
+	local laneState = self._scaler:current(partition)
+	local lane =
+		self._layout.forTicket(settings, partition, laneState.count, ticketId, self._scaler:draining(laneState))
 
 	local rating: number? = nil
 	if settings.rated then
@@ -274,6 +280,9 @@ function Engine.enqueue(self: any, request: any): any
 		queue = settings.name,
 		partition = partition,
 		lane = lane.lane,
+		-- Recorded, not recomputed later: the count can change while this ticket
+		-- is queued, and its index entry stays in the map it was written to.
+		laneCount = lane.count,
 		partyId = request.partyId,
 		leaderUserId = request.leaderUserId,
 		members = members,
@@ -518,16 +527,34 @@ function Engine._acquireWork(self: any, now: number, mono: number)
 end
 
 function Engine._readCandidates(self: any, owned: any): { Candidate }
-	local success, items = self._store:sortedRange(owned.descriptor.map, owned.batchSize, 5)
-	if not success then
-		return {}
-	end
+	local descriptor = owned.descriptor
 	local candidates = {}
-	for _, item in items do
-		if item.value ~= nil then
-			table.insert(candidates, item.value)
+	local seen = {}
+
+	-- The lane itself, then any map from a count still draining. Reading both
+	-- means a resize never splits the pool: tickets written before and after it
+	-- can still match each other.
+	local maps = { descriptor.map }
+	for _, legacy in descriptor.legacy do
+		table.insert(maps, legacy)
+	end
+
+	local perMap = if #maps > 1 then math.max(1, math.ceil(owned.batchSize / #maps)) else owned.batchSize
+	for _, map in maps do
+		local success, items = self._store:sortedRange(map, perMap, 5)
+		if success then
+			for _, item in items do
+				local value = item.value
+				-- Deduplicated because overlapping legacy maps can surface the
+				-- same ticket to two lanes during a shrink.
+				if value ~= nil and not seen[value.ticketId] then
+					seen[value.ticketId] = true
+					table.insert(candidates, value)
+				end
+			end
 		end
 	end
+
 	return candidates
 end
 
@@ -670,8 +697,10 @@ function Engine._claimTicket(self: any, candidate: Candidate, matchId: string, o
 end
 
 function Engine._cleanupTicket(self: any, ticket: any)
-	local lane = self._layout.forTicket(self._settings, ticket.partition, ticket.id)
-	self._store:sortedRemove(lane.map, ticket.id, 4)
+	-- Uses the count the ticket was written under, so a resize in the meantime
+	-- does not leave its index entry behind in an abandoned map.
+	local map = Lanes.name(self._settings, ticket.partition, ticket.laneCount or 1, ticket.lane or 0)
+	self._store:sortedRemove(map, ticket.id, 4)
 end
 
 --[=[
@@ -971,6 +1000,20 @@ function Engine._scan(self: any, key: string, owned: any, now: number, mono: num
 		owned.batchSize = math.min(Defaults.MAX_BATCH_SIZE, owned.batchSize * 2)
 	elseif #candidates <= owned.batchSize / 4 then
 		owned.batchSize = math.max(Defaults.MIN_BATCH_SIZE, math.floor(owned.batchSize / 2))
+	end
+
+	-- Judged against the largest batch we would ever ask for, not the one we
+	-- happened to ask for. A small early batch filling up says nothing about
+	-- how deep the lane really is.
+	local resized =
+		self._scaler:observe(owned.descriptor.partition, owned.descriptor.count, #candidates, Defaults.MAX_BATCH_SIZE)
+	if resized ~= nil then
+		self:_metric("muster.lanes.resized", resized, { queue = self._settings.name })
+		self:_log("info", `lane count for {owned.descriptor.partition} is now {resized}`, {
+			partition = owned.descriptor.partition,
+			from = owned.descriptor.count,
+			to = resized,
+		})
 	end
 
 	local groups = Matcher.select(candidates, now, self._matcher)

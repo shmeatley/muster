@@ -57,6 +57,8 @@ export type Member = {
 	.expiresAt number
 	.state "Queued" | "Claimed" | "Matched" | "Cancelled"
 	.matchId string?
+	.lane number -- Index within the partition.
+	.laneCount number -- The lane count in force when it was written; lanes scale at runtime.
 
 	A queue entry. One ticket covers one solo player or one whole party — parties
 	are never split across matches.
@@ -75,6 +77,8 @@ export type Ticket = {
 	expiresAt: number,
 	state: "Queued" | "Claimed" | "Matched" | "Cancelled",
 	matchId: string?,
+	lane: number,
+	laneCount: number,
 }
 
 --[=[

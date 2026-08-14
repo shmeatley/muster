@@ -225,27 +225,44 @@ Polling backs off per **ticket** (2s, 4s, 8s, 16s, then capped), not per player,
 so a full minute of waiting costs a handful of reads. A server with nothing
 queued costs nothing at all.
 
-## Lanes
+## Lanes scale themselves
 
-A queue is split into `lanes`, and a ticket is matched only against others in
-its own lane. **Lanes buy parallelism by splitting the pool**, so the default is
-**1**: one worker sees every queued ticket and matches on its first scan.
+A queue is split into lanes, and a ticket is matched against the others in its
+own lane. **Lanes buy parallelism by splitting the pool**, so the right number
+depends on how deep the queue actually is — and you don't have to guess.
 
-Raise it only once a single lane is deep enough to fill matches on its own:
+By default (`lanes = "auto"`) a queue starts on **one** lane, so two players
+match on the first scan, and it doubles only once a single lane is consistently
+too full for one worker to see all of. When the queue thins out again, it halves
+back down. No sizing table, no tuning.
 
-| Peak tickets queued at once | `lanes` |
-| --- | --- |
-| under ~200 | 1 (default) |
-| ~200 – 400 | 2 |
-| ~400 – 800 | 4 |
-| ~800 – 1600 | 8 |
+Pin it if you'd rather: `lanes = 4` (powers of two, 1–64) disables scaling
+entirely and writes no lane record.
 
-The crossover is MemoryStore's 200-item range read: past that, a worker only
-ever sees the oldest 200 tickets in its lane. Muster warns when it detects this.
+<details>
+<summary>How resizing avoids losing tickets</summary>
 
-Setting `lanes` too high is the classic way to break a small game's matchmaking —
-with 64 lanes, two players almost never land in the same one, and nobody ever
-matches.
+Changing a lane count naively is a good way to strand players: a ticket written
+under 2 lanes lives in `hash % 2`, and a server that has moved to 4 lanes looks
+in `hash % 4` and never finds it. It doesn't error — the player just waits until
+their ticket expires.
+
+Muster stamps the count into every key:
+
+```
+mu1:ranked:idx:EMEA:n04:02
+                    ^^^ ^^
+                  count lane
+```
+
+So servers that disagree read and write *different* key spaces rather than
+corrupting one, and every ticket stays exactly where its writer put it. During a
+resize, workers on the new count also read the old maps the new lane could draw
+from — one extra map when growing, two when halving — so the old and new pools
+still match against each other. Changes are spaced a full `ticketExpiration`
+apart, which guarantees an abandoned count has drained before it can be reused.
+
+</details>
 
 ## Partitions
 

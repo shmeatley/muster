@@ -1,7 +1,7 @@
 [package]
 name = "shmeatley/muster"
 description = "Cross-server matchmaking for Roblox: sharded queues, parties, and skill-windowed match formation over MemoryStore."
-version = "0.1.1"
+version = "0.2.0"
 license = "MIT"
 authors = ["shmeatley"]
 realm = "shared"

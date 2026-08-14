@@ -14,6 +14,7 @@
 
 local Defaults = require(script.Parent.Defaults)
 local Hash = require(script.Parent.Hash)
+local Lanes = require(script.Parent.internal.Lanes)
 local Runtime = require(script.Parent.internal.Runtime)
 local Types = require(script.Parent.Types)
 
@@ -200,9 +201,20 @@ function Config.resolve(raw: any): (any, string?)
 		return nil, "Muster: `onAbort` only fires for matches that ran a `finalize` hook; set `finalize` too"
 	end
 
-	local lanes = raw.lanes or Defaults.LANES
-	if not isPositiveInteger(lanes) or lanes > 64 then
-		return nil, "Muster: `lanes` must be an integer between 1 and 64"
+	-- `lanes` is "auto" (the default) or a pinned power of two. Powers of two are
+	-- what let a resize map old lanes onto new ones exactly, so a pinned value
+	-- has to satisfy the same constraint the scaler does.
+	local laneMode = "auto"
+	local lanes = Defaults.LANES
+	if raw.lanes ~= nil and raw.lanes ~= "auto" then
+		laneMode = "fixed"
+		lanes = raw.lanes
+		if not Lanes.isPowerOfTwo(lanes) or lanes > Defaults.LANE_MAX then
+			return nil,
+				`Muster: \`lanes\` must be "auto" or a power of two from 1 to {Defaults.LANE_MAX} (got {tostring(
+					raw.lanes
+				)})`
+		end
 	end
 
 	local fallbackAfter = raw.fallbackAfter or Defaults.FALLBACK_AFTER
@@ -251,6 +263,10 @@ function Config.resolve(raw: any): (any, string?)
 		rated = rating ~= nil,
 		fallbackAfter = fallbackAfter,
 		lanes = lanes,
+		laneMode = laneMode,
+		-- The shared count outlives any ticket written against it, so a partition
+		-- that goes quiet does not silently reset to one lane mid-drain.
+		laneStateExpiration = ticketExpiration * 4,
 		partitionKey = raw.partitionKey,
 
 		finalize = raw.finalize,
@@ -306,6 +322,8 @@ function Config.resolve(raw: any): (any, string?)
 		tickets = `{prefix}:{raw.name}:tickets`,
 		matches = `{prefix}:{raw.name}:matches`,
 		leases = `{prefix}:{raw.name}:leases`,
+		-- Keyed by partition: each one scales on its own depth.
+		lanes = `{prefix}:{raw.name}:lanes`,
 		-- Shared across every queue in the namespace, so a player cannot hold
 		-- tickets in two queues at once. Use a distinct `namespace` for queues
 		-- that should be independent.

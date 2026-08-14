@@ -41,17 +41,77 @@ return function()
 
 	Harness.suite("lanes")
 	do
-		local settings = Muster.Config.resolve({ name = "q", size = 2 })
-		equal("one lane by default", settings.lanes, 1)
-
 		local Lanes = Muster.internal.Lanes
-		equal("every ticket lands in lane 0", Lanes.laneFor(settings, "anything"), 0)
-		equal("descriptor names the map", Lanes.forTicket(settings, "all", "t1").map, "mu1:q:idx:all:00")
+		local settings = Muster.Config.resolve({ name = "q", size = 2 })
 
-		local sharded = Muster.Config.resolve({ name = "q", size = 2, lanes = 8 })
-		equal("eight lanes are enumerable", #Lanes.allFor(sharded, "all"), 8)
-		local lane = Lanes.laneFor(sharded, "ticket-1")
+		equal("auto by default", settings.laneMode, "auto")
+		equal("starting on one lane", settings.lanes, 1)
+		equal("every ticket lands in lane 0 at count 1", Lanes.laneFor(1, "anything"), 0)
+
+		local descriptor = Lanes.forTicket(settings, "all", 1, "t1")
+		equal("the count is stamped into the map", descriptor.map, "mu1:q:idx:all:n01:00")
+		equal("and into the lease key", descriptor.key, "all:n01:00")
+		equal("nothing to drain initially", #descriptor.legacy, 0)
+
+		local pinned = Muster.Config.resolve({ name = "q", size = 2, lanes = 8 })
+		equal("a number pins the count", pinned.laneMode, "fixed")
+		equal("eight lanes are enumerable", #Lanes.allFor(pinned, "all", 8), 8)
+		local lane = Lanes.laneFor(8, "ticket-1")
 		check("sharded lanes are in range", lane >= 0 and lane < 8, `got {lane}`)
+
+		local _, threeProblem = Muster.Config.resolve({ name = "q", size = 2, lanes = 3 })
+		check("rejects a non power of two", threeProblem ~= nil, threeProblem)
+		local _, hugeProblem = Muster.Config.resolve({ name = "q", size = 2, lanes = 128 })
+		check("rejects a count above the maximum", hugeProblem ~= nil, hugeProblem)
+		local autoOk = Muster.Config.resolve({ name = "q", size = 2, lanes = "auto" })
+		equal("accepts the literal auto", autoOk.laneMode, "auto")
+
+		check("power-of-two check", Lanes.isPowerOfTwo(16) and not Lanes.isPowerOfTwo(6))
+		equal("clamping rounds down to a power of two", Lanes.clamp(7, 1, 64), 4)
+		equal("and respects the ceiling", Lanes.clamp(1000, 1, 64), 64)
+	end
+
+	Harness.suite("resizing loses nothing")
+	do
+		-- The property the whole dynamic-lane design rests on: after the count
+		-- changes, a worker on a ticket's NEW lane must still read the map that
+		-- ticket was actually written to. If this ever fails, tickets sit in a
+		-- map nobody scans and silently expire.
+		local Lanes = Muster.internal.Lanes
+		local settings = Muster.Config.resolve({ name = "q", size = 2 })
+
+		local function everyTicketStillVisible(from: number, to: number): (boolean, string?)
+			for index = 1, 400 do
+				local ticketId = `ticket-{index}`
+				local writtenTo = Lanes.name(settings, "all", from, Lanes.laneFor(from, ticketId))
+				local nowIn = Lanes.descriptor(settings, "all", to, Lanes.laneFor(to, ticketId), from)
+
+				local reachable = nowIn.map == writtenTo
+				for _, legacy in nowIn.legacy do
+					if legacy == writtenTo then
+						reachable = true
+					end
+				end
+				if not reachable then
+					return false, `{ticketId} written to {writtenTo}, unreachable from {nowIn.map}`
+				end
+			end
+			return true, nil
+		end
+
+		for _, step in { { 1, 2 }, { 2, 4 }, { 4, 8 }, { 8, 16 } } do
+			local ok, why = everyTicketStillVisible(step[1], step[2])
+			check(`growing {step[1]} to {step[2]}`, ok, why)
+		end
+		for _, step in { { 16, 8 }, { 8, 4 }, { 4, 2 }, { 2, 1 } } do
+			local ok, why = everyTicketStillVisible(step[1], step[2])
+			check(`shrinking {step[1]} to {step[2]}`, ok, why)
+		end
+
+		-- And the cost of that coverage stays bounded.
+		equal("growing reads one old map", #Lanes.descriptor(settings, "all", 4, 3, 2).legacy, 1)
+		equal("halving reads two", #Lanes.descriptor(settings, "all", 2, 1, 4).legacy, 2)
+		equal("no previous count means no extra reads", #Lanes.descriptor(settings, "all", 4, 3, nil).legacy, 0)
 	end
 
 	Harness.suite("config")

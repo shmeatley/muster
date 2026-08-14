@@ -50,11 +50,27 @@ Defaults.INVITE_EXPIRATION = 60
 Defaults.MAX_PARTY_MEMBERS = 8
 Defaults.MAX_PARTY_INVITES = 20
 
--- One lane. See the sizing table in the README: this is what makes two players
--- match on the first scan instead of waiting for a lane collision.
+-- Queues start on a single lane and grow only once one lane cannot keep up.
+-- Starting high is the classic way to break a small queue: with 64 lanes, two
+-- players almost never land in the same one and nobody ever matches.
 Defaults.LANES = 1
+Defaults.LANE_MIN = 1
+-- Counts are powers of two so a resize maps old lanes onto new ones exactly.
+Defaults.LANE_MAX = 64
 Defaults.MAX_LANES_PER_SERVER = 8
 Defaults.EMPTY_PASSES_BEFORE_RELEASE = 3
+
+-- Consecutive scans that come back full before the count doubles. A saturated
+-- lane means the worker is only seeing its oldest slice.
+Defaults.LANE_SATURATED_PASSES = 3
+-- Consecutive shallow scans before it halves, and the depth that counts as
+-- shallow. Shrinking is deliberately slower to trigger than growing: a brief
+-- lull is common, and over-sharding a thin queue is the worse failure.
+Defaults.LANE_STARVED_PASSES = 5
+Defaults.LANE_STARVED_DEPTH = 8
+-- How long a server may go before re-reading the shared lane count. A stale
+-- read only means writing into the previous count's lane, which is still read.
+Defaults.LANE_STATE_REFRESH = 30
 
 Defaults.MIN_SCAN_DELAY = 0.25
 Defaults.MAX_SCAN_DELAY = 5

@@ -525,6 +525,11 @@ function Matchmaker.health(self: any): any
 		serverId = self._settings.serverId,
 		localTickets = queued,
 		ownedLanes = lanes,
+		laneMode = self._settings.laneMode,
+		-- What this server currently believes the default partition is sharded
+		-- to, and how many resizes it has applied.
+		laneCount = self._engine._scaler:current("all").count,
+		laneChanges = self._engine._scaler.changes,
 		throttled = self._executor:isThrottled(),
 		broadcastHealthy = self._engine._broadcaster:isHealthy(),
 		broadcastsSent = self._engine._broadcaster.published,

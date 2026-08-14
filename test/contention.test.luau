@@ -122,7 +122,10 @@ return function()
 		ticket.matchId = nil
 		ticket.claim = { matchId = matchId, leaseKey = "all:00", epoch = 1, expiresAt = world.now() - 1 }
 		world.store:set(keys.tickets, ticketId, ticket, 180)
-		world.store:sortedSet("mu1:test:idx:all:00", ticketId, {
+		-- Derived rather than hardcoded, so the lane key layout can change
+		-- without this test quietly writing into a map nobody reads.
+		local map = Muster.internal.Lanes.name(a._settings, "all", ticket.laneCount, ticket.lane)
+		world.store:sortedSet(map, ticketId, {
 			ticketId = ticketId,
 			size = 1,
 			ratings = {},
