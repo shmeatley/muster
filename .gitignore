@@ -1,0 +1,23 @@
+# Rojo
+sourcemap.json
+
+# luau-lsp (fetched on demand; see the analyze job in CI)
+globalTypes.d.luau
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+
+# Wally
+Packages/
+DevPackages/
+
+# Moonwave
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/

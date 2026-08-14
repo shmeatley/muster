@@ -1,0 +1,11 @@
+title = "Muster"
+gitRepoUrl = "https://github.com/shmeatley/muster"
+gitSourceBranch = "main"
+
+[docusaurus]
+onBrokenLinks = "warn"
+organizationName = "shmeatley"
+projectName = "muster"
+url = "https://shmeatley.github.io"
+baseUrl = "/muster"
+tagline = "Cross-server matchmaking for Roblox"

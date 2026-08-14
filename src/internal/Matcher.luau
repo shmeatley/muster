@@ -1,0 +1,218 @@
+--!strict
+
+--[=[
+	@class Matcher
+
+	The grouping algorithm. Pure: no store, no clock, no Roblox globals — it
+	takes candidates and a policy and returns groups, which is what makes match
+	quality testable without a queue around it.
+
+	Candidates are processed oldest-first, and each unused one becomes an
+	*anchor*. For an anchor, a subset-sum walk over party sizes finds the best
+	combination that fills the match, where "best" is the policy's `score`:
+	smallest rating spread, then shortest total wait. Parties enter the walk as
+	single indivisible candidates, so a party is never split.
+
+	A group at `targetSize` commits immediately. A smaller one is only accepted
+	once the anchor has waited `fallbackAfter` seconds, and then the largest
+	viable size down to `minSize` wins — so a queue with five players waiting for
+	a six-player match eventually plays five-a-side rather than waiting forever.
+
+	The rating window widens with the **anchor's** wait, not each candidate's.
+	Since anchors are oldest-first, the player who has waited longest searches
+	the widest, and a lone high-rated outlier who cannot be matched never blocks
+	the compatible players behind it.
+
+	:::note Which full match wins
+	The walk stops at the **first** combination that reaches `targetSize` rather
+	than continuing to look for a tighter one. Since candidates are visited
+	oldest-first, that means the longest-waiting players get in, and rating
+	spread is already bounded by the window every candidate had to pass. The
+	alternative — scanning all of them to shave a few rating points — costs a
+	full pass per anchor on every scan of every lane, which is not a trade worth
+	making on a server that is also running a game.
+	:::
+]=]
+
+local Defaults = require(script.Parent.Parent.Defaults)
+local Types = require(script.Parent.Parent.Types)
+
+type Candidate = Types.Candidate
+type MatcherPolicy = Types.MatcherPolicy
+
+local Matcher = {}
+
+--[=[
+	Rating spread across every individual member, then total queue time. Spread
+	is measured per member rather than per ticket so a party with a wide internal
+	skill gap is correctly penalized.
+
+	Returns a spread of 0 when no candidate carries ratings, which makes the
+	tie-break on queue time the whole ordering — the right policy for an unrated
+	queue.
+
+	@within Matcher
+]=]
+function Matcher.spreadScore(candidates: { Candidate }, indexes: { number }): (number, number)
+	local minimum = math.huge
+	local maximum = -math.huge
+	local queuedTotal = 0
+	local seen = false
+
+	for _, index in indexes do
+		local candidate = candidates[index]
+		for _, rating in candidate.ratings do
+			minimum = math.min(minimum, rating)
+			maximum = math.max(maximum, rating)
+			seen = true
+		end
+		queuedTotal += candidate.queuedAt
+	end
+
+	return (if seen then maximum - minimum else 0), queuedTotal
+end
+
+--[=[
+	Builds the policy a resolved config implies: a widening rating window on a
+	rated queue, or unconditional compatibility on an unrated one.
+
+	@within Matcher
+]=]
+function Matcher.policy(settings: any): MatcherPolicy
+	local rating = settings.rating
+
+	local compatible: (Candidate, Candidate, number) -> boolean
+	if rating == nil then
+		compatible = function(_anchor: Candidate, _candidate: Candidate, _waitSeconds: number): boolean
+			return true
+		end
+	else
+		compatible = function(anchor: Candidate, candidate: Candidate, waitSeconds: number): boolean
+			local window = Defaults.ratingWindow(rating, waitSeconds)
+			if window == math.huge then
+				return true
+			end
+			return math.abs((candidate.rating or 0) - (anchor.rating or 0)) <= window
+		end
+	end
+
+	return table.freeze({
+		minSize = settings.size.min,
+		targetSize = settings.size.target,
+		maxSize = settings.size.max,
+		fallbackAfter = settings.fallbackAfter,
+		compatible = compatible,
+		score = Matcher.spreadScore,
+	})
+end
+
+-- Each reachable total size keeps its best combination alongside that
+-- combination's already-computed score. Scoring on insert rather than on every
+-- comparison is what keeps the walk linear in candidates instead of quadratic.
+type State = { indexes: { number }, spread: number, queued: number }
+
+local function extend(state: State, index: number): { number }
+	local result = table.create(#state.indexes + 1)
+	table.move(state.indexes, 1, #state.indexes, 1, result)
+	result[#state.indexes + 1] = index
+	return result
+end
+
+local function chooseForAnchor(
+	candidates: { Candidate },
+	anchorIndex: number,
+	used: { [number]: boolean },
+	now: number,
+	policy: MatcherPolicy
+): { number }?
+	local anchor = candidates[anchorIndex]
+	local waitSeconds = math.max(0, now - anchor.queuedAt)
+
+	local anchorIndexes = { anchorIndex }
+	local anchorSpread, anchorQueued = policy.score(candidates, anchorIndexes)
+	local states: { [number]: State } = {
+		[anchor.size] = { indexes = anchorIndexes, spread = anchorSpread, queued = anchorQueued },
+	}
+
+	for index, candidate in candidates do
+		if index == anchorIndex or used[index] or not policy.compatible(anchor, candidate, waitSeconds) then
+			continue
+		end
+
+		local snapshot = table.clone(states)
+		for size, state in snapshot do
+			local nextSize = size + candidate.size
+			if nextSize > policy.maxSize then
+				continue
+			end
+			local proposed = extend(state, index)
+			local spread, queued = policy.score(candidates, proposed)
+			local current = states[nextSize]
+			if current == nil or spread < current.spread or (spread == current.spread and queued < current.queued) then
+				states[nextSize] = { indexes = proposed, spread = spread, queued = queued }
+			end
+		end
+
+		-- Stop at the first full match. See the note on this class: candidates
+		-- arrive oldest-first, so this favours the longest wait, and every
+		-- further candidate would cost another clone of every state.
+		if states[policy.targetSize] then
+			break
+		end
+	end
+
+	local full = states[policy.targetSize]
+	if full then
+		return full.indexes
+	end
+	if waitSeconds < policy.fallbackAfter then
+		return nil
+	end
+	for size = policy.maxSize, policy.minSize, -1 do
+		local state = states[size]
+		if state then
+			return state.indexes
+		end
+	end
+	return nil
+end
+
+--[=[
+	Groups candidates into matches. Every returned group is disjoint, and any
+	candidate that could not be placed is simply absent — it stays queued.
+
+	@param now -- Wall-clock seconds, compared against each candidate's `queuedAt`.
+	@within Matcher
+]=]
+function Matcher.select(candidates: { Candidate }, now: number, policy: MatcherPolicy): { { Candidate } }
+	local ordered = table.clone(candidates)
+	table.sort(ordered, function(left, right)
+		if left.queuedAt == right.queuedAt then
+			return left.ticketId < right.ticketId
+		end
+		return left.queuedAt < right.queuedAt
+	end)
+
+	local used: { [number]: boolean } = {}
+	local matches = {}
+
+	for anchorIndex = 1, #ordered do
+		if used[anchorIndex] then
+			continue
+		end
+		local selected = chooseForAnchor(ordered, anchorIndex, used, now, policy)
+		if selected == nil then
+			continue
+		end
+		local group = table.create(#selected)
+		for _, index in selected do
+			used[index] = true
+			table.insert(group, ordered[index])
+		end
+		table.insert(matches, group)
+	end
+
+	return matches
+end
+
+return table.freeze(Matcher)

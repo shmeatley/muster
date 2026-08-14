@@ -1,0 +1,16 @@
+[package]
+name = "shmeatley/muster"
+description = "Cross-server matchmaking for Roblox: sharded queues, parties, and skill-windowed match formation over MemoryStore."
+version = "0.1.0"
+license = "MIT"
+authors = ["shmeatley"]
+realm = "shared"
+registry = "https://github.com/UpliftGames/wally-index"
+
+exclude = ["**"]
+include = [
+    "src",
+    "src/**",
+    "wally.toml",
+    "default.project.json"
+]

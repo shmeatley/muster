@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint (selene)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.2.1
+
+      - name: Run selene
+        run: selene src
+
+  format:
+    name: Format check (stylua)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.2.1
+
+      - name: Run stylua --check
+        run: stylua --check src test
+
+  analyze:
+    name: Typecheck (luau-lsp)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.2.1
+
+      - name: Fetch Roblox type definitions
+        run: >
+          curl -sSL -o globalTypes.d.luau
+          https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/main/scripts/globalTypes.None.d.luau
+
+      # Instance requires only resolve against a sourcemap.
+      - name: Generate sourcemap
+        run: rojo sourcemap default.project.json -o sourcemap.json
+
+      - name: Run luau-lsp analyze
+        run: >
+          luau-lsp analyze
+          --definitions=globalTypes.d.luau
+          --sourcemap=sourcemap.json
+          --base-luaurc=.luaurc
+          src
+
+  test:
+    name: Tests (lune)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.2.1
+
+      - name: Run the suite
+        run: lune run test/run
+
+  package-check:
+    name: Validate wally.toml packaging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.2.1
+
+      - name: List files wally would package (no publish, no auth needed)
+        run: wally package --list
