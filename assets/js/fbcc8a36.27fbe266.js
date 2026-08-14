@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[9891],{84410:s=>{s.exports=JSON.parse('{"sourceUrl":"https://github.com/shmeatley/muster/blob/main","baseUrl":"/muster/","classOrder":[],"apiCategories":[]}')}}]);

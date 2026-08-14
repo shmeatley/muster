@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="plugin-moonwave plugin-id-moonwave" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.1">
+<title data-rh="true">Matchmaker | Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/Matchmaker"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="Matchmaker | Muster"><meta data-rh="true" name="description" content="A queue. Construct one per game mode, enqueue players, and listen for
+matches.
+
+```lua
+local Muster = require(ReplicatedStorage.Packages.Muster)
+
+local duels = Muster.new({ name = &quot;duels&quot;, size = 2 })
+
+duels.matched:connect(function(match)
+	for _, member in match.members do
+		print(member.userId, &quot;-&gt;&quot;, match.matchId)
+	end
+end)
+
+duels:enqueue(player.UserId)
+```
+
+That is the whole setup. The worker starts itself, subscribes for
+cross-server delivery, cleans up when players leave, and matches on its
+first scan.
+
+### The finalize hook
+
+Muster stops at the match envelope: it never teleports and never reserves
+servers, because every game wants that done differently. Instead, `finalize`
+runs once per match on whichever server formed it, and whatever it returns
+is attached to the envelope as `match.data` and delivered to everyone.
+
+```lua
+local ranked = Muster.new({
+	name = &quot;ranked&quot;,
+	size = { min = 4, target = 8, max = 8 },
+	rating = { window = 150, relax = 25, default = 1000 },
+
+	finalize = function(match)
+		return {
+			accessCode = TeleportService:ReserveServerAsync(ARENA_PLACE),
+			map = pickMap(match.size),
+		}
+	end,
+})
+
+ranked.matched:connect(function(match)
+	local present = {}
+	for _, member in match.members do
+		local player = Players:GetPlayerByUserId(member.userId)
+		if player then table.insert(present, player) end
+	end
+	if #present == 0 then return end
+	TeleportService:TeleportToPrivateServer(ARENA_PLACE, match.data.accessCode, present)
+end)
+```
+
+The contract for that hook, which is worth reading before you write one:
+
+- It runs **exactly once per matchId**, never concurrently for the same one.
+- It may run **more than once for the same set of players** under different
+  matchIds, if a worker stalls and another repairs its work. **Deduplicate on
+  `matchId`, never on the player set.**
+- Its side effects may **survive a match that never forms** — the lease can
+  be lost during the yield. Write it to be idempotent or cheap to abandon,
+  and use `onAbort` to release anything expensive.
+- If it throws, times out, or returns something unstorable, the match aborts
+  cleanly and every player goes back in the queue.
+
+### Delivery
+
+`matched` fires on **every server holding one of the matched players**, not
+just the one that formed the match. If none of the players are on this
+server, it does not fire here at all — so the handler can assume it has
+someone to act on.
+
+A match is written to MemoryStore before it is announced, so delivery does
+not depend on MessagingService: typically it arrives in under 200 ms, and
+if messaging is down entirely a poll finds it within a few seconds."><meta data-rh="true" property="og:description" content="A queue. Construct one per game mode, enqueue players, and listen for
+matches.
+
+```lua
+local Muster = require(ReplicatedStorage.Packages.Muster)
+
+local duels = Muster.new({ name = &quot;duels&quot;, size = 2 })
+
+duels.matched:connect(function(match)
+	for _, member in match.members do
+		print(member.userId, &quot;-&gt;&quot;, match.matchId)
+	end
+end)
+
+duels:enqueue(player.UserId)
+```
+
+That is the whole setup. The worker starts itself, subscribes for
+cross-server delivery, cleans up when players leave, and matches on its
+first scan.
+
+### The finalize hook
+
+Muster stops at the match envelope: it never teleports and never reserves
+servers, because every game wants that done differently. Instead, `finalize`
+runs once per match on whichever server formed it, and whatever it returns
+is attached to the envelope as `match.data` and delivered to everyone.
+
+```lua
+local ranked = Muster.new({
+	name = &quot;ranked&quot;,
+	size = { min = 4, target = 8, max = 8 },
+	rating = { window = 150, relax = 25, default = 1000 },
+
+	finalize = function(match)
+		return {
+			accessCode = TeleportService:ReserveServerAsync(ARENA_PLACE),
+			map = pickMap(match.size),
+		}
+	end,
+})
+
+ranked.matched:connect(function(match)
+	local present = {}
+	for _, member in match.members do
+		local player = Players:GetPlayerByUserId(member.userId)
+		if player then table.insert(present, player) end
+	end
+	if #present == 0 then return end
+	TeleportService:TeleportToPrivateServer(ARENA_PLACE, match.data.accessCode, present)
+end)
+```
+
+The contract for that hook, which is worth reading before you write one:
+
+- It runs **exactly once per matchId**, never concurrently for the same one.
+- It may run **more than once for the same set of players** under different
+  matchIds, if a worker stalls and another repairs its work. **Deduplicate on
+  `matchId`, never on the player set.**
+- Its side effects may **survive a match that never forms** — the lease can
+  be lost during the yield. Write it to be idempotent or cheap to abandon,
+  and use `onAbort` to release anything expensive.
+- If it throws, times out, or returns something unstorable, the match aborts
+  cleanly and every player goes back in the queue.
+
+### Delivery
+
+`matched` fires on **every server holding one of the matched players**, not
+just the one that formed the match. If none of the players are on this
+server, it does not fire here at all — so the handler can assume it has
+someone to act on.
+
+A match is written to MemoryStore before it is announced, so delivery does
+not depend on MessagingService: typically it arrives in under 200 ms, and
+if messaging is down entirely a poll finds it within a few seconds."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Matchmaker"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matchmaker" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matchmaker" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
+<script src="/muster/assets/js/runtime~main.cb19d411.js" defer="defer"></script>
+<script src="/muster/assets/js/main.4fc14a6b.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")),document.documentElement.setAttribute("data-theme-choice",t||"system")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/muster/"><b class="navbar__title text--truncate">Muster</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/muster/api/">API</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/shmeatley/muster" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search"><span aria-label="expand searchbar" role="button" class="search-icon" tabindex="0"></span><input id="search_input_react" type="search" placeholder="Loading..." aria-label="Search" class="navbar__search-input search-bar" disabled=""></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0 docPageContainer_wNNk"><div class="docPage_Dpn1"><div class="docSidebarContainer_o_re"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Broadcaster"><span title="​Broadcaster" class="linkLabel_WmDU">​Broadcaster</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Config"><span title="​Config" class="linkLabel_WmDU">​Config</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Defaults"><span title="​Defaults" class="linkLabel_WmDU">​Defaults</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Engine"><span title="​Engine" class="linkLabel_WmDU">​Engine</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Finalizer"><span title="​Finalizer" class="linkLabel_WmDU">​Finalizer</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Hash"><span title="​Hash" class="linkLabel_WmDU">​Hash</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/InMemoryMessaging"><span title="​In​Memory​Messaging" class="linkLabel_WmDU">​In​Memory​Messaging</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/InMemoryStore"><span title="​In​Memory​Store" class="linkLabel_WmDU">​In​Memory​Store</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Lanes"><span title="​Lanes" class="linkLabel_WmDU">​Lanes</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/LeaseManager"><span title="​Lease​Manager" class="linkLabel_WmDU">​Lease​Manager</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Matcher"><span title="​Matcher" class="linkLabel_WmDU">​Matcher</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" href="/muster/api/Matchmaker"><span title="​Matchmaker" class="linkLabel_WmDU">​Matchmaker</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/MemoryStore"><span title="​Memory​Store" class="linkLabel_WmDU">​Memory​Store</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Muster"><span title="​Muster" class="linkLabel_WmDU">​Muster</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Party"><span title="​Party" class="linkLabel_WmDU">​Party</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/RequestExecutor"><span title="​Request​Executor" class="linkLabel_WmDU">​Request​Executor</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Result"><span title="​Result" class="linkLabel_WmDU">​Result</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/RobloxMessaging"><span title="​Roblox​Messaging" class="linkLabel_WmDU">​Roblox​Messaging</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Runtime"><span title="​Runtime" class="linkLabel_WmDU">​Runtime</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Serialize"><span title="​Serialize" class="linkLabel_WmDU">​Serialize</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Signal"><span title="​Signal" class="linkLabel_WmDU">​Signal</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Types"><span title="​Types" class="linkLabel_WmDU">​Types</span></a></li></ul></nav></div></div><main class="docMainContainer_HJE1"><div class="container padding-vert--lg"><div class="row"><div class="col docItemCol_MU3C"><div class="docItemContainer_Wv98"><article><div class="member_J0w1 markdown"><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_oUs_"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><header><h1 class="docTitle_mZRt" style="text-decoration:none"><span style="display:inline-block">Matchmaker</span></h1><div class="luaClassTags_EipM"></div><div>
+<p>
+  A queue. Construct one per game mode, enqueue players, and listen for
+  matches.
+</p>
+<pre class="language-lua"><code class="language-lua"><span class="token keyword">local</span> Muster <span class="token operator">=</span> <span class="token function">require</span><span class="token punctuation">(</span>ReplicatedStorage<span class="token punctuation">.</span>Packages<span class="token punctuation">.</span>Muster<span class="token punctuation">)</span>
+
+<span class="token keyword">local</span> duels <span class="token operator">=</span> Muster<span class="token punctuation">.</span><span class="token function">new</span><span class="token punctuation">(</span><span class="token punctuation">{</span> name <span class="token operator">=</span> <span class="token string">"duels"</span><span class="token punctuation">,</span> size <span class="token operator">=</span> <span class="token number">2</span> <span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+duels<span class="token punctuation">.</span>matched<span class="token punctuation">:</span><span class="token function">connect</span><span class="token punctuation">(</span><span class="token keyword">function</span><span class="token punctuation">(</span>match<span class="token punctuation">)</span>
+	<span class="token keyword">for</span> _<span class="token punctuation">,</span> member <span class="token keyword">in</span> match<span class="token punctuation">.</span>members <span class="token keyword">do</span>
+		<span class="token function">print</span><span class="token punctuation">(</span>member<span class="token punctuation">.</span>userId<span class="token punctuation">,</span> <span class="token string">"->"</span><span class="token punctuation">,</span> match<span class="token punctuation">.</span>matchId<span class="token punctuation">)</span>
+	<span class="token keyword">end</span>
+<span class="token keyword">end</span><span class="token punctuation">)</span>
+
+duels<span class="token punctuation">:</span><span class="token function">enqueue</span><span class="token punctuation">(</span>player<span class="token punctuation">.</span>UserId<span class="token punctuation">)</span>
+</code></pre>
+<p>
+  That is the whole setup. The worker starts itself, subscribes for
+  cross-server delivery, cleans up when players leave, and matches on its
+  first scan.
+</p>
+<h3>The finalize hook</h3>
+<p>
+  Muster stops at the match envelope: it never teleports and never reserves
+  servers, because every game wants that done differently. Instead, <code>finalize</code>
+  runs once per match on whichever server formed it, and whatever it returns
+  is attached to the envelope as <code>match.data</code> and delivered to everyone.
+</p>
+<pre class="language-lua"><code class="language-lua"><span class="token keyword">local</span> ranked <span class="token operator">=</span> Muster<span class="token punctuation">.</span><span class="token function">new</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+	name <span class="token operator">=</span> <span class="token string">"ranked"</span><span class="token punctuation">,</span>
+	size <span class="token operator">=</span> <span class="token punctuation">{</span> min <span class="token operator">=</span> <span class="token number">4</span><span class="token punctuation">,</span> target <span class="token operator">=</span> <span class="token number">8</span><span class="token punctuation">,</span> max <span class="token operator">=</span> <span class="token number">8</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
+	rating <span class="token operator">=</span> <span class="token punctuation">{</span> window <span class="token operator">=</span> <span class="token number">150</span><span class="token punctuation">,</span> relax <span class="token operator">=</span> <span class="token number">25</span><span class="token punctuation">,</span> default <span class="token operator">=</span> <span class="token number">1000</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
+
+	finalize <span class="token operator">=</span> <span class="token keyword">function</span><span class="token punctuation">(</span>match<span class="token punctuation">)</span>
+		<span class="token keyword">return</span> <span class="token punctuation">{</span>
+			accessCode <span class="token operator">=</span> TeleportService<span class="token punctuation">:</span><span class="token function">ReserveServerAsync</span><span class="token punctuation">(</span>ARENA_PLACE<span class="token punctuation">)</span><span class="token punctuation">,</span>
+			map <span class="token operator">=</span> <span class="token function">pickMap</span><span class="token punctuation">(</span>match<span class="token punctuation">.</span>size<span class="token punctuation">)</span><span class="token punctuation">,</span>
+		<span class="token punctuation">}</span>
+	<span class="token keyword">end</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+ranked<span class="token punctuation">.</span>matched<span class="token punctuation">:</span><span class="token function">connect</span><span class="token punctuation">(</span><span class="token keyword">function</span><span class="token punctuation">(</span>match<span class="token punctuation">)</span>
+	<span class="token keyword">local</span> present <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+	<span class="token keyword">for</span> _<span class="token punctuation">,</span> member <span class="token keyword">in</span> match<span class="token punctuation">.</span>members <span class="token keyword">do</span>
+		<span class="token keyword">local</span> player <span class="token operator">=</span> Players<span class="token punctuation">:</span><span class="token function">GetPlayerByUserId</span><span class="token punctuation">(</span>member<span class="token punctuation">.</span>userId<span class="token punctuation">)</span>
+		<span class="token keyword">if</span> player <span class="token keyword">then</span> table<span class="token punctuation">.</span><span class="token function">insert</span><span class="token punctuation">(</span>present<span class="token punctuation">,</span> player<span class="token punctuation">)</span> <span class="token keyword">end</span>
+	<span class="token keyword">end</span>
+	<span class="token keyword">if</span> <span class="token operator">#</span>present <span class="token operator">==</span> <span class="token number">0</span> <span class="token keyword">then</span> <span class="token keyword">return</span> <span class="token keyword">end</span>
+	TeleportService<span class="token punctuation">:</span><span class="token function">TeleportToPrivateServer</span><span class="token punctuation">(</span>ARENA_PLACE<span class="token punctuation">,</span> match<span class="token punctuation">.</span>data<span class="token punctuation">.</span>accessCode<span class="token punctuation">,</span> present<span class="token punctuation">)</span>
+<span class="token keyword">end</span><span class="token punctuation">)</span>
+</code></pre>
+<p>The contract for that hook, which is worth reading before you write one:</p>
+<ul>
+  <li>It runs <strong>exactly once per matchId</strong>, never concurrently for the same one.</li>
+  <li>
+    It may run <strong>more than once for the same set of players</strong> under different
+    matchIds, if a worker stalls and another repairs its work. <strong>Deduplicate on
+<code>matchId</code>, never on the player set.</strong>
+  </li>
+  <li>
+    Its side effects may <strong>survive a match that never forms</strong> — the lease can
+    be lost during the yield. Write it to be idempotent or cheap to abandon,
+    and use <code>onAbort</code> to release anything expensive.
+  </li>
+  <li>
+    If it throws, times out, or returns something unstorable, the match aborts
+    cleanly and every player goes back in the queue.
+  </li>
+</ul>
+<h3>Delivery</h3>
+<p>
+  <code>matched</code> fires on <strong>every server holding one of the matched players</strong>, not
+  just the one that formed the match. If none of the players are on this
+  server, it does not fire here at all — so the handler can assume it has
+  someone to act on.
+</p>
+<p>
+  A match is written to MemoryStore before it is announced, so delivery does
+  not depend on MessagingService: typically it arrives in under 200 ms, and
+  if messaging is down entirely a poll finds it within a few seconds.
+</p>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L128"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><code>config<!-- -->: </code><code class="blue_P4bS">MatchmakerConfig</code><code>) → </code><code class="blue_P4bS">any</code></div><div>
+<p>Builds a queue. Every field except <code>name</code> and <code>size</code> has a default.</p>
+</div><h3>Errors</h3><table class="errorTable_jfN8"><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>&quot;Muster: ...&quot;</td><td>Any configuration problem, reported at your call site.</td></tr></tbody></table><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="enqueue"><code style="text-decoration:none">enqueue</code><a href="#enqueue" class="hash-link" aria-label="Direct link to enqueue" title="Direct link to enqueue" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L233"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">enqueue</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#EnqueueOptions">EnqueueOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+<p>Queues one player.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="enqueueGroup"><code style="text-decoration:none">enqueueGroup</code><a href="#enqueueGroup" class="hash-link" aria-label="Direct link to enqueueGroup" title="Direct link to enqueueGroup" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L261"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">enqueueGroup</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userIds<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#GroupOptions">GroupOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+<p>
+  Queues an arbitrary set of players as one indivisible ticket, without using
+  Muster's own party system. Use this when you already have parties or squads
+  of your own.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="enqueueParty"><code style="text-decoration:none">enqueueParty</code><a href="#enqueueParty" class="hash-link" aria-label="Direct link to enqueueParty" title="Direct link to enqueueParty" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L292"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">enqueueParty</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partyId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#GroupOptions">GroupOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+<p>
+  Queues a Muster party. Only its leader may do this, and the party's
+  membership is frozen until the ticket resolves.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cancel"><code style="text-decoration:none">cancel</code><a href="#cancel" class="hash-link" aria-label="Direct link to cancel" title="Direct link to cancel" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L366"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">cancel</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+<p>
+  Cancels a ticket. Only its leader may do so, and only while it is still
+  queued — a ticket already claimed for a match cannot be pulled back.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cancelForUser"><code style="text-decoration:none">cancelForUser</code><a href="#cancelForUser" class="hash-link" aria-label="Direct link to cancelForUser" title="Direct link to cancelForUser" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L377"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">cancelForUser</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">boolean</code><code class="op_lSLc">&gt;</code><span class="inlineDescription_G7Er">-- <span>
+<p>Whether a ticket was actually cancelled.</p>
+</span></span></div><div>
+<p>
+  Cancels whatever ticket a user holds, if any. Wired to <code>PlayerRemoving</code>
+  automatically unless <code>autoCancelOnLeave</code> is off.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getTicket"><code style="text-decoration:none">getTicket</code><a href="#getTicket" class="hash-link" aria-label="Direct link to getTicket" title="Direct link to getTicket" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L397"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">getTicket</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getStatus"><code style="text-decoration:none">getStatus</code><a href="#getStatus" class="hash-link" aria-label="Direct link to getStatus" title="Direct link to getStatus" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L404"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">getStatus</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getMatch"><code style="text-decoration:none">getMatch</code><a href="#getMatch" class="hash-link" aria-label="Direct link to getMatch" title="Direct link to getMatch" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L414"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">getMatch</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>matchId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+<p>
+  Reads a finalized match by id — useful for a player who rejoined on a new
+  server and needs the envelope again.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="acknowledge"><code style="text-decoration:none">acknowledge</code><a href="#acknowledge" class="hash-link" aria-label="Direct link to acknowledge" title="Direct link to acknowledge" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L425"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">acknowledge</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+<p>
+  Releases a ticket's players so they can queue again, and unlocks its party.
+  Done for you unless <code>manualAcknowledge</code> is set, which is what you want if
+  teleporting can fail and you need the option to re-queue.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step"><code style="text-decoration:none">step</code><a href="#step" class="hash-link" aria-label="Direct link to step" title="Direct link to step" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L435"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">step</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Runs one worker pass. The loop calls this for you; call it directly in tests
+  to advance the system a step at a time.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="start"><code style="text-decoration:none">start</code><a href="#start" class="hash-link" aria-label="Direct link to start" title="Direct link to start" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L442"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">start</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stop"><code style="text-decoration:none">stop</code><a href="#stop" class="hash-link" aria-label="Direct link to stop" title="Direct link to stop" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L453"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">stop</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Stops the worker and hands back every lease, so another server picks the
+  work up at once rather than waiting for a timeout. Call it from
+  <code>BindToClose</code>.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="destroy"><code style="text-decoration:none">destroy</code><a href="#destroy" class="hash-link" aria-label="Direct link to destroy" title="Direct link to destroy" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L462"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">destroy</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Stops everything and drops all signal handlers.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="health"><code style="text-decoration:none">health</code><a href="#health" class="hash-link" aria-label="Direct link to health" title="Direct link to health" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L481"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">health</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS">any</code></div><div>
+<p>
+  A snapshot for logging or a debug command: how many tickets this server has
+  queued, how many lanes it is working, whether broadcasts look healthy, and
+  per-structure request health.
+</p>
+</div></div></article></div><details><summary>Show raw api</summary><pre style="max-width:100%;white-space:pre-wrap">{
+    &quot;functions&quot;: [
+        {
+            &quot;name&quot;: &quot;new&quot;,
+            &quot;desc&quot;: &quot;Builds a queue. Every field except `name` and `size` has a default.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;config&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;MatchmakerConfig&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;errors&quot;: [
+                {
+                    &quot;lua_type&quot;: &quot;\&quot;Muster: ...\&quot;&quot;,
+                    &quot;desc&quot;: &quot;Any configuration problem, reported at your call site.&quot;
+                }
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 128,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;enqueue&quot;,
+            &quot;desc&quot;: &quot;Queues one player.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;userId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;options&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;EnqueueOptions?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 233,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;enqueueGroup&quot;,
+            &quot;desc&quot;: &quot;Queues an arbitrary set of players as one indivisible ticket, without using\nMuster&#x27;s own party system. Use this when you already have parties or squads\nof your own.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;userIds&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;{ number }&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;options&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;GroupOptions?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 261,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;enqueueParty&quot;,
+            &quot;desc&quot;: &quot;Queues a Muster party. Only its leader may do this, and the party&#x27;s\nmembership is frozen until the ticket resolves.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;partyId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;requesterUserId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;options&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;GroupOptions?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 292,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;cancel&quot;,
+            &quot;desc&quot;: &quot;Cancels a ticket. Only its leader may do so, and only while it is still\nqueued — a ticket already claimed for a match cannot be pulled back.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;requesterUserId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;ticketId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 366,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;cancelForUser&quot;,
+            &quot;desc&quot;: &quot;Cancels whatever ticket a user holds, if any. Wired to `PlayerRemoving`\nautomatically unless `autoCancelOnLeave` is off.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;userId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;Whether a ticket was actually cancelled.&quot;,
+                    &quot;lua_type&quot;: &quot;Result&lt;boolean&gt;&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 377,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;getTicket&quot;,
+            &quot;desc&quot;: &quot;&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;userId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 397,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;getStatus&quot;,
+            &quot;desc&quot;: &quot;&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;ticketId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 404,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;getMatch&quot;,
+            &quot;desc&quot;: &quot;Reads a finalized match by id — useful for a player who rejoined on a new\nserver and needs the envelope again.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;matchId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 414,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;acknowledge&quot;,
+            &quot;desc&quot;: &quot;Releases a ticket&#x27;s players so they can queue again, and unlocks its party.\nDone for you unless `manualAcknowledge` is set, which is what you want if\nteleporting can fail and you need the option to re-queue.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;requesterUserId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;ticketId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 425,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;step&quot;,
+            &quot;desc&quot;: &quot;Runs one worker pass. The loop calls this for you; call it directly in tests\nto advance the system a step at a time.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 435,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;start&quot;,
+            &quot;desc&quot;: &quot;&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 442,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;stop&quot;,
+            &quot;desc&quot;: &quot;Stops the worker and hands back every lease, so another server picks the\nwork up at once rather than waiting for a timeout. Call it from\n`BindToClose`.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 453,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;destroy&quot;,
+            &quot;desc&quot;: &quot;Stops everything and drops all signal handlers.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 462,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;health&quot;,
+            &quot;desc&quot;: &quot;A snapshot for logging or a debug command: how many tickets this server has\nqueued, how many lanes it is working, whether broadcasts look healthy, and\nper-structure request health.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;self&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 481,
+                &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+            }
+        }
+    ],
+    &quot;properties&quot;: [],
+    &quot;types&quot;: [],
+    &quot;name&quot;: &quot;Matchmaker&quot;,
+    &quot;desc&quot;: &quot;A queue. Construct one per game mode, enqueue players, and listen for\nmatches.\n\n```lua\nlocal Muster = require(ReplicatedStorage.Packages.Muster)\n\nlocal duels = Muster.new({ name = \&quot;duels\&quot;, size = 2 })\n\nduels.matched:connect(function(match)\n\tfor _, member in match.members do\n\t\tprint(member.userId, \&quot;-&gt;\&quot;, match.matchId)\n\tend\nend)\n\nduels:enqueue(player.UserId)\n```\n\nThat is the whole setup. The worker starts itself, subscribes for\ncross-server delivery, cleans up when players leave, and matches on its\nfirst scan.\n\n### The finalize hook\n\nMuster stops at the match envelope: it never teleports and never reserves\nservers, because every game wants that done differently. Instead, `finalize`\nruns once per match on whichever server formed it, and whatever it returns\nis attached to the envelope as `match.data` and delivered to everyone.\n\n```lua\nlocal ranked = Muster.new({\n\tname = \&quot;ranked\&quot;,\n\tsize = { min = 4, target = 8, max = 8 },\n\trating = { window = 150, relax = 25, default = 1000 },\n\n\tfinalize = function(match)\n\t\treturn {\n\t\t\taccessCode = TeleportService:ReserveServerAsync(ARENA_PLACE),\n\t\t\tmap = pickMap(match.size),\n\t\t}\n\tend,\n})\n\nranked.matched:connect(function(match)\n\tlocal present = {}\n\tfor _, member in match.members do\n\t\tlocal player = Players:GetPlayerByUserId(member.userId)\n\t\tif player then table.insert(present, player) end\n\tend\n\tif #present == 0 then return end\n\tTeleportService:TeleportToPrivateServer(ARENA_PLACE, match.data.accessCode, present)\nend)\n```\n\nThe contract for that hook, which is worth reading before you write one:\n\n- It runs **exactly once per matchId**, never concurrently for the same one.\n- It may run **more than once for the same set of players** under different\n  matchIds, if a worker stalls and another repairs its work. **Deduplicate on\n  `matchId`, never on the player set.**\n- Its side effects may **survive a match that never forms** — the lease can\n  be lost during the yield. Write it to be idempotent or cheap to abandon,\n  and use `onAbort` to release anything expensive.\n- If it throws, times out, or returns something unstorable, the match aborts\n  cleanly and every player goes back in the queue.\n\n### Delivery\n\n`matched` fires on **every server holding one of the matched players**, not\njust the one that formed the match. If none of the players are on this\nserver, it does not fire here at all — so the handler can assume it has\nsomeone to act on.\n\nA match is written to MemoryStore before it is announced, so delivery does\nnot depend on MessagingService: typically it arrives in under 200 ms, and\nif messaging is down entirely a poll finds it within a few seconds.&quot;,
+    &quot;source&quot;: {
+        &quot;line&quot;: 82,
+        &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
+    }
+}</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#acknowledge" class="table-of-contents__link toc-highlight">.acknowledge</a></li><li><a href="#cancel" class="table-of-contents__link toc-highlight">.cancel</a></li><li><a href="#cancelForUser" class="table-of-contents__link toc-highlight">.cancelForUser</a></li><li><a href="#destroy" class="table-of-contents__link toc-highlight">.destroy</a></li><li><a href="#enqueue" class="table-of-contents__link toc-highlight">.enqueue</a></li><li><a href="#enqueueGroup" class="table-of-contents__link toc-highlight">.enqueueGroup</a></li><li><a href="#enqueueParty" class="table-of-contents__link toc-highlight">.enqueueParty</a></li><li><a href="#getMatch" class="table-of-contents__link toc-highlight">.getMatch</a></li><li><a href="#getStatus" class="table-of-contents__link toc-highlight">.getStatus</a></li><li><a href="#getTicket" class="table-of-contents__link toc-highlight">.getTicket</a></li><li><a href="#health" class="table-of-contents__link toc-highlight">.health</a></li><li><a href="#new" class="table-of-contents__link toc-highlight">.new</a></li><li><a href="#start" class="table-of-contents__link toc-highlight">.start</a></li><li><a href="#step" class="table-of-contents__link toc-highlight">.step</a></li><li><a href="#stop" class="table-of-contents__link toc-highlight">.stop</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 shmeatley. Built with Moonwave and Docusaurus.</div></div></div></footer></div>
+</body>
+</html>
