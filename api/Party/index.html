@@ -6,6 +6,21 @@
 <title data-rh="true">Party | Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/Party"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="Party | Muster"><meta data-rh="true" name="description" content="Cross-server parties: a group of players who queue together and are never
 split across matches.
 
+:::tip Do you need this?
+Probably not. `Matchmaker:enqueueGroup({ userIds })` already queues any set
+of players as one indivisible ticket, and if your parties form in a single
+lobby they can live in a plain table on that server.
+
+This exists for parties that must survive members being on **different**
+servers: join-friend landing someone in another server because your own is
+full, inviting a player who is not in your lobby yet, or a party regrouping
+after a match scatters everyone across lobbies. If none of those describe
+your game, use `enqueueGroup` instead.
+
+A [Matchmaker] builds this on first access to `queue.parties`, and it writes
+nothing to the store until you call something on it.
+:::
+
 Membership is enforced by a **single-slot index per user**, written with
 compare-and-set. A player belongs to at most one party, and two servers
 racing to add the same player will see exactly one of them win — which is
@@ -35,6 +50,21 @@ parties:acceptInvite(friendUserId, invites[1].id)
 ```"><meta data-rh="true" property="og:description" content="Cross-server parties: a group of players who queue together and are never
 split across matches.
 
+:::tip Do you need this?
+Probably not. `Matchmaker:enqueueGroup({ userIds })` already queues any set
+of players as one indivisible ticket, and if your parties form in a single
+lobby they can live in a plain table on that server.
+
+This exists for parties that must survive members being on **different**
+servers: join-friend landing someone in another server because your own is
+full, inviting a player who is not in your lobby yet, or a party regrouping
+after a match scatters everyone across lobbies. If none of those describe
+your game, use `enqueueGroup` instead.
+
+A [Matchmaker] builds this on first access to `queue.parties`, and it writes
+nothing to the store until you call something on it.
+:::
+
 Membership is enforced by a **single-slot index per user**, written with
 compare-and-set. A player belongs to at most one party, and two servers
 racing to add the same player will see exactly one of them win — which is
@@ -62,8 +92,8 @@ parties:invite(leaderUserId, friendUserId)
 local invites = Muster.Result.unwrap(parties:listInvites(friendUserId))
 parties:acceptInvite(friendUserId, invites[1].id)
 ```"><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Party"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Party" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Party" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.cb19d411.js" defer="defer"></script>
-<script src="/muster/assets/js/main.4fc14a6b.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.306d9223.js" defer="defer"></script>
+<script src="/muster/assets/js/main.b0012bea.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -73,6 +103,24 @@ parties:acceptInvite(friendUserId, invites[1].id)
 <p>
   Cross-server parties: a group of players who queue together and are never
   split across matches.
+</p>
+<p>
+  :::tip Do you need this?
+  Probably not. <code>Matchmaker:enqueueGroup({ userIds })</code> already queues any set
+  of players as one indivisible ticket, and if your parties form in a single
+  lobby they can live in a plain table on that server.
+</p>
+<p>
+  This exists for parties that must survive members being on <strong>different</strong>
+  servers: join-friend landing someone in another server because your own is
+  full, inviting a player who is not in your lobby yet, or a party regrouping
+  after a match scatters everyone across lobbies. If none of those describe
+  your game, use <code>enqueueGroup</code> instead.
+</p>
+<p>
+  A <a href="/muster/api/Matchmaker">Matchmaker</a> builds this on first access to <code>queue.parties</code>, and it writes
+  nothing to the store until you call something on it.
+  :::
 </p>
 <p>
   Membership is enforced by a <strong>single-slot index per user</strong>, written with
@@ -103,36 +151,36 @@ parties<span class="token punctuation">:</span><span class="token function">invi
 <span class="token keyword">local</span> invites <span class="token operator">=</span> Muster<span class="token punctuation">.</span>Result<span class="token punctuation">.</span><span class="token function">unwrap</span><span class="token punctuation">(</span>parties<span class="token punctuation">:</span><span class="token function">listInvites</span><span class="token punctuation">(</span>friendUserId<span class="token punctuation">)</span><span class="token punctuation">)</span>
 parties<span class="token punctuation">:</span><span class="token function">acceptInvite</span><span class="token punctuation">(</span>friendUserId<span class="token punctuation">,</span> invites<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">.</span>id<span class="token punctuation">)</span>
 </code></pre>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L109"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><div class="inset_uKQm"><div><code>store<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS">any?</code><span class="inlineDescription_G7Er">-- <span>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L124"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><div class="inset_uKQm"><div><code>store<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS">any?</code><span class="inlineDescription_G7Er">-- <span>
 <p><code>clock</code>, <code>id</code>, <code>namespace</code>, <code>maxMembers</code>. A <a href="/muster/api/Matchmaker">Matchmaker</a> passes its own.</p>
-</span></span></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="get"><code style="text-decoration:none">get</code><a href="#get" class="hash-link" aria-label="Direct link to get" title="Direct link to get" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L139"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">get</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>partyId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+</span></span></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="get"><code style="text-decoration:none">get</code><a href="#get" class="hash-link" aria-label="Direct link to get" title="Direct link to get" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L154"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">get</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>partyId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
 <p>Reads a party, repairing an abandoned queue lock on the way out.</p>
 <p>
   The repair matters: a server that queued a party and then died would
   otherwise leave it locked until the record itself expired, two hours later.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getForUser"><code style="text-decoration:none">getForUser</code><a href="#getForUser" class="hash-link" aria-label="Direct link to getForUser" title="Direct link to getForUser" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L180"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">getForUser</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getForUser"><code style="text-decoration:none">getForUser</code><a href="#getForUser" class="hash-link" aria-label="Direct link to getForUser" title="Direct link to getForUser" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L195"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">getForUser</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
 <p>
   The party a user belongs to, or <code>nil</code>. Clears a membership pointing at a
   party that no longer contains them.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="create"><code style="text-decoration:none">create</code><a href="#create" class="hash-link" aria-label="Direct link to create" title="Direct link to create" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L207"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">create</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>leaderUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>serverId<!-- -->: </code><code class="blue_P4bS">string?</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="invite"><code style="text-decoration:none">invite</code><a href="#invite" class="hash-link" aria-label="Direct link to invite" title="Direct link to invite" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L259"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">invite</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>leaderUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>targetUserId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="create"><code style="text-decoration:none">create</code><a href="#create" class="hash-link" aria-label="Direct link to create" title="Direct link to create" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L222"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">create</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>leaderUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>serverId<!-- -->: </code><code class="blue_P4bS">string?</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="invite"><code style="text-decoration:none">invite</code><a href="#invite" class="hash-link" aria-label="Direct link to invite" title="Direct link to invite" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L274"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">invite</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>leaderUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>targetUserId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
 <p>
   Invites are an inbox keyed by the <strong>target</strong>, so a player sees their invites
   on whatever server they happen to be on. Capped at
   <code>Defaults.MAX_PARTY_INVITES</code> per user, oldest evicted first.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="listInvites"><code style="text-decoration:none">listInvites</code><a href="#listInvites" class="hash-link" aria-label="Direct link to listInvites" title="Direct link to listInvites" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L318"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">listInvites</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="declineInvite"><code style="text-decoration:none">declineInvite</code><a href="#declineInvite" class="hash-link" aria-label="Direct link to declineInvite" title="Direct link to declineInvite" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L350"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">declineInvite</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>inviteId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="acceptInvite"><code style="text-decoration:none">acceptInvite</code><a href="#acceptInvite" class="hash-link" aria-label="Direct link to acceptInvite" title="Direct link to acceptInvite" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L361"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">acceptInvite</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>inviteId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>serverId<!-- -->: </code><code class="blue_P4bS">string?</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="listInvites"><code style="text-decoration:none">listInvites</code><a href="#listInvites" class="hash-link" aria-label="Direct link to listInvites" title="Direct link to listInvites" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L333"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">listInvites</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="declineInvite"><code style="text-decoration:none">declineInvite</code><a href="#declineInvite" class="hash-link" aria-label="Direct link to declineInvite" title="Direct link to declineInvite" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L365"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">declineInvite</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>inviteId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="acceptInvite"><code style="text-decoration:none">acceptInvite</code><a href="#acceptInvite" class="hash-link" aria-label="Direct link to acceptInvite" title="Direct link to acceptInvite" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L376"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">acceptInvite</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>inviteId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>serverId<!-- -->: </code><code class="blue_P4bS">string?</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
 <p>
   Joins the inviting party, reserving the user's membership slot before
   touching the party so two competing invites cannot both succeed.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="leave"><code style="text-decoration:none">leave</code><a href="#leave" class="hash-link" aria-label="Direct link to leave" title="Direct link to leave" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L524"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">leave</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="kick"><code style="text-decoration:none">kick</code><a href="#kick" class="hash-link" aria-label="Direct link to kick" title="Direct link to kick" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L531"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">kick</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>leaderUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>targetUserId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="transferLeader"><code style="text-decoration:none">transferLeader</code><a href="#transferLeader" class="hash-link" aria-label="Direct link to transferLeader" title="Direct link to transferLeader" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L541"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">transferLeader</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>leaderUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>targetUserId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="heartbeat"><code style="text-decoration:none">heartbeat</code><a href="#heartbeat" class="hash-link" aria-label="Direct link to heartbeat" title="Direct link to heartbeat" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L591"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">heartbeat</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>serverId<!-- -->: </code><code class="blue_P4bS">string?</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="leave"><code style="text-decoration:none">leave</code><a href="#leave" class="hash-link" aria-label="Direct link to leave" title="Direct link to leave" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L539"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">leave</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="kick"><code style="text-decoration:none">kick</code><a href="#kick" class="hash-link" aria-label="Direct link to kick" title="Direct link to kick" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L546"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">kick</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>leaderUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>targetUserId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="transferLeader"><code style="text-decoration:none">transferLeader</code><a href="#transferLeader" class="hash-link" aria-label="Direct link to transferLeader" title="Direct link to transferLeader" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L556"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">transferLeader</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>leaderUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>targetUserId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="heartbeat"><code style="text-decoration:none">heartbeat</code><a href="#heartbeat" class="hash-link" aria-label="Direct link to heartbeat" title="Direct link to heartbeat" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L606"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">heartbeat</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>serverId<!-- -->: </code><code class="blue_P4bS">string?</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div>
 <p>
   Refreshes a member's TTL and records which server they are currently on, so
   a match involving them is delivered to the right place.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="disband"><code style="text-decoration:none">disband</code><a href="#disband" class="hash-link" aria-label="Direct link to disband" title="Direct link to disband" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L793"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">disband</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>leaderUserId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div></div></article></div><details><summary>Show raw api</summary><pre style="max-width:100%;white-space:pre-wrap">{
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="disband"><code style="text-decoration:none">disband</code><a href="#disband" class="hash-link" aria-label="Direct link to disband" title="Direct link to disband" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Party.luau#L808"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Party<!-- -->.</code><code class="green_DgR4">disband</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code><code>,</code></div><div><code>leaderUserId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">any</code></div><div></div></div></article></div><details><summary>Show raw api</summary><pre style="max-width:100%;white-space:pre-wrap">{
     &quot;functions&quot;: [
         {
             &quot;name&quot;: &quot;new&quot;,
@@ -157,7 +205,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 109,
+                &quot;line&quot;: 124,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -184,7 +232,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 139,
+                &quot;line&quot;: 154,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -211,7 +259,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 180,
+                &quot;line&quot;: 195,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -243,7 +291,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 207,
+                &quot;line&quot;: 222,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -275,7 +323,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 259,
+                &quot;line&quot;: 274,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -302,7 +350,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 318,
+                &quot;line&quot;: 333,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -334,7 +382,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 350,
+                &quot;line&quot;: 365,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -371,7 +419,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 361,
+                &quot;line&quot;: 376,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -398,7 +446,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 524,
+                &quot;line&quot;: 539,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -430,7 +478,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 531,
+                &quot;line&quot;: 546,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -462,7 +510,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 541,
+                &quot;line&quot;: 556,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -494,7 +542,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 591,
+                &quot;line&quot;: 606,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -532,7 +580,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 634,
+                &quot;line&quot;: 649,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -565,7 +613,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 671,
+                &quot;line&quot;: 686,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -598,7 +646,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 704,
+                &quot;line&quot;: 719,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -636,7 +684,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 740,
+                &quot;line&quot;: 755,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -669,7 +717,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 778,
+                &quot;line&quot;: 793,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         },
@@ -696,7 +744,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 793,
+                &quot;line&quot;: 808,
                 &quot;path&quot;: &quot;src/Party.luau&quot;
             }
         }
@@ -704,9 +752,9 @@ parties<span class="token punctuation">:</span><span class="token function">acce
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;Party&quot;,
-    &quot;desc&quot;: &quot;Cross-server parties: a group of players who queue together and are never\nsplit across matches.\n\nMembership is enforced by a **single-slot index per user**, written with\ncompare-and-set. A player belongs to at most one party, and two servers\nracing to add the same player will see exactly one of them win — which is\nthe whole problem, since the two servers cannot see each other.\n\nAccepting an invite is a two-phase reservation: a short-lived `Reserved`\nslot is taken first, the party record is updated second, and the slot is\npromoted to `Active` only once the join actually succeeded. A crash between\nthe phases leaves a reservation that expires in 20 seconds rather than a\nplayer wedged in a party that never got them.\n\nWhile a party is queued its membership is **frozen** — invites, kicks,\nleaves, leader transfers and disbands all fail with `PartyLocked` — so the\nroster the matchmaker matched cannot change underneath it. An abandoned\nqueue lock repairs itself on the next read rather than freezing the party\nforever.\n\n```lua\nlocal parties = Muster.Party.new(store)\n\nlocal party = Muster.Result.unwrap(parties:create(leaderUserId))\nparties:invite(leaderUserId, friendUserId)\n\n-- On the friend&#x27;s server, possibly a different one entirely:\nlocal invites = Muster.Result.unwrap(parties:listInvites(friendUserId))\nparties:acceptInvite(friendUserId, invites[1].id)\n```&quot;,
+    &quot;desc&quot;: &quot;Cross-server parties: a group of players who queue together and are never\nsplit across matches.\n\n:::tip Do you need this?\nProbably not. `Matchmaker:enqueueGroup({ userIds })` already queues any set\nof players as one indivisible ticket, and if your parties form in a single\nlobby they can live in a plain table on that server.\n\nThis exists for parties that must survive members being on **different**\nservers: join-friend landing someone in another server because your own is\nfull, inviting a player who is not in your lobby yet, or a party regrouping\nafter a match scatters everyone across lobbies. If none of those describe\nyour game, use `enqueueGroup` instead.\n\nA [Matchmaker] builds this on first access to `queue.parties`, and it writes\nnothing to the store until you call something on it.\n:::\n\nMembership is enforced by a **single-slot index per user**, written with\ncompare-and-set. A player belongs to at most one party, and two servers\nracing to add the same player will see exactly one of them win — which is\nthe whole problem, since the two servers cannot see each other.\n\nAccepting an invite is a two-phase reservation: a short-lived `Reserved`\nslot is taken first, the party record is updated second, and the slot is\npromoted to `Active` only once the join actually succeeded. A crash between\nthe phases leaves a reservation that expires in 20 seconds rather than a\nplayer wedged in a party that never got them.\n\nWhile a party is queued its membership is **frozen** — invites, kicks,\nleaves, leader transfers and disbands all fail with `PartyLocked` — so the\nroster the matchmaker matched cannot change underneath it. An abandoned\nqueue lock repairs itself on the next read rather than freezing the party\nforever.\n\n```lua\nlocal parties = Muster.Party.new(store)\n\nlocal party = Muster.Result.unwrap(parties:create(leaderUserId))\nparties:invite(leaderUserId, friendUserId)\n\n-- On the friend&#x27;s server, possibly a different one entirely:\nlocal invites = Muster.Result.unwrap(parties:listInvites(friendUserId))\nparties:acceptInvite(friendUserId, invites[1].id)\n```&quot;,
     &quot;source&quot;: {
-        &quot;line&quot;: 37,
+        &quot;line&quot;: 52,
         &quot;path&quot;: &quot;src/Party.luau&quot;
     }
 }</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#acceptInvite" class="table-of-contents__link toc-highlight">.acceptInvite</a></li><li><a href="#create" class="table-of-contents__link toc-highlight">.create</a></li><li><a href="#declineInvite" class="table-of-contents__link toc-highlight">.declineInvite</a></li><li><a href="#disband" class="table-of-contents__link toc-highlight">.disband</a></li><li><a href="#get" class="table-of-contents__link toc-highlight">.get</a></li><li><a href="#getForUser" class="table-of-contents__link toc-highlight">.getForUser</a></li><li><a href="#heartbeat" class="table-of-contents__link toc-highlight">.heartbeat</a></li><li><a href="#invite" class="table-of-contents__link toc-highlight">.invite</a></li><li><a href="#kick" class="table-of-contents__link toc-highlight">.kick</a></li><li><a href="#leave" class="table-of-contents__link toc-highlight">.leave</a></li><li><a href="#listInvites" class="table-of-contents__link toc-highlight">.listInvites</a></li><li><a href="#new" class="table-of-contents__link toc-highlight">.new</a></li><li><a href="#transferLeader" class="table-of-contents__link toc-highlight">.transferLeader</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 shmeatley. Built with Moonwave and Docusaurus.</div></div></div></footer></div>

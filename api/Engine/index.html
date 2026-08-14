@@ -66,8 +66,8 @@ makes the failure self-correcting:
 | Worker dies mid-commit | Claims expire; another worker repairs them, adopting the match if it committed and aborting it if it did not |
 | Producer dies with tickets queued | Heartbeats stop, tickets self-evict within `ticketExpiration` |
 | Everything dies | The queue drains itself and the next server starts clean |"><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Engine"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Engine" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Engine" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.cb19d411.js" defer="defer"></script>
-<script src="/muster/assets/js/main.4fc14a6b.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.306d9223.js" defer="defer"></script>
+<script src="/muster/assets/js/main.b0012bea.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -136,13 +136,13 @@ makes the failure self-correcting:
     </tr>
   </tbody>
 </table>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step"><code style="text-decoration:none">step</code><a href="#step" class="hash-link" aria-label="Direct link to step" title="Direct link to step" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1008"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">step</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step"><code style="text-decoration:none">step</code><a href="#step" class="hash-link" aria-label="Direct link to step" title="Direct link to step" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1006"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">step</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   One pass: upkeep on our own tickets, then try to take on lanes, then scan
   the lanes we hold. Call it directly in tests to advance the system
   deterministically without a scheduler.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="start"><code style="text-decoration:none">start</code><a href="#start" class="hash-link" aria-label="Direct link to start" title="Direct link to start" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1021"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">start</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stop"><code style="text-decoration:none">stop</code><a href="#stop" class="hash-link" aria-label="Direct link to stop" title="Direct link to stop" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1048"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">stop</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="start"><code style="text-decoration:none">start</code><a href="#start" class="hash-link" aria-label="Direct link to start" title="Direct link to start" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1019"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">start</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stop"><code style="text-decoration:none">stop</code><a href="#stop" class="hash-link" aria-label="Direct link to stop" title="Direct link to stop" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1046"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">stop</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   Stops the loop and hands back every lease, so another server picks the lanes
   up immediately instead of after a 15-second timeout.
@@ -317,7 +317,7 @@ makes the failure self-correcting:
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 1008,
+                &quot;line&quot;: 1006,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -334,7 +334,7 @@ makes the failure self-correcting:
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 1021,
+                &quot;line&quot;: 1019,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -351,7 +351,7 @@ makes the failure self-correcting:
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 1048,
+                &quot;line&quot;: 1046,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         }
