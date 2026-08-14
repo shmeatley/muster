@@ -14,7 +14,6 @@
 
 local Defaults = require(script.Parent.Defaults)
 local Hash = require(script.Parent.Hash)
-local Lanes = require(script.Parent.internal.Lanes)
 local Runtime = require(script.Parent.internal.Runtime)
 local Types = require(script.Parent.Types)
 
@@ -201,19 +200,21 @@ function Config.resolve(raw: any): (any, string?)
 		return nil, "Muster: `onAbort` only fires for matches that ran a `finalize` hook; set `finalize` too"
 	end
 
-	-- `lanes` is "auto" (the default) or a pinned power of two. Powers of two are
-	-- what let a resize map old lanes onto new ones exactly, so a pinned value
-	-- has to satisfy the same constraint the scaler does.
+	-- `lanes` is "auto" (the default) or a pinned count.
+	--
+	-- A pinned count may be any integer in range. The power-of-two rule exists
+	-- only so the scaler can map old lanes onto new ones exactly when it
+	-- resizes, and a pinned count never resizes — it has no previous count, so
+	-- `Lanes.legacyMaps` is never reached. The invariant stays enforced where it
+	-- is actually load-bearing, inside LaneScaler.
 	local laneMode = "auto"
 	local lanes = Defaults.LANES
 	if raw.lanes ~= nil and raw.lanes ~= "auto" then
 		laneMode = "fixed"
 		lanes = raw.lanes
-		if not Lanes.isPowerOfTwo(lanes) or lanes > Defaults.LANE_MAX then
+		if not isPositiveInteger(lanes) or lanes > Defaults.LANE_MAX then
 			return nil,
-				`Muster: \`lanes\` must be "auto" or a power of two from 1 to {Defaults.LANE_MAX} (got {tostring(
-					raw.lanes
-				)})`
+				`Muster: \`lanes\` must be "auto" or an integer from 1 to {Defaults.LANE_MAX} (got {tostring(raw.lanes)})`
 		end
 	end
 

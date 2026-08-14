@@ -75,8 +75,9 @@ end
 	The maps from `previous` that could hold tickets whose lane, at `count`, is
 	`lane`.
 
-	Counts are powers of two and only ever double or halve, which makes this
-	exact rather than approximate. A ticket hashes to `h % count`:
+	Only [LaneScaler] resizes, and it only ever doubles or halves from one, so
+	both counts here are always powers of two. That is what makes this exact
+	rather than approximate. A ticket hashes to `h % count`:
 
 	- **Growing** (`count > previous`): a ticket in old map `o` satisfies
 	  `h % previous == o`, so its new lane is one of `o`, `o + previous`,

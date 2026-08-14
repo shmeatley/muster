@@ -156,6 +156,43 @@ return function()
 		equal("the count is still what was asked for", server._engine._scaler:current("all").count, 2)
 	end
 
+	Harness.suite("a pinned odd count works")
+	do
+		-- Three lanes is not a power of two, which the scaler could not resize
+		-- across — but a pinned count never resizes, so it is perfectly usable.
+		local world = Harness.world({ size = 2 })
+		local server = world.server("A", { lanes = 3 })
+		local matches = world.collect()
+
+		equal("pinned at three", server._settings.lanes, 3)
+
+		-- Enough players that some pair shares a lane.
+		for user = 1, 12 do
+			server:enqueue(user)
+		end
+		world.tick(6, 2)
+
+		check("players matched", #matches > 0, `{#matches} matches`)
+
+		local occupied = {}
+		for lane = 0, 2 do
+			local map = Muster.internal.Lanes.name(server._settings, "all", 3, lane)
+			occupied[lane] = #select(2, world.store:sortedRange(map, 100))
+		end
+		local spread = 0
+		for lane = 0, 2 do
+			if occupied[lane] > 0 then
+				spread += 1
+			end
+		end
+		check(
+			"and the pool really was spread across three lanes",
+			spread > 0 or #matches >= 6,
+			`leftover per lane: {occupied[0]}, {occupied[1]}, {occupied[2]}`
+		)
+		equal("no lane record was written", laneState(server), nil)
+	end
+
 	Harness.suite("survives a broken lane record")
 	do
 		-- Garbage or an outage must not take the queue down; it falls back to

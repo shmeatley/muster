@@ -59,8 +59,19 @@ return function()
 		local lane = Lanes.laneFor(8, "ticket-1")
 		check("sharded lanes are in range", lane >= 0 and lane < 8, `got {lane}`)
 
-		local _, threeProblem = Muster.Config.resolve({ name = "q", size = 2, lanes = 3 })
-		check("rejects a non power of two", threeProblem ~= nil, threeProblem)
+		-- A pinned count never resizes, so it is not bound by the power-of-two
+		-- rule the scaler needs.
+		local three = Muster.Config.resolve({ name = "q", size = 2, lanes = 3 })
+		equal("a pinned count may be any integer", three.lanes, 3)
+		equal("and is fixed", three.laneMode, "fixed")
+		local lane = Lanes.laneFor(3, "ticket-1")
+		check("three lanes are addressable", lane >= 0 and lane < 3, `got {lane}`)
+		equal("and enumerable", #Lanes.allFor(three, "all", 3), 3)
+
+		local _, zeroProblem = Muster.Config.resolve({ name = "q", size = 2, lanes = 0 })
+		check("rejects zero", zeroProblem ~= nil, zeroProblem)
+		local _, fractionProblem = Muster.Config.resolve({ name = "q", size = 2, lanes = 2.5 })
+		check("rejects a fraction", fractionProblem ~= nil, fractionProblem)
 		local _, hugeProblem = Muster.Config.resolve({ name = "q", size = 2, lanes = 128 })
 		check("rejects a count above the maximum", hugeProblem ~= nil, hugeProblem)
 		local autoOk = Muster.Config.resolve({ name = "q", size = 2, lanes = "auto" })

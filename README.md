@@ -236,7 +236,7 @@ match on the first scan, and it doubles only once a single lane is consistently
 too full for one worker to see all of. When the queue thins out again, it halves
 back down. No sizing table, no tuning.
 
-Pin it if you'd rather: `lanes = 4` (powers of two, 1–64) disables scaling
+Pin it if you'd rather: `lanes = 4` (any integer, 1–64) disables scaling
 entirely and writes no lane record.
 
 <details>

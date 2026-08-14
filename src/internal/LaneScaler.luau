@@ -26,6 +26,11 @@
 	matched before that count can come back into use, so a lane name is never
 	reused while stale entries sit in it.
 
+	Counts the scaler chooses are always powers of two, because it only ever
+	starts at one and doubles or halves. That is what makes `Lanes.legacyMaps`
+	exact. A **pinned** count is under no such constraint — it never resizes, so
+	it has no previous count to map from.
+
 	### When it changes
 
 	Each worker judges only the lane it holds. Lanes are hashed uniformly, so one
