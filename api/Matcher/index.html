@@ -15,8 +15,8 @@ so a group is never split across matches.
 
 A combination reaching `targetSize` is taken immediately. A smaller one is
 accepted only once the anchor has waited `fallbackAfter` seconds, and then
-the largest viable size down to `minSize` wins — so five players waiting for
-a six-player match eventually play five-a-side.
+the largest viable size down to `minSize` wins. Five players waiting for a
+six-player match therefore end up playing five-a-side.
 
 The rating window widens with the **anchor&#x27;s** wait rather than each
 candidate&#x27;s. Because anchors are visited oldest first, the longest-waiting
@@ -41,8 +41,8 @@ so a group is never split across matches.
 
 A combination reaching `targetSize` is taken immediately. A smaller one is
 accepted only once the anchor has waited `fallbackAfter` seconds, and then
-the largest viable size down to `minSize` wins — so five players waiting for
-a six-player match eventually play five-a-side.
+the largest viable size down to `minSize` wins. Five players waiting for a
+six-player match therefore end up playing five-a-side.
 
 The rating window widens with the **anchor&#x27;s** wait rather than each
 candidate&#x27;s. Because anchors are visited oldest first, the longest-waiting
@@ -56,8 +56,8 @@ this favours the longest wait, and rating spread is already bounded by the
 window each candidate had to pass. Scanning the rest would cost a full pass
 per anchor on every scan of every lane.
 :::"><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Matcher"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matcher" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matcher" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.99176041.js" defer="defer"></script>
-<script src="/muster/assets/js/main.3d46a123.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.771ad50b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.8f6dfd01.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -78,8 +78,8 @@ per anchor on every scan of every lane.
 <p>
   A combination reaching <code>targetSize</code> is taken immediately. A smaller one is
   accepted only once the anchor has waited <code>fallbackAfter</code> seconds, and then
-  the largest viable size down to <code>minSize</code> wins — so five players waiting for
-  a six-player match eventually play five-a-side.
+  the largest viable size down to <code>minSize</code> wins. Five players waiting for a
+  six-player match therefore end up playing five-a-side.
 </p>
 <p>
   The rating window widens with the <strong>anchor's</strong> wait rather than each
@@ -227,7 +227,7 @@ per anchor on every scan of every lane.
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;Matcher&quot;,
-    &quot;desc&quot;: &quot;The grouping algorithm.\n\nPure: no store, no clock, no Roblox globals. It takes candidates and a policy\nand returns groups, so match quality can be tested without a queue.\n\nCandidates are sorted oldest first, ties broken by ticket id. Each unused\ncandidate in turn becomes an *anchor*, and a subset-sum walk over ticket\nsizes looks for a combination that fills the match. Tickets are indivisible,\nso a group is never split across matches.\n\nA combination reaching `targetSize` is taken immediately. A smaller one is\naccepted only once the anchor has waited `fallbackAfter` seconds, and then\nthe largest viable size down to `minSize` wins — so five players waiting for\na six-player match eventually play five-a-side.\n\nThe rating window widens with the **anchor&#x27;s** wait rather than each\ncandidate&#x27;s. Because anchors are visited oldest first, the longest-waiting\nplayer searches the widest, and an unmatched outlier does not block the\ncompatible players behind it.\n\n:::note Which full match wins\nThe walk stops at the first combination reaching `targetSize` rather than\ncontinuing to find a tighter one. Candidates are visited oldest first, so\nthis favours the longest wait, and rating spread is already bounded by the\nwindow each candidate had to pass. Scanning the rest would cost a full pass\nper anchor on every scan of every lane.\n:::&quot;,
+    &quot;desc&quot;: &quot;The grouping algorithm.\n\nPure: no store, no clock, no Roblox globals. It takes candidates and a policy\nand returns groups, so match quality can be tested without a queue.\n\nCandidates are sorted oldest first, ties broken by ticket id. Each unused\ncandidate in turn becomes an *anchor*, and a subset-sum walk over ticket\nsizes looks for a combination that fills the match. Tickets are indivisible,\nso a group is never split across matches.\n\nA combination reaching `targetSize` is taken immediately. A smaller one is\naccepted only once the anchor has waited `fallbackAfter` seconds, and then\nthe largest viable size down to `minSize` wins. Five players waiting for a\nsix-player match therefore end up playing five-a-side.\n\nThe rating window widens with the **anchor&#x27;s** wait rather than each\ncandidate&#x27;s. Because anchors are visited oldest first, the longest-waiting\nplayer searches the widest, and an unmatched outlier does not block the\ncompatible players behind it.\n\n:::note Which full match wins\nThe walk stops at the first combination reaching `targetSize` rather than\ncontinuing to find a tighter one. Candidates are visited oldest first, so\nthis favours the longest wait, and rating spread is already bounded by the\nwindow each candidate had to pass. Scanning the rest would cost a full pass\nper anchor on every scan of every lane.\n:::&quot;,
     &quot;source&quot;: {
         &quot;line&quot;: 34,
         &quot;path&quot;: &quot;src/internal/Matcher.luau&quot;

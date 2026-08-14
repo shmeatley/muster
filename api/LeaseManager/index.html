@@ -11,9 +11,9 @@ forming overlapping matches from the same tickets.
 A lease alone is not sufficient. A server can stall on a long yield, a GC
 pause or a slow web call, lose its lease to the timeout, and resume still
 believing it holds one. So every lease carries a monotonically increasing
-`epoch`, and the commit checks that epoch inside its own transform — a
-stalled server&#x27;s write is rejected by the store rather than by a check it
-could skip.
+`epoch`, and the commit checks that epoch inside its own transform. A stalled
+server&#x27;s write is then rejected by the store itself, rather than by a check
+it could skip.
 
 Three properties keep the epoch meaningful:
 
@@ -35,9 +35,9 @@ forming overlapping matches from the same tickets.
 A lease alone is not sufficient. A server can stall on a long yield, a GC
 pause or a slow web call, lose its lease to the timeout, and resume still
 believing it holds one. So every lease carries a monotonically increasing
-`epoch`, and the commit checks that epoch inside its own transform — a
-stalled server&#x27;s write is rejected by the store rather than by a check it
-could skip.
+`epoch`, and the commit checks that epoch inside its own transform. A stalled
+server&#x27;s write is then rejected by the store itself, rather than by a check
+it could skip.
 
 Three properties keep the epoch meaningful:
 
@@ -52,8 +52,8 @@ Leases last `LEASE_DURATION` (15 s) and are renewed every
 `LEASE_RENEW_INTERVAL` (5 s), giving three attempts before expiry. The stored
 record lives three times as long as the lease so an idle gap cannot lose the
 epoch to expiry."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/LeaseManager"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/LeaseManager" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/LeaseManager" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.99176041.js" defer="defer"></script>
-<script src="/muster/assets/js/main.3d46a123.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.771ad50b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.8f6dfd01.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -69,9 +69,9 @@ epoch to expiry."><link data-rh="true" rel="canonical" href="https://shmeatley.g
   A lease alone is not sufficient. A server can stall on a long yield, a GC
   pause or a slow web call, lose its lease to the timeout, and resume still
   believing it holds one. So every lease carries a monotonically increasing
-  <code>epoch</code>, and the commit checks that epoch inside its own transform — a
-  stalled server's write is rejected by the store rather than by a check it
-  could skip.
+  <code>epoch</code>, and the commit checks that epoch inside its own transform. A stalled
+  server's write is then rejected by the store itself, rather than by a check
+  it could skip.
 </p>
 <p>Three properties keep the epoch meaningful:</p>
 <ul>
@@ -291,7 +291,7 @@ epoch to expiry."><link data-rh="true" rel="canonical" href="https://shmeatley.g
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;LeaseManager&quot;,
-    &quot;desc&quot;: &quot;A distributed lock with a fencing token, built on compare-and-set.\n\nOnly the server holding a lane&#x27;s lease scans it, which stops two servers\nforming overlapping matches from the same tickets.\n\nA lease alone is not sufficient. A server can stall on a long yield, a GC\npause or a slow web call, lose its lease to the timeout, and resume still\nbelieving it holds one. So every lease carries a monotonically increasing\n`epoch`, and the commit checks that epoch inside its own transform — a\nstalled server&#x27;s write is rejected by the store rather than by a check it\ncould skip.\n\nThree properties keep the epoch meaningful:\n\n- Taking over an expired lease increments it, so the previous holder&#x27;s token\n  is permanently stale.\n- Re-acquiring a lease you already hold keeps it, so renewal is not treated\n  as a takeover.\n- Releasing writes a tombstone instead of deleting the key, so the counter\n  survives a clean handoff rather than restarting at 1.\n\nLeases last `LEASE_DURATION` (15 s) and are renewed every\n`LEASE_RENEW_INTERVAL` (5 s), giving three attempts before expiry. The stored\nrecord lives three times as long as the lease so an idle gap cannot lose the\nepoch to expiry.&quot;,
+    &quot;desc&quot;: &quot;A distributed lock with a fencing token, built on compare-and-set.\n\nOnly the server holding a lane&#x27;s lease scans it, which stops two servers\nforming overlapping matches from the same tickets.\n\nA lease alone is not sufficient. A server can stall on a long yield, a GC\npause or a slow web call, lose its lease to the timeout, and resume still\nbelieving it holds one. So every lease carries a monotonically increasing\n`epoch`, and the commit checks that epoch inside its own transform. A stalled\nserver&#x27;s write is then rejected by the store itself, rather than by a check\nit could skip.\n\nThree properties keep the epoch meaningful:\n\n- Taking over an expired lease increments it, so the previous holder&#x27;s token\n  is permanently stale.\n- Re-acquiring a lease you already hold keeps it, so renewal is not treated\n  as a takeover.\n- Releasing writes a tombstone instead of deleting the key, so the counter\n  survives a clean handoff rather than restarting at 1.\n\nLeases last `LEASE_DURATION` (15 s) and are renewed every\n`LEASE_RENEW_INTERVAL` (5 s), giving three attempts before expiry. The stored\nrecord lives three times as long as the lease so an idle gap cannot lose the\nepoch to expiry.&quot;,
     &quot;source&quot;: {
         &quot;line&quot;: 32,
         &quot;path&quot;: &quot;src/internal/LeaseManager.luau&quot;

@@ -52,8 +52,8 @@ now += 200            -- everything expires exactly like it would live
 
 [InMemoryStore:failNext] and [InMemoryStore:conflictNext] inject the two
 failure modes worth testing against."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/InMemoryStore"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/InMemoryStore" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/InMemoryStore" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.99176041.js" defer="defer"></script>
-<script src="/muster/assets/js/main.3d46a123.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.771ad50b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.8f6dfd01.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -102,7 +102,7 @@ now <span class="token operator">+</span><span class="token operator">=</span> <
 <p>
   The transform runs once against the value it read, that result is discarded,
   <code>mutator</code> installs a competing write, and the transform runs again against
-  the new value — which is what <code>UpdateAsync</code> does under contention.
+  the new value, which is what <code>UpdateAsync</code> does under contention.
 </p>
 <p>
   This is what catches a transform that fails to reset its own bookkeeping when
@@ -166,7 +166,7 @@ now <span class="token operator">+</span><span class="token operator">=</span> <
         },
         {
             &quot;name&quot;: &quot;conflictNext&quot;,
-            &quot;desc&quot;: &quot;Makes the next `count` updates lose a compare-and-set race.\n\nThe transform runs once against the value it read, that result is discarded,\n`mutator` installs a competing write, and the transform runs again against\nthe new value — which is what `UpdateAsync` does under contention.\n\nThis is what catches a transform that fails to reset its own bookkeeping when\nre-entered, which every conditional write in Muster depends on.&quot;,
+            &quot;desc&quot;: &quot;Makes the next `count` updates lose a compare-and-set race.\n\nThe transform runs once against the value it read, that result is discarded,\n`mutator` installs a competing write, and the transform runs again against\nthe new value, which is what `UpdateAsync` does under contention.\n\nThis is what catches a transform that fails to reset its own bookkeeping when\nre-entered, which every conditional write in Muster depends on.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,

@@ -13,10 +13,10 @@ passing.
 :::caution
 A timed-out hook is abandoned, not cancelled. Luau cannot interrupt a thread
 blocked in a web call, so a `finalize` that times out during
-`ReserveServerAsync` still completes later and still allocates a server —
-Muster has simply stopped waiting and aborted the match. Write hooks whose
-side effects are idempotent or cheap to abandon, and release expensive ones
-in `onAbort`.
+`ReserveServerAsync` still completes later and still allocates a server.
+Muster has stopped waiting and aborted the match. Write hooks whose side
+effects are idempotent or cheap to abandon, and release expensive ones in
+`onAbort`.
 :::"><meta data-rh="true" property="og:description" content="Runs the `finalize` hook under a deadline.
 
 The hook is expected to yield, so it runs on its own thread while the caller
@@ -27,13 +27,13 @@ passing.
 :::caution
 A timed-out hook is abandoned, not cancelled. Luau cannot interrupt a thread
 blocked in a web call, so a `finalize` that times out during
-`ReserveServerAsync` still completes later and still allocates a server —
-Muster has simply stopped waiting and aborted the match. Write hooks whose
-side effects are idempotent or cheap to abandon, and release expensive ones
-in `onAbort`.
+`ReserveServerAsync` still completes later and still allocates a server.
+Muster has stopped waiting and aborted the match. Write hooks whose side
+effects are idempotent or cheap to abandon, and release expensive ones in
+`onAbort`.
 :::"><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Finalizer"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Finalizer" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Finalizer" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.99176041.js" defer="defer"></script>
-<script src="/muster/assets/js/main.3d46a123.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.771ad50b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.8f6dfd01.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -61,10 +61,10 @@ in `onAbort`.
           <p>
             A timed-out hook is abandoned, not cancelled. Luau cannot interrupt a thread
             blocked in a web call, so a <code>finalize</code> that times out during
-            <code>ReserveServerAsync</code> still completes later and still allocates a server —
-            Muster has simply stopped waiting and aborted the match. Write hooks whose
-            side effects are idempotent or cheap to abandon, and release expensive ones
-            in <code>onAbort</code>.
+            <code>ReserveServerAsync</code> still completes later and still allocates a server.
+            Muster has stopped waiting and aborted the match. Write hooks whose side
+            effects are idempotent or cheap to abandon, and release expensive ones in
+            <code>onAbort</code>.
           </p>
         </div>
       </div>
@@ -120,7 +120,7 @@ in `onAbort`.
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;Finalizer&quot;,
-    &quot;desc&quot;: &quot;Runs the `finalize` hook under a deadline.\n\nThe hook is expected to yield, so it runs on its own thread while the caller\nwaits for completion or the deadline, whichever comes first. The spawner and\nclock are injected, which lets tests drive the timeout path without real time\npassing.\n\n:::caution\nA timed-out hook is abandoned, not cancelled. Luau cannot interrupt a thread\nblocked in a web call, so a `finalize` that times out during\n`ReserveServerAsync` still completes later and still allocates a server —\nMuster has simply stopped waiting and aborted the match. Write hooks whose\nside effects are idempotent or cheap to abandon, and release expensive ones\nin `onAbort`.\n:::&quot;,
+    &quot;desc&quot;: &quot;Runs the `finalize` hook under a deadline.\n\nThe hook is expected to yield, so it runs on its own thread while the caller\nwaits for completion or the deadline, whichever comes first. The spawner and\nclock are injected, which lets tests drive the timeout path without real time\npassing.\n\n:::caution\nA timed-out hook is abandoned, not cancelled. Luau cannot interrupt a thread\nblocked in a web call, so a `finalize` that times out during\n`ReserveServerAsync` still completes later and still allocates a server.\nMuster has stopped waiting and aborted the match. Write hooks whose side\neffects are idempotent or cheap to abandon, and release expensive ones in\n`onAbort`.\n:::&quot;,
     &quot;source&quot;: {
         &quot;line&quot;: 22,
         &quot;path&quot;: &quot;src/internal/Finalizer.luau&quot;

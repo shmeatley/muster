@@ -23,12 +23,12 @@ those can be disabled with `autoStart`, `broadcast`, and `autoCancelOnLeave`.
 
 ### Configuration
 
-`name` and `size` are required; everything else has a default.
+`name` and `size` are required. Everything else has a default.
 
 | Field | Type | Default | Effect |
 | --- | --- | --- | --- |
-| `name` | `string` | — | Namespaces this queue&#x27;s keys. Max 16 characters, alphanumeric plus `_` and `-`. |
-| `size` | `number \| SizeConfig` | — | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
+| `name` | `string` | required | Namespaces this queue&#x27;s keys. Max 16 characters, alphanumeric plus `_` and `-`. |
+| `size` | `number \| SizeConfig` | required | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
 | `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |
 | `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |
 | `finalize` | `Finalizer&lt;T&gt;?` | `nil` | Runs once per match; its return value becomes `match.data`. |
@@ -57,7 +57,7 @@ assume it has someone to act on.
 
 Matches are written to MemoryStore before being announced, so delivery does
 not depend on MessagingService. Typical latency is under 200 ms; if a message
-is dropped, a poll finds the match within `pollIntervalMax` (30 s), and if
+is dropped, a poll finds the match within `pollIntervalMax` (30 s). If
 MessagingService is unavailable the poll cap tightens to 5 s automatically."><meta data-rh="true" property="og:description" content="A single queue. Construct one per game mode.
 
 ```lua
@@ -78,12 +78,12 @@ those can be disabled with `autoStart`, `broadcast`, and `autoCancelOnLeave`.
 
 ### Configuration
 
-`name` and `size` are required; everything else has a default.
+`name` and `size` are required. Everything else has a default.
 
 | Field | Type | Default | Effect |
 | --- | --- | --- | --- |
-| `name` | `string` | — | Namespaces this queue&#x27;s keys. Max 16 characters, alphanumeric plus `_` and `-`. |
-| `size` | `number \| SizeConfig` | — | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
+| `name` | `string` | required | Namespaces this queue&#x27;s keys. Max 16 characters, alphanumeric plus `_` and `-`. |
+| `size` | `number \| SizeConfig` | required | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
 | `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |
 | `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |
 | `finalize` | `Finalizer&lt;T&gt;?` | `nil` | Runs once per match; its return value becomes `match.data`. |
@@ -112,10 +112,10 @@ assume it has someone to act on.
 
 Matches are written to MemoryStore before being announced, so delivery does
 not depend on MessagingService. Typical latency is under 200 ms; if a message
-is dropped, a poll finds the match within `pollIntervalMax` (30 s), and if
+is dropped, a poll finds the match within `pollIntervalMax` (30 s). If
 MessagingService is unavailable the poll cap tightens to 5 s automatically."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Matchmaker"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matchmaker" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matchmaker" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.99176041.js" defer="defer"></script>
-<script src="/muster/assets/js/main.3d46a123.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.771ad50b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.8f6dfd01.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -139,7 +139,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
   those can be disabled with <code>autoStart</code>, <code>broadcast</code>, and <code>autoCancelOnLeave</code>.
 </p>
 <h3>Configuration</h3>
-<p><code>name</code> and <code>size</code> are required; everything else has a default.</p>
+<p><code>name</code> and <code>size</code> are required. Everything else has a default.</p>
 <table>
   <thead>
     <tr>
@@ -153,13 +153,13 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
     <tr>
       <td><code>name</code></td>
       <td><code>string</code></td>
-      <td>—</td>
+      <td>required</td>
       <td>Namespaces this queue's keys. Max 16 characters, alphanumeric plus <code>_</code> and <code>-</code>.</td>
     </tr>
     <tr>
       <td><code>size</code></td>
       <td><code>number | SizeConfig</code></td>
-      <td>—</td>
+      <td>required</td>
       <td><code>6</code> is shorthand for <code>{ min = 6, target = 6, max = 6 }</code>.</td>
     </tr>
     <tr>
@@ -268,7 +268,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
 <p>
   Matches are written to MemoryStore before being announced, so delivery does
   not depend on MessagingService. Typical latency is under 200 ms; if a message
-  is dropped, a poll finds the match within <code>pollIntervalMax</code> (30 s), and if
+  is dropped, a poll finds the match within <code>pollIntervalMax</code> (30 s). If
   MessagingService is unavailable the poll cap tightens to 5 s automatically.
 </p>
 </div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="properties">Properties<a href="#properties" class="hash-link" aria-label="Direct link to Properties" title="Direct link to Properties" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="matched"><code style="text-decoration:none">matched</code><a href="#matched" class="hash-link" aria-label="Direct link to matched" title="Direct link to matched" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L125"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->matched<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatchEnvelope">MatchEnvelope</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
@@ -312,7 +312,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
 </p>
 <p>
   Takes userIds directly and does not involve <a href="/muster/api/Party">Party</a>. The first userId becomes
-  the ticket's leader, which is who may cancel or acknowledge it.
+  the ticket's leader, and is the only one who may cancel or acknowledge it.
 </p>
 <pre class="language-lua"><code class="language-lua">queue<span class="token punctuation">:</span><span class="token function">enqueueGroup</span><span class="token punctuation">(</span><span class="token punctuation">{</span> leaderId<span class="token punctuation">,</span> friendId <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token punctuation">{</span> ratings <span class="token operator">=</span> ratings <span class="token punctuation">}</span><span class="token punctuation">)</span>
 </code></pre>
@@ -361,7 +361,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
   id. Matches remain readable for <code>matchExpiration</code> (300 s), which covers a
   player who rejoined on another server and needs the envelope again.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="acknowledge"><code style="text-decoration:none">acknowledge</code><a href="#acknowledge" class="hash-link" aria-label="Direct link to acknowledge" title="Direct link to acknowledge" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L516"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">acknowledge</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatchEnvelope">MatchEnvelope</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="acknowledge"><code style="text-decoration:none">acknowledge</code><a href="#acknowledge" class="hash-link" aria-label="Direct link to acknowledge" title="Direct link to acknowledge" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L515"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">acknowledge</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatchEnvelope">MatchEnvelope</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
 <p>
   Releases a matched ticket's players so they may queue again, and unlocks its
   party.
@@ -369,11 +369,10 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
 <p>
   This happens automatically on delivery unless <code>manualAcknowledge</code> is set.
   Enable that setting to hold the reservation until you have confirmed whatever
-  follows the match — a teleport, for instance — so a failure leaves the
-  players free to re-queue rather than locked out until their reservation
-  expires.
+  follows the match, such as a teleport. A failure then leaves the players free
+  to re-queue rather than locked out until their reservation expires.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step"><code style="text-decoration:none">step</code><a href="#step" class="hash-link" aria-label="Direct link to step" title="Direct link to step" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L529"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">step</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step"><code style="text-decoration:none">step</code><a href="#step" class="hash-link" aria-label="Direct link to step" title="Direct link to step" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L528"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">step</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   Runs one worker pass: ticket upkeep, lane acquisition, then a scan of each
   held lane.
@@ -382,24 +381,24 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
   The worker thread calls this on a loop. Calling it directly advances the
   system one step, which is how the test suite drives it without yielding.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="start"><code style="text-decoration:none">start</code><a href="#start" class="hash-link" aria-label="Direct link to start" title="Direct link to start" translate="no"> ​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L540"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">start</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="start"><code style="text-decoration:none">start</code><a href="#start" class="hash-link" aria-label="Direct link to start" title="Direct link to start" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L539"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">start</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   Starts the worker thread and subscribes for cross-server delivery. Called by
   the constructor unless <code>autoStart</code> is disabled. Calling it twice does
   nothing.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stop"><code style="text-decoration:none">stop</code><a href="#stop" class="hash-link" aria-label="Direct link to stop" title="Direct link to stop" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L551"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">stop</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stop"><code style="text-decoration:none">stop</code><a href="#stop" class="hash-link" aria-label="Direct link to stop" title="Direct link to stop" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L550"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">stop</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   Stops the worker and releases every lane lease this server holds, so another
   server can take them immediately instead of waiting out the 15-second
   timeout. Suitable for <code>game:BindToClose</code>.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="destroy"><code style="text-decoration:none">destroy</code><a href="#destroy" class="hash-link" aria-label="Direct link to destroy" title="Direct link to destroy" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L561"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">destroy</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="destroy"><code style="text-decoration:none">destroy</code><a href="#destroy" class="hash-link" aria-label="Direct link to destroy" title="Direct link to destroy" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L560"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">destroy</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   Calls <a href="/muster/api/Matchmaker#stop">Matchmaker:stop</a>, disconnects the <code>PlayerRemoving</code> connection, and
   drops every signal handler.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="health"><code style="text-decoration:none">health</code><a href="#health" class="hash-link" aria-label="Direct link to health" title="Direct link to health" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L593"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">health</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS">any</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="health"><code style="text-decoration:none">health</code><a href="#health" class="hash-link" aria-label="Direct link to health" title="Direct link to health" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L592"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">health</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS">any</code></div><div>
 <p>
   A snapshot of this server's view of the queue, for logging or a debug
   command.
@@ -525,7 +524,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
         },
         {
             &quot;name&quot;: &quot;enqueueGroup&quot;,
-            &quot;desc&quot;: &quot;Queues a set of players as one ticket. The group is never split across\nmatches and is matched at its aggregate rating.\n\nTakes userIds directly and does not involve [Party]. The first userId becomes\nthe ticket&#x27;s leader, which is who may cancel or acknowledge it.\n\n```lua\nqueue:enqueueGroup({ leaderId, friendId }, { ratings = ratings })\n```\n\nGroups larger than `size.max` are rejected with `InvalidPartySize`, and a\nrepeated userId with `DuplicateMember`.&quot;,
+            &quot;desc&quot;: &quot;Queues a set of players as one ticket. The group is never split across\nmatches and is matched at its aggregate rating.\n\nTakes userIds directly and does not involve [Party]. The first userId becomes\nthe ticket&#x27;s leader, and is the only one who may cancel or acknowledge it.\n\n```lua\nqueue:enqueueGroup({ leaderId, friendId }, { ratings = ratings })\n```\n\nGroups larger than `size.max` are rejected with `InvalidPartySize`, and a\nrepeated userId with `DuplicateMember`.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,
@@ -734,7 +733,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
         },
         {
             &quot;name&quot;: &quot;acknowledge&quot;,
-            &quot;desc&quot;: &quot;Releases a matched ticket&#x27;s players so they may queue again, and unlocks its\nparty.\n\nThis happens automatically on delivery unless `manualAcknowledge` is set.\nEnable that setting to hold the reservation until you have confirmed whatever\nfollows the match — a teleport, for instance — so a failure leaves the\nplayers free to re-queue rather than locked out until their reservation\nexpires.&quot;,
+            &quot;desc&quot;: &quot;Releases a matched ticket&#x27;s players so they may queue again, and unlocks its\nparty.\n\nThis happens automatically on delivery unless `manualAcknowledge` is set.\nEnable that setting to hold the reservation until you have confirmed whatever\nfollows the match, such as a teleport. A failure then leaves the players free\nto re-queue rather than locked out until their reservation expires.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,
@@ -760,7 +759,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 516,
+                &quot;line&quot;: 515,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -777,7 +776,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 529,
+                &quot;line&quot;: 528,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -794,7 +793,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 540,
+                &quot;line&quot;: 539,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -811,7 +810,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 551,
+                &quot;line&quot;: 550,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -828,7 +827,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 561,
+                &quot;line&quot;: 560,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -850,7 +849,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 593,
+                &quot;line&quot;: 592,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         }
@@ -904,7 +903,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
     ],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;Matchmaker&quot;,
-    &quot;desc&quot;: &quot;A single queue. Construct one per game mode.\n\n```lua\nlocal duels = Muster.new({ name = \&quot;duels\&quot;, size = 2 })\n\nduels.matched:connect(function(match)\n\tfor _, member in match.members do\n\t\tprint(member.userId, \&quot;-&gt;\&quot;, match.matchId)\n\tend\nend)\n\nduels:enqueue(player.UserId)\n```\n\nConstructing a queue starts its worker thread, subscribes it for cross-server\ndelivery, and connects `Players.PlayerRemoving` to cancel tickets. Each of\nthose can be disabled with `autoStart`, `broadcast`, and `autoCancelOnLeave`.\n\n### Configuration\n\n`name` and `size` are required; everything else has a default.\n\n| Field | Type | Default | Effect |\n| --- | --- | --- | --- |\n| `name` | `string` | — | Namespaces this queue&#x27;s keys. Max 16 characters, alphanumeric plus `_` and `-`. |\n| `size` | `number \\| SizeConfig` | — | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |\n| `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |\n| `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |\n| `finalize` | `Finalizer&lt;T&gt;?` | `nil` | Runs once per match; its return value becomes `match.data`. |\n| `finalizeTimeout` | `number` | `5` | Seconds. Must not exceed 15. |\n| `onAbort` | `AbortHandler?` | `nil` | Called when a match fails after its hook ran. Requires `finalize`. |\n| `partitionKey` | `function?` | `nil` | Returns a partition name per ticket. Partitions never match each other. |\n| `lanes` | `\&quot;auto\&quot; \\| number` | `\&quot;auto\&quot;` | Pinning a number disables runtime scaling. See [LaneScaler]. |\n| `broadcast` | `boolean` | `true` | Publish match notifications over MessagingService. |\n| `autoStart` | `boolean` | `true` | Start the worker thread on construction. |\n| `autoCancelOnLeave` | `boolean` | `true` | Cancel a player&#x27;s ticket when they leave. |\n| `manualAcknowledge` | `boolean` | `false` | Require [Matchmaker:acknowledge] to release matched players. |\n| `ticketExpiration` | `number` | `180` | Seconds a ticket survives without a heartbeat. Minimum 30. |\n| `maxMetadataBytes` | `number` | `1024` | Per-ticket metadata budget. |\n| `maxMatchDataBytes` | `number` | `4096` | Budget for the finalizer&#x27;s return value. |\n| `namespace` | `string` | `\&quot;mu\&quot;` | Change to run independent deployments in one universe. |\n\nThese accept injected implementations, primarily for tests: `store`,\n`messaging`, `players`, `matcher`, `layout`, `logger`, `metrics`, `clock`,\n`monotonic`, `random`, `sleep`, `spawn`, `id`, `serverId`.\n\n### Delivery\n\n`matched` fires on every server holding at least one of the matched players.\nA server holding none of them does not receive the event, so a handler can\nassume it has someone to act on.\n\nMatches are written to MemoryStore before being announced, so delivery does\nnot depend on MessagingService. Typical latency is under 200 ms; if a message\nis dropped, a poll finds the match within `pollIntervalMax` (30 s), and if\nMessagingService is unavailable the poll cap tightens to 5 s automatically.&quot;,
+    &quot;desc&quot;: &quot;A single queue. Construct one per game mode.\n\n```lua\nlocal duels = Muster.new({ name = \&quot;duels\&quot;, size = 2 })\n\nduels.matched:connect(function(match)\n\tfor _, member in match.members do\n\t\tprint(member.userId, \&quot;-&gt;\&quot;, match.matchId)\n\tend\nend)\n\nduels:enqueue(player.UserId)\n```\n\nConstructing a queue starts its worker thread, subscribes it for cross-server\ndelivery, and connects `Players.PlayerRemoving` to cancel tickets. Each of\nthose can be disabled with `autoStart`, `broadcast`, and `autoCancelOnLeave`.\n\n### Configuration\n\n`name` and `size` are required. Everything else has a default.\n\n| Field | Type | Default | Effect |\n| --- | --- | --- | --- |\n| `name` | `string` | required | Namespaces this queue&#x27;s keys. Max 16 characters, alphanumeric plus `_` and `-`. |\n| `size` | `number \\| SizeConfig` | required | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |\n| `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |\n| `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |\n| `finalize` | `Finalizer&lt;T&gt;?` | `nil` | Runs once per match; its return value becomes `match.data`. |\n| `finalizeTimeout` | `number` | `5` | Seconds. Must not exceed 15. |\n| `onAbort` | `AbortHandler?` | `nil` | Called when a match fails after its hook ran. Requires `finalize`. |\n| `partitionKey` | `function?` | `nil` | Returns a partition name per ticket. Partitions never match each other. |\n| `lanes` | `\&quot;auto\&quot; \\| number` | `\&quot;auto\&quot;` | Pinning a number disables runtime scaling. See [LaneScaler]. |\n| `broadcast` | `boolean` | `true` | Publish match notifications over MessagingService. |\n| `autoStart` | `boolean` | `true` | Start the worker thread on construction. |\n| `autoCancelOnLeave` | `boolean` | `true` | Cancel a player&#x27;s ticket when they leave. |\n| `manualAcknowledge` | `boolean` | `false` | Require [Matchmaker:acknowledge] to release matched players. |\n| `ticketExpiration` | `number` | `180` | Seconds a ticket survives without a heartbeat. Minimum 30. |\n| `maxMetadataBytes` | `number` | `1024` | Per-ticket metadata budget. |\n| `maxMatchDataBytes` | `number` | `4096` | Budget for the finalizer&#x27;s return value. |\n| `namespace` | `string` | `\&quot;mu\&quot;` | Change to run independent deployments in one universe. |\n\nThese accept injected implementations, primarily for tests: `store`,\n`messaging`, `players`, `matcher`, `layout`, `logger`, `metrics`, `clock`,\n`monotonic`, `random`, `sleep`, `spawn`, `id`, `serverId`.\n\n### Delivery\n\n`matched` fires on every server holding at least one of the matched players.\nA server holding none of them does not receive the event, so a handler can\nassume it has someone to act on.\n\nMatches are written to MemoryStore before being announced, so delivery does\nnot depend on MessagingService. Typical latency is under 200 ms; if a message\nis dropped, a poll finds the match within `pollIntervalMax` (30 s). If\nMessagingService is unavailable the poll cap tightens to 5 s automatically.&quot;,
     &quot;source&quot;: {
         &quot;line&quot;: 63,
         &quot;path&quot;: &quot;src/Matchmaker.luau&quot;

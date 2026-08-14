@@ -44,9 +44,9 @@ A queued party is locked: `invite`, `leave`, `kick`, `transferLeader` and
 expires. This keeps the roster stable between the matcher reading it and the
 match committing.
 
-A lock whose ticket stopped being heartbeaten — because the server holding it
-died — is cleared the next time the party is read, rather than persisting for
-the party&#x27;s full two-hour lifetime.
+If the server holding a queued party dies, its ticket stops being
+heartbeaten. The lock is then cleared the next time the party is read, rather
+than persisting for the party&#x27;s full two-hour lifetime.
 
 ### Records
 
@@ -94,9 +94,9 @@ A queued party is locked: `invite`, `leave`, `kick`, `transferLeader` and
 expires. This keeps the roster stable between the matcher reading it and the
 match committing.
 
-A lock whose ticket stopped being heartbeaten — because the server holding it
-died — is cleared the next time the party is read, rather than persisting for
-the party&#x27;s full two-hour lifetime.
+If the server holding a queued party dies, its ticket stops being
+heartbeaten. The lock is then cleared the next time the party is read, rather
+than persisting for the party&#x27;s full two-hour lifetime.
 
 ### Records
 
@@ -104,8 +104,8 @@ Parties expire after 2 hours without activity. Accepting an invite first
 takes a 20-second `Reserved` membership slot and only promotes it to `Active`
 once the party record has been updated, so a failure between the two leaves a
 slot that clears itself rather than a player stuck in neither state."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Party"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Party" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Party" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.99176041.js" defer="defer"></script>
-<script src="/muster/assets/js/main.3d46a123.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.771ad50b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.8f6dfd01.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -162,9 +162,9 @@ parties<span class="token punctuation">:</span><span class="token function">acce
   match committing.
 </p>
 <p>
-  A lock whose ticket stopped being heartbeaten — because the server holding it
-  died — is cleared the next time the party is read, rather than persisting for
-  the party's full two-hour lifetime.
+  If the server holding a queued party dies, its ticket stops being
+  heartbeaten. The lock is then cleared the next time the party is read, rather
+  than persisting for the party's full two-hour lifetime.
 </p>
 <h3>Records</h3>
 <p>
@@ -832,7 +832,7 @@ parties<span class="token punctuation">:</span><span class="token function">acce
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;Party&quot;,
-    &quot;desc&quot;: &quot;Party state that persists across servers, stored in MemoryStore.\n\nUse this when a party must survive its members being on different servers.\nTo queue a group of players who are already together on one server,\n[Matchmaker:enqueueGroup] takes userIds directly and does not touch any of\nthis. A [Matchmaker] builds its `parties` instance on first access, and\nnothing is written to the store until a method is called.\n\n```lua\nlocal parties = queue.parties\n\nlocal party = Muster.Result.unwrap(parties:create(leaderUserId))\nparties:invite(leaderUserId, friendUserId)\n\n-- On the friend&#x27;s server, which may be a different one:\nlocal invites = Muster.Result.unwrap(parties:listInvites(friendUserId))\nparties:acceptInvite(friendUserId, invites[1].id)\n```\n\n### Rules\n\n- A player belongs to at most one party. Membership is a single-slot index\n  per userId written with compare-and-set, so two servers adding the same\n  player concurrently produce exactly one winner; the loser gets\n  `AlreadyInParty`.\n- Parties hold up to `maxMembers` (default 8; a [Matchmaker] passes its\n  `size.max`).\n- Only the leader may invite, kick, transfer leadership, disband, or queue\n  the party.\n- When the leader leaves, the longest-standing remaining member inherits.\n  Removing the last member deletes the party.\n- Invites live in an inbox keyed by the **target** userId, capped at 20 and\n  expiring after 60 seconds.\n\n### While queued\n\nA queued party is locked: `invite`, `leave`, `kick`, `transferLeader` and\n`disband` all return `PartyLocked` until the ticket matches, is cancelled, or\nexpires. This keeps the roster stable between the matcher reading it and the\nmatch committing.\n\nA lock whose ticket stopped being heartbeaten — because the server holding it\ndied — is cleared the next time the party is read, rather than persisting for\nthe party&#x27;s full two-hour lifetime.\n\n### Records\n\nParties expire after 2 hours without activity. Accepting an invite first\ntakes a 20-second `Reserved` membership slot and only promotes it to `Active`\nonce the party record has been updated, so a failure between the two leaves a\nslot that clears itself rather than a player stuck in neither state.&quot;,
+    &quot;desc&quot;: &quot;Party state that persists across servers, stored in MemoryStore.\n\nUse this when a party must survive its members being on different servers.\nTo queue a group of players who are already together on one server,\n[Matchmaker:enqueueGroup] takes userIds directly and does not touch any of\nthis. A [Matchmaker] builds its `parties` instance on first access, and\nnothing is written to the store until a method is called.\n\n```lua\nlocal parties = queue.parties\n\nlocal party = Muster.Result.unwrap(parties:create(leaderUserId))\nparties:invite(leaderUserId, friendUserId)\n\n-- On the friend&#x27;s server, which may be a different one:\nlocal invites = Muster.Result.unwrap(parties:listInvites(friendUserId))\nparties:acceptInvite(friendUserId, invites[1].id)\n```\n\n### Rules\n\n- A player belongs to at most one party. Membership is a single-slot index\n  per userId written with compare-and-set, so two servers adding the same\n  player concurrently produce exactly one winner; the loser gets\n  `AlreadyInParty`.\n- Parties hold up to `maxMembers` (default 8; a [Matchmaker] passes its\n  `size.max`).\n- Only the leader may invite, kick, transfer leadership, disband, or queue\n  the party.\n- When the leader leaves, the longest-standing remaining member inherits.\n  Removing the last member deletes the party.\n- Invites live in an inbox keyed by the **target** userId, capped at 20 and\n  expiring after 60 seconds.\n\n### While queued\n\nA queued party is locked: `invite`, `leave`, `kick`, `transferLeader` and\n`disband` all return `PartyLocked` until the ticket matches, is cancelled, or\nexpires. This keeps the roster stable between the matcher reading it and the\nmatch committing.\n\nIf the server holding a queued party dies, its ticket stops being\nheartbeaten. The lock is then cleared the next time the party is read, rather\nthan persisting for the party&#x27;s full two-hour lifetime.\n\n### Records\n\nParties expire after 2 hours without activity. Accepting an invite first\ntakes a 20-second `Reserved` membership slot and only promotes it to `Active`\nonce the party record has been updated, so a failure between the two leaves a\nslot that clears itself rather than a player stuck in neither state.&quot;,
     &quot;source&quot;: {
         &quot;line&quot;: 58,
         &quot;path&quot;: &quot;src/Party.luau&quot;

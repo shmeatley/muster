@@ -6,11 +6,11 @@
 <title data-rh="true">RequestExecutor | Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/RequestExecutor"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="RequestExecutor | Muster"><meta data-rh="true" name="description" content="Wraps every store and messaging call in a retry policy, tracks per-structure
 health, and trips a circuit breaker on structures that keep failing.
 
-Requests carry a priority, where lower is more important:
+Requests carry a priority. Lower is more important:
 
 | Priority | Used by | Attempts | Circuit-broken? |
 | --- | --- | --- | --- |
-| 1 | The commit path — claims, the Ready CAS | 5 | Never |
+| 1 | The commit path: claims and the Ready CAS | 5 | Never |
 | 2 | Leases | 5 | Never |
 | 3 | Ticket writes, party mutations | 5 | Never |
 | 4-6 | Lane index writes, range scans, reads | 3 | Yes |
@@ -24,11 +24,11 @@ Retries use exponential backoff from 0.25 s, doubling to a 4 s ceiling, with
 only signal Roblox exposes."><meta data-rh="true" property="og:description" content="Wraps every store and messaging call in a retry policy, tracks per-structure
 health, and trips a circuit breaker on structures that keep failing.
 
-Requests carry a priority, where lower is more important:
+Requests carry a priority. Lower is more important:
 
 | Priority | Used by | Attempts | Circuit-broken? |
 | --- | --- | --- | --- |
-| 1 | The commit path — claims, the Ready CAS | 5 | Never |
+| 1 | The commit path: claims and the Ready CAS | 5 | Never |
 | 2 | Leases | 5 | Never |
 | 3 | Ticket writes, party mutations | 5 | Never |
 | 4-6 | Lane index writes, range scans, reads | 3 | Yes |
@@ -40,8 +40,8 @@ until their claims expire.
 Retries use exponential backoff from 0.25 s, doubling to a 4 s ceiling, with
 20% jitter. Throttling is detected by matching the error text, which is the
 only signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/RequestExecutor"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/RequestExecutor" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/RequestExecutor" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.99176041.js" defer="defer"></script>
-<script src="/muster/assets/js/main.3d46a123.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.771ad50b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.8f6dfd01.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -52,7 +52,7 @@ only signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://
   Wraps every store and messaging call in a retry policy, tracks per-structure
   health, and trips a circuit breaker on structures that keep failing.
 </p>
-<p>Requests carry a priority, where lower is more important:</p>
+<p>Requests carry a priority. Lower is more important:</p>
 <table>
   <thead>
     <tr>
@@ -65,7 +65,7 @@ only signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://
   <tbody>
     <tr>
       <td>1</td>
-      <td>The commit path — claims, the Ready CAS</td>
+      <td>The commit path: claims and the Ready CAS</td>
       <td>5</td>
       <td>Never</td>
     </tr>
@@ -229,7 +229,7 @@ only signal Roblox exposes."><link data-rh="true" rel="canonical" href="https://
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;RequestExecutor&quot;,
-    &quot;desc&quot;: &quot;Wraps every store and messaging call in a retry policy, tracks per-structure\nhealth, and trips a circuit breaker on structures that keep failing.\n\nRequests carry a priority, where lower is more important:\n\n| Priority | Used by | Attempts | Circuit-broken? |\n| --- | --- | --- | --- |\n| 1 | The commit path — claims, the Ready CAS | 5 | Never |\n| 2 | Leases | 5 | Never |\n| 3 | Ticket writes, party mutations | 5 | Never |\n| 4-6 | Lane index writes, range scans, reads | 3 | Yes |\n\nThe split matters because shedding a lane scan under load self-corrects on\nthe next pass, while abandoning a half-committed match leaves tickets stuck\nuntil their claims expire.\n\nRetries use exponential backoff from 0.25 s, doubling to a 4 s ceiling, with\n20% jitter. Throttling is detected by matching the error text, which is the\nonly signal Roblox exposes.&quot;,
+    &quot;desc&quot;: &quot;Wraps every store and messaging call in a retry policy, tracks per-structure\nhealth, and trips a circuit breaker on structures that keep failing.\n\nRequests carry a priority. Lower is more important:\n\n| Priority | Used by | Attempts | Circuit-broken? |\n| --- | --- | --- | --- |\n| 1 | The commit path: claims and the Ready CAS | 5 | Never |\n| 2 | Leases | 5 | Never |\n| 3 | Ticket writes, party mutations | 5 | Never |\n| 4-6 | Lane index writes, range scans, reads | 3 | Yes |\n\nThe split matters because shedding a lane scan under load self-corrects on\nthe next pass, while abandoning a half-committed match leaves tickets stuck\nuntil their claims expire.\n\nRetries use exponential backoff from 0.25 s, doubling to a 4 s ceiling, with\n20% jitter. Throttling is detected by matching the error text, which is the\nonly signal Roblox exposes.&quot;,
     &quot;source&quot;: {
         &quot;line&quot;: 26,
         &quot;path&quot;: &quot;src/internal/RequestExecutor.luau&quot;
