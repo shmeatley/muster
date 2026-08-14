@@ -115,10 +115,33 @@ distributed system where servers cannot see each other.
 - If it throws, exceeds `finalizeTimeout`, or returns something unstorable, the
   match aborts cleanly and every player goes back in the queue.
 
-## Parties
+## Queueing a group
 
-Cross-server, with membership enforced by compare-and-set so a player is never
-in two parties at once — even when two servers try at the same moment.
+If you already have parties — or your parties form in one lobby and live in a
+table on that server — just hand Muster the userIds:
+
+```lua
+ranked:enqueueGroup({ leaderId, friendId }, { ratings = ratings })
+```
+
+That is one indivisible ticket: never split across matches, matched at the
+group's aggregate rating. **This is the path most games want**, and it involves
+none of the machinery below.
+
+## Parties (optional)
+
+Muster also ships a cross-server party system, built on the same store. It is
+constructed on first access to `queue.parties` and writes nothing until you use
+it, so ignoring it costs you nothing.
+
+You need it only if parties have to survive players being on *different*
+servers. That happens more than you might expect:
+
+- Join-friend drops you in another server when your friend's is full
+- You want to invite someone who isn't in your lobby yet
+- Players scatter across lobby servers on the trip back from a match
+
+If none of those apply to your game, use `enqueueGroup` and skip this.
 
 ```lua
 local parties = ranked.parties
@@ -134,9 +157,9 @@ parties:acceptInvite(friendUserId, invites[1].id)
 ranked:enqueueParty(party.id, leaderUserId, { ratings = ratings })
 ```
 
-A party is one indivisible ticket — it is never split across matches. If you
-already have your own party system, use `enqueueGroup({ userIds })` instead and
-skip Muster's entirely.
+Membership is enforced by compare-and-set, so a player is never in two parties
+at once even when two servers try at the same moment — which is the whole
+difficulty, since those servers cannot see each other.
 
 ## Ratings
 

@@ -85,7 +85,7 @@ function Engine.new(settings: any, deps: any)
 	local self = setmetatable({
 		_settings = settings,
 		_store = deps.store,
-		_parties = deps.parties,
+		_getParties = deps.parties,
 		_isThrottled = deps.isThrottled or function()
 			return false
 		end,
@@ -436,8 +436,8 @@ function Engine._heartbeatLocal(self: any, localState: any, now: number, mono: n
 			3
 		)
 	end
-	if ticket.partyId and self._parties then
-		self._parties:heartbeatQueue(ticket.partyId, ticketId)
+	if ticket.partyId and self._getParties then
+		self._getParties():heartbeatQueue(ticket.partyId, ticketId)
 	end
 end
 
@@ -873,8 +873,8 @@ function Engine._commit(self: any, group: { Candidate }, owned: any): boolean
 			end
 			return nil
 		end, 1)
-		if ticket.partyId and self._parties then
-			self._parties:markMatched(ticket.partyId, ticket.id, matchId)
+		if ticket.partyId and self._getParties then
+			self._getParties():markMatched(ticket.partyId, ticket.id, matchId)
 		end
 		self:_cleanupTicket(ticket)
 	end
@@ -928,8 +928,8 @@ function Engine._deliver(self: any, envelope: any, source: string, dedupe: boole
 			self._localTickets[ticketId] = nil
 			if not self._settings.manualAcknowledge then
 				self:_releaseUsers(localState.ticket)
-				if localState.ticket.partyId and self._parties then
-					self._parties:acknowledgeMatch(localState.ticket.partyId, envelope.matchId)
+				if localState.ticket.partyId and self._getParties then
+					self._getParties():acknowledgeMatch(localState.ticket.partyId, envelope.matchId)
 				end
 			end
 		end
@@ -950,8 +950,6 @@ end
 --------------------------------------------------------------------------------
 
 function Engine._scan(self: any, key: string, owned: any, now: number, mono: number)
-	local settings = self._settings
-
 	if now >= owned.renewAt then
 		local lease = self._leases:renew(key, owned.epoch)
 		if lease == nil then
@@ -1108,8 +1106,8 @@ function Engine.cancel(self: any, requesterUserId: number, ticketId: string): an
 	self:_cleanupTicket(ticket)
 	self:_releaseUsers(ticket)
 	self._localTickets[ticketId] = nil
-	if ticket.partyId and self._parties then
-		self._parties:unlockQueue(ticket.partyId, ticket.id)
+	if ticket.partyId and self._getParties then
+		self._getParties():unlockQueue(ticket.partyId, ticket.id)
 	end
 	self:_log("info", "ticket cancelled", { ticketId = ticketId, user = requesterUserId })
 	if self.onCancelled then
@@ -1179,8 +1177,8 @@ function Engine.acknowledge(self: any, requesterUserId: number, ticketId: string
 
 	self:_releaseUsers(ticket)
 	self._localTickets[ticketId] = nil
-	if ticket.partyId and self._parties then
-		local acknowledged = self._parties:acknowledgeMatch(ticket.partyId, status.value.match.matchId)
+	if ticket.partyId and self._getParties then
+		local acknowledged = self._getParties():acknowledgeMatch(ticket.partyId, status.value.match.matchId)
 		if not acknowledged.ok then
 			return acknowledged
 		end

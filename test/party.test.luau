@@ -15,6 +15,27 @@ return function()
 		return Muster.Party.new(world.store, { clock = world.clock, id = world.nextId })
 	end
 
+	Harness.suite("built on demand")
+	do
+		-- Most games queue with `enqueueGroup` and never touch parties. Building
+		-- the party service eagerly would make all of them carry it for nothing.
+		local world = Harness.world({ size = 2 })
+		local server = world.server("A")
+
+		equal("not built by the constructor", rawget(server, "parties"), nil)
+
+		local matches = world.collect()
+		server:enqueueGroup({ 1, 2 })
+		world.tick(1)
+		equal("a group ticket matches without it", #matches, 1)
+		equal("and carries no party", #matches[1].partyIds, 0)
+		equal("still not built after a full match", rawget(server, "parties"), nil)
+
+		local first = server.parties
+		check("asking for it builds one", first ~= nil)
+		check("and the same one every time after", rawequal(server.parties, first))
+	end
+
 	Harness.suite("lifecycle")
 	do
 		local world = Harness.world()

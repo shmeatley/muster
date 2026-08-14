@@ -6,6 +6,21 @@
 	Cross-server parties: a group of players who queue together and are never
 	split across matches.
 
+	:::tip Do you need this?
+	Probably not. `Matchmaker:enqueueGroup({ userIds })` already queues any set
+	of players as one indivisible ticket, and if your parties form in a single
+	lobby they can live in a plain table on that server.
+
+	This exists for parties that must survive members being on **different**
+	servers: join-friend landing someone in another server because your own is
+	full, inviting a player who is not in your lobby yet, or a party regrouping
+	after a match scatters everyone across lobbies. If none of those describe
+	your game, use `enqueueGroup` instead.
+
+	A [Matchmaker] builds this on first access to `queue.parties`, and it writes
+	nothing to the store until you call something on it.
+	:::
+
 	Membership is enforced by a **single-slot index per user**, written with
 	compare-and-set. A player belongs to at most one party, and two servers
 	racing to add the same player will see exactly one of them win — which is

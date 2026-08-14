@@ -94,7 +94,23 @@ type Ticket = Types.Ticket
 type Result<T> = Types.Result<T>
 
 local Matchmaker = {}
-Matchmaker.__index = Matchmaker
+
+--[[
+	`parties` is built on first access rather than in `new`.
+
+	Most games never touch it: `enqueueGroup` covers queueing a set of players
+	as one ticket, and a game whose parties form in a single lobby has no reason
+	to keep party state anywhere shared. Building it lazily means those games
+	carry none of it, and the ones that do want it pay nothing until they ask.
+]]
+function Matchmaker.__index(self: any, key: string): any
+	if key == "parties" then
+		-- `_getParties` is a real field on the instance, so reading it does not
+		-- re-enter this metamethod.
+		return self._getParties()
+	end
+	return Matchmaker[key]
+end
 
 local function buildStore(settings: any, executor: any): any
 	if settings.store then
@@ -135,14 +151,20 @@ function Matchmaker.new(config: any): any
 	local store = buildStore(settings, executor)
 	local messaging = buildMessaging(settings, executor)
 
-	local parties = Party.new(store, {
-		clock = settings.clock,
-		id = settings.id,
-		keys = settings.keys,
-		ticketExpiration = settings.ticketExpiration,
-		matchExpiration = settings.matchExpiration,
-		maxMembers = math.max(settings.size.max, 2),
-	})
+	local partyService: any = nil
+	local function getParties(): any
+		if partyService == nil then
+			partyService = Party.new(store, {
+				clock = settings.clock,
+				id = settings.id,
+				keys = settings.keys,
+				ticketExpiration = settings.ticketExpiration,
+				matchExpiration = settings.matchExpiration,
+				maxMembers = math.max(settings.size.max, 2),
+			})
+		end
+		return partyService
+	end
 
 	local self = setmetatable({
 		_settings = settings,
@@ -150,8 +172,8 @@ function Matchmaker.new(config: any): any
 		_store = store,
 		_messaging = messaging,
 		_connections = {},
+		_getParties = getParties,
 
-		parties = parties,
 		matched = Signal.new(),
 		aborted = Signal.new(),
 		queued = Signal.new(),
@@ -161,7 +183,9 @@ function Matchmaker.new(config: any): any
 	self._engine = Engine.new(settings, {
 		store = store,
 		messaging = messaging,
-		parties = parties,
+		-- Passed as an accessor, not an instance. The engine only reaches for it
+		-- when a ticket actually carries a partyId.
+		parties = getParties,
 		isThrottled = function()
 			return executor:isThrottled()
 		end,
@@ -251,9 +275,17 @@ function Matchmaker.enqueue(self: any, userId: number, options: any?): any
 end
 
 --[=[
-	Queues an arbitrary set of players as one indivisible ticket, without using
-	Muster's own party system. Use this when you already have parties or squads
-	of your own.
+	Queues a set of players as one indivisible ticket: never split across
+	matches, matched at the group's aggregate rating.
+
+	**This is the usual way to queue a group.** It needs no party system at all —
+	pass whatever userIds you have, from your own squad code or from a party that
+	lives in a table on this server. Reach for [Party] only when a party has to
+	survive its members being on different servers.
+
+	```lua
+	queue:enqueueGroup({ leaderId, friendId }, { ratings = ratings })
+	```
 
 	@param options GroupOptions?
 	@within Matchmaker
