@@ -3,10 +3,9 @@ sourcemap.json
 
 # luau-lsp (fetched on demand; see the analyze job in CI)
 globalTypes.d.luau
-*.rbxl
 *.rbxlx
-*.rbxm
 *.rbxmx
+*.rbxl.lock
 
 # Wally
 Packages/

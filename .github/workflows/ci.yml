@@ -31,7 +31,7 @@ jobs:
         uses: CompeyDev/setup-rokit@v0.2.1
 
       - name: Run stylua --check
-        run: stylua --check src test
+        run: stylua --check src test demo
 
   analyze:
     name: Typecheck (luau-lsp)

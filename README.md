@@ -3,6 +3,7 @@
 [![CI](https://github.com/shmeatley/muster/actions/workflows/ci.yml/badge.svg)](https://github.com/shmeatley/muster/actions/workflows/ci.yml)
 [![Wally](https://img.shields.io/badge/wally-shmeatley%2Fmuster-blue)](https://wally.run/package/shmeatley/muster)
 [![Docs](https://img.shields.io/badge/docs-moonwave-blue)](https://shmeatley.github.io/muster)
+[![Demo](https://img.shields.io/badge/demo-play%20on%20roblox-e2241a)](https://www.roblox.com/games/100811184569764/Muster-Demo)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Cross-server matchmaking for Roblox
@@ -43,6 +44,26 @@ end)
 
 That is the whole setup. The worker starts itself, subscribes for cross-server
 delivery, cleans up when players leave, and matches on its first scan.
+
+## See it running
+
+There is a demo place, published so you can watch a match form without building
+anything:
+**[Muster Demo](https://www.roblox.com/games/100811184569764/Muster-Demo)**.
+Click the blue pad to queue, the grey one to add a bot, and the board tells you
+what the queue is doing. That is a real queue on real MemoryStore, matching
+across every server the game is running.
+
+`MusterDemo.rbxl` is committed here too, so you can open it in Studio and read
+the source alongside it, or rebuild it with:
+
+```sh
+rojo build demo.project.json -o MusterDemo.rbxl
+```
+
+The wiring is all in [demo/server/Sandbox](demo/server/Sandbox): one
+`Muster.new` call, a handful of signal handlers, and the pads that drive them.
+See [demo/README.md](demo/README.md).
 
 ## Reserved servers, teams, and the `finalize` hook
 
@@ -340,7 +361,7 @@ Full API reference: [shmeatley.github.io/muster](https://shmeatley.github.io/mus
 rokit install
 lune run test/run    # headless suite
 selene src
-stylua --check src test
+stylua --check src test demo
 ```
 
 ## License

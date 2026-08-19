@@ -1,0 +1,60 @@
+{
+	"name": "MusterDemo",
+	"tree": {
+		"$className": "DataModel",
+
+		"ReplicatedStorage": {
+			"Muster": {
+				"$path": "src"
+			}
+		},
+
+		"ServerScriptService": {
+			"MusterDemo": {
+				"$path": "demo/server"
+			}
+		},
+
+		"Workspace": {
+			"$className": "Workspace",
+
+			"Baseplate": {
+				"$className": "Part",
+				"$properties": {
+					"Size": [512, 16, 512],
+					"CFrame": [0, -8, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+					"Anchored": true,
+					"Locked": true,
+					"Color": [0.16, 0.18, 0.21],
+					"Material": "Slate",
+					"TopSurface": "Smooth",
+					"BottomSurface": "Smooth"
+				}
+			},
+
+			"SpawnLocation": {
+				"$className": "SpawnLocation",
+				"$properties": {
+					"Size": [12, 1, 12],
+					"CFrame": [0, 0.5, 8, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+					"Anchored": true,
+					"Color": [0.9, 0.9, 0.9],
+					"Material": "SmoothPlastic",
+					"TopSurface": "Smooth",
+					"BottomSurface": "Smooth"
+				}
+			}
+		},
+
+		"Lighting": {
+			"$className": "Lighting",
+			"$properties": {
+				"Ambient": [0.28, 0.29, 0.33],
+				"OutdoorAmbient": [0.35, 0.36, 0.4],
+				"ClockTime": 15,
+				"Brightness": 2,
+				"Technology": "ShadowMap"
+			}
+		}
+	}
+}
