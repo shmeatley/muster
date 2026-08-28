@@ -14,7 +14,7 @@ Muster aims to be a drag and drop cross-server matchmaking solution that is extr
 
 ```toml
 [dependencies]
-Muster = "shmeatley/muster@0.2.0"
+Muster = "shmeatley/muster@0.3.0"
 ```
 
 Then run:
