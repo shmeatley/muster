@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="plugin-moonwave plugin-id-moonwave" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.1">
+<title data-rh="true">Listings | Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/Listings"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="Listings | Muster"><meta data-rh="true" name="description" content="Store layout and atomic operations for the Quick Play listing index.
+
+The shape mirrors the ticket index exactly: a hash map holding the record,
+and a lane sorted map holding a small denormalized copy for discovery.
+Everything that changes occupancy goes through the hash map, because that is
+the only structure the [Store] contract can compare-and-set.
+
+### The sort key is free seats
+
+Entries are sorted by seats free, ascending, so a range read returns the
+*fullest joinable* match first, which is what backfill wants: a 7/8 game is
+completed before a 2/8 one is grown. A listing with no seats left is removed
+from the index entirely rather than left in it with a zero, so a range read is
+never spent on matches nobody can join.
+
+### Why claiming needs no lock
+
+Fifty lobby servers can see the same 7/8 match at once, and exactly one of
+them may take the last seat. `claim` is a single compare-and-set: the store
+re-runs the loser&#x27;s transform against the winner&#x27;s write, the seat is gone the
+second time around, and the loser moves on to its next candidate. There is no
+lease and no coordination, because the store is already a serialization point.
+
+### Reservations
+
+A host reports its player count on a heartbeat, so between beats the count is
+stale by up to `heartbeatInterval`. A claim writes a *reservation* holding the
+seats until the players actually arrive, which is what stops two lobbies from
+both filling the same slot inside one heartbeat window.
+
+A reservation retires in one of two ways, and both matter:
+
+- The host&#x27;s next heartbeat reports every one of its userIds as present. They
+  arrived, so they are already inside `players` and counting them again would
+  under-fill the match for the rest of the reservation window.
+- It expires. That is the backstop for a player who took a seat and never
+  arrived, because their teleport failed or their server died."><meta data-rh="true" property="og:description" content="Store layout and atomic operations for the Quick Play listing index.
+
+The shape mirrors the ticket index exactly: a hash map holding the record,
+and a lane sorted map holding a small denormalized copy for discovery.
+Everything that changes occupancy goes through the hash map, because that is
+the only structure the [Store] contract can compare-and-set.
+
+### The sort key is free seats
+
+Entries are sorted by seats free, ascending, so a range read returns the
+*fullest joinable* match first, which is what backfill wants: a 7/8 game is
+completed before a 2/8 one is grown. A listing with no seats left is removed
+from the index entirely rather than left in it with a zero, so a range read is
+never spent on matches nobody can join.
+
+### Why claiming needs no lock
+
+Fifty lobby servers can see the same 7/8 match at once, and exactly one of
+them may take the last seat. `claim` is a single compare-and-set: the store
+re-runs the loser&#x27;s transform against the winner&#x27;s write, the seat is gone the
+second time around, and the loser moves on to its next candidate. There is no
+lease and no coordination, because the store is already a serialization point.
+
+### Reservations
+
+A host reports its player count on a heartbeat, so between beats the count is
+stale by up to `heartbeatInterval`. A claim writes a *reservation* holding the
+seats until the players actually arrive, which is what stops two lobbies from
+both filling the same slot inside one heartbeat window.
+
+A reservation retires in one of two ways, and both matter:
+
+- The host&#x27;s next heartbeat reports every one of its userIds as present. They
+  arrived, so they are already inside `players` and counting them again would
+  under-fill the match for the rest of the reservation window.
+- It expires. That is the backstop for a player who took a seat and never
+  arrived, because their teleport failed or their server died."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Listings"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Listings" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Listings" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
+<script src="/muster/assets/js/runtime~main.6a2e6b7b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.168caac6.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")),document.documentElement.setAttribute("data-theme-choice",t||"system")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/muster/"><b class="navbar__title text--truncate">Muster</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/muster/api/">API</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/shmeatley/muster" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search"><span aria-label="expand searchbar" role="button" class="search-icon" tabindex="0"></span><input id="search_input_react" type="search" placeholder="Loading..." aria-label="Search" class="navbar__search-input search-bar" disabled=""></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0 docPageContainer_wNNk"><div class="docPage_Dpn1"><div class="docSidebarContainer_o_re"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Broadcaster"><span title="​Broadcaster" class="linkLabel_WmDU">​Broadcaster</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Config"><span title="​Config" class="linkLabel_WmDU">​Config</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Defaults"><span title="​Defaults" class="linkLabel_WmDU">​Defaults</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Engine"><span title="​Engine" class="linkLabel_WmDU">​Engine</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Finalizer"><span title="​Finalizer" class="linkLabel_WmDU">​Finalizer</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Hash"><span title="​Hash" class="linkLabel_WmDU">​Hash</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/HostedListing"><span title="​Hosted​Listing" class="linkLabel_WmDU">​Hosted​Listing</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/InMemoryMessaging"><span title="​In​Memory​Messaging" class="linkLabel_WmDU">​In​Memory​Messaging</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/InMemoryStore"><span title="​In​Memory​Store" class="linkLabel_WmDU">​In​Memory​Store</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/LaneScaler"><span title="​Lane​Scaler" class="linkLabel_WmDU">​Lane​Scaler</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Lanes"><span title="​Lanes" class="linkLabel_WmDU">​Lanes</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/LeaseManager"><span title="​Lease​Manager" class="linkLabel_WmDU">​Lease​Manager</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" href="/muster/api/Listings"><span title="​Listings" class="linkLabel_WmDU">​Listings</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Matcher"><span title="​Matcher" class="linkLabel_WmDU">​Matcher</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Matchmaker"><span title="​Matchmaker" class="linkLabel_WmDU">​Matchmaker</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/MemoryStore"><span title="​Memory​Store" class="linkLabel_WmDU">​Memory​Store</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Muster"><span title="​Muster" class="linkLabel_WmDU">​Muster</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Party"><span title="​Party" class="linkLabel_WmDU">​Party</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/QuickPlay"><span title="​Quick​Play" class="linkLabel_WmDU">​Quick​Play</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/RequestExecutor"><span title="​Request​Executor" class="linkLabel_WmDU">​Request​Executor</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Result"><span title="​Result" class="linkLabel_WmDU">​Result</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/RobloxMessaging"><span title="​Roblox​Messaging" class="linkLabel_WmDU">​Roblox​Messaging</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Runtime"><span title="​Runtime" class="linkLabel_WmDU">​Runtime</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Serialize"><span title="​Serialize" class="linkLabel_WmDU">​Serialize</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Signal"><span title="​Signal" class="linkLabel_WmDU">​Signal</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Types"><span title="​Types" class="linkLabel_WmDU">​Types</span></a></li></ul></nav></div></div><main class="docMainContainer_HJE1"><div class="container padding-vert--lg"><div class="row"><div class="col docItemCol_MU3C"><div class="docItemContainer_Wv98"><article><div class="member_J0w1 markdown"><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_oUs_"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><header><h1 class="docTitle_mZRt" style="text-decoration:none"><span style="display:inline-block">Listings</span></h1><div class="luaClassTags_EipM"><span class="badge_Ba2I" style="color:#9b59b6"><span class="badgeTooltip_cWXP">This item is only intended to be used by the module&#x27;s authors.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="#9b59b6" role="img" aria-label="This item is only intended to be used by the module&#x27;s authors."><path d="m49.2 36 14.3 12.7.1-.7c0-6.7-6.1-12.1-13.6-12.1l-.8.1z"></path><path d="M50 27.8c12.5 0 22.7 9 22.7 20.1 0 2.6-.6 5-1.6 7.3L84.4 67c6.9-5 12.3-11.6 15.6-19.1-7.9-17.6-27.3-30.1-50-30.1-6.4 0-12.5 1-18.1 2.8l9.8 8.6c2.6-.8 5.4-1.4 8.3-1.4zM4.5 16.9l10.4 9.2 2.1 1.8C9.5 33.1 3.5 40 0 48c7.9 17.7 27.3 30.2 50 30.2 7 0 13.8-1.2 19.9-3.4l1.9 1.7 13.3 11.7 5.8-5.1-80.6-71.3-5.8 5.1zm25.2 22.2 7 6.2c-.2.8-.3 1.8-.3 2.6C36.4 54.6 42.5 60 50 60c1 0 2-.2 3-.3l7 6.2c-3 1.3-6.4 2.1-10 2.1-12.5 0-22.7-9-22.7-20.1 0-3.1.9-6.1 2.4-8.8z"></path></svg> <!-- -->Private</span></span></div><div>
+<p>Store layout and atomic operations for the Quick Play listing index.</p>
+<p>
+  The shape mirrors the ticket index exactly: a hash map holding the record,
+  and a lane sorted map holding a small denormalized copy for discovery.
+  Everything that changes occupancy goes through the hash map, because that is
+  the only structure the <a href="/muster/api/Types#Store">Store</a> contract can compare-and-set.
+</p>
+<h3>The sort key is free seats</h3>
+<p>
+  Entries are sorted by seats free, ascending, so a range read returns the
+  <em>fullest joinable</em> match first, which is what backfill wants: a 7/8 game is
+  completed before a 2/8 one is grown. A listing with no seats left is removed
+  from the index entirely rather than left in it with a zero, so a range read is
+  never spent on matches nobody can join.
+</p>
+<h3>Why claiming needs no lock</h3>
+<p>
+  Fifty lobby servers can see the same 7/8 match at once, and exactly one of
+  them may take the last seat. <code>claim</code> is a single compare-and-set: the store
+  re-runs the loser's transform against the winner's write, the seat is gone the
+  second time around, and the loser moves on to its next candidate. There is no
+  lease and no coordination, because the store is already a serialization point.
+</p>
+<h3>Reservations</h3>
+<p>
+  A host reports its player count on a heartbeat, so between beats the count is
+  stale by up to <code>heartbeatInterval</code>. A claim writes a <em>reservation</em> holding the
+  seats until the players actually arrive, which is what stops two lobbies from
+  both filling the same slot inside one heartbeat window.
+</p>
+<p>A reservation retires in one of two ways, and both matter:</p>
+<ul>
+  <li>
+    The host's next heartbeat reports every one of its userIds as present. They
+    arrived, so they are already inside <code>players</code> and counting them again would
+    under-fill the match for the rest of the reservation window.
+  </li>
+  <li>
+    It expires. That is the backstop for a player who took a seat and never
+    arrived, because their teleport failed or their server died.
+  </li>
+</ul>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="freeSlots"><code style="text-decoration:none">freeSlots</code><a href="#freeSlots" class="hash-link" aria-label="Direct link to freeSlots" title="Direct link to freeSlots" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L60"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">freeSlots</code><code>(</code><code>listing<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS">number</code></div><div>
+<p>
+  Seats nobody holds: capacity less the last reported count, less every live
+  reservation. Prune first, or seats already given up still count against it.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="prune"><code style="text-decoration:none">prune</code><a href="#prune" class="hash-link" aria-label="Direct link to prune" title="Direct link to prune" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L87"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">prune</code><code>(</code><div class="inset_uKQm"><div><code>listing<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>now<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>present<!-- -->: </code><code class="purple_ieR2">{</code><span><code>[</code><code class="blue_P4bS">number</code><code>]</code></span><code>: </code><code class="blue_P4bS">boolean</code><code class="purple_ieR2">}</code><code class="blue_P4bS">?</code><span class="inlineDescription_G7Er">-- <span>
+<p>A set of userIds the host currently holds, or <code>nil</code> to only age reservations out.</p>
+</span></span></div></div><code>) → </code><code class="blue_P4bS">boolean</code></div><div>
+<p>
+  Drops reservations that have expired or whose players have arrived. Mutates
+  <code>listing</code> and reports whether anything went.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="isJoinable"><code style="text-decoration:none">isJoinable</code><a href="#isJoinable" class="hash-link" aria-label="Direct link to isJoinable" title="Direct link to isJoinable" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L107"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">isJoinable</code><code>(</code><div class="inset_uKQm"><div><code>listing<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>size<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>now<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">boolean</code></div><div>
+<p>
+  Whether a ticket of <code>size</code> may join. A closed or lapsed listing is refused
+  even while its record survives, since the record outlives the host by design.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="viewFor"><code style="text-decoration:none">viewFor</code><a href="#viewFor" class="hash-link" aria-label="Direct link to viewFor" title="Direct link to viewFor" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L117"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">viewFor</code><code>(</code><div class="inset_uKQm"><div><code>listing<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>free<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#ListingView">ListingView</a></code></div><div>
+<p>
+  The reduced copy held in the lane index. Kept small because it is read far
+  more often than the listing itself.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="index"><code style="text-decoration:none">index</code><a href="#index" class="hash-link" aria-label="Direct link to index" title="Direct link to index" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L138"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">index</code><code>(</code><div class="inset_uKQm"><div><code>store<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>qp<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>map<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>listing<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>free<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">boolean</code></div><div>
+<p>
+  Writes the listing's index entry, or removes it once there is nothing left to
+  join. Removing rather than writing a zero is what keeps a range read full of
+  matches a searcher can actually use.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="read"><code style="text-decoration:none">read</code><a href="#read" class="hash-link" aria-label="Direct link to read" title="Direct link to read" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L159"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">read</code><code>(</code><div class="inset_uKQm"><div><code>store<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>descriptor<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>count<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="purple_ieR2">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#ListingView">ListingView</a></code><code class="purple_ieR2">}</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+<p>Fullest first.</p>
+</span></span></div><div><code class="blue_P4bS">number</code><span class="inlineDescription_G7Er">-- <span>
+<p>How many came from the lane's own map.</p>
+</span></span></div></div><code>)</code></div><div>
+<p>Reads the joinable listings in one lane, oldest generation included.</p>
+<p>
+  The lane's own map is read first so its entries are the leading run of the
+  result, which is what lets <a href="/muster/api/LaneScaler">LaneScaler</a> judge this lane's depth from them
+  alone. Maps from a generation still draining follow, so a resize never hides a
+  listing that has not migrated yet.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="publish"><code style="text-decoration:none">publish</code><a href="#publish" class="hash-link" aria-label="Direct link to publish" title="Direct link to publish" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L200"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">publish</code><code>(</code><div class="inset_uKQm"><div><code>store<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>keys<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>qp<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>listing<!-- -->: </code><code class="blue_P4bS">any</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">boolean</code><code>,</code></div><div><code class="blue_P4bS">any</code></div></div><code>)</code></div><div>
+<p>Writes a new listing record.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="get"><code style="text-decoration:none">get</code><a href="#get" class="hash-link" aria-label="Direct link to get" title="Direct link to get" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L209"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">get</code><code>(</code><div class="inset_uKQm"><div><code>store<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>keys<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>listingId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">boolean</code><code>,</code></div><div><code class="blue_P4bS">any</code></div></div><code>)</code></div><div>
+<p>Reads one listing record.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="claim"><code style="text-decoration:none">claim</code><a href="#claim" class="hash-link" aria-label="Direct link to claim" title="Direct link to claim" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L223"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">claim</code><code>(</code><div class="inset_uKQm"><div><code>store<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>keys<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>qp<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>listingId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>reservation<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>now<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">boolean</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+<p>True when the seats are ours.</p>
+</span></span></div><div><code class="blue_P4bS">any</code><span class="inlineDescription_G7Er">-- <span>
+<p>The listing as it stands after the write, for refreshing the index.</p>
+</span></span></div></div><code>)</code></div><div>
+<p>Takes <code>reservation.size</code> seats, or nothing at all.</p>
+<p>
+  The whole contention story lives in this transform. See the note on this
+  class for why one compare-and-set is sufficient.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="release"><code style="text-decoration:none">release</code><a href="#release" class="hash-link" aria-label="Direct link to release" title="Direct link to release" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L265"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">release</code><code>(</code><div class="inset_uKQm"><div><code>store<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>keys<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>qp<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>listingId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>reservationId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">boolean</code><code>,</code></div><div><code class="blue_P4bS">any</code></div></div><code>)</code></div><div>
+<p>
+  Gives a reservation's seats back, for a teleport that failed or a ticket that
+  turned out to be spoken for.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="heartbeat"><code style="text-decoration:none">heartbeat</code><a href="#heartbeat" class="hash-link" aria-label="Direct link to heartbeat" title="Direct link to heartbeat" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L305"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">heartbeat</code><code>(</code><div class="inset_uKQm"><div><code>store<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>keys<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>qp<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>listingId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>update<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+<p><code>players</code>, <code>present</code>, <code>open</code>, and the lane stamp when migrating.</p>
+</span></span></div><div><code>now<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">boolean</code><code>,</code></div><div><code class="blue_P4bS">any</code></div></div><code>)</code></div><div>
+<p>
+  Refreshes a listing: its player count, its lease on life, and whichever
+  reservations have now been fulfilled.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="remove"><code style="text-decoration:none">remove</code><a href="#remove" class="hash-link" aria-label="Direct link to remove" title="Direct link to remove" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Listings.luau#L342"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Listings<!-- -->.</code><code class="green_DgR4">remove</code><code>(</code><div class="inset_uKQm"><div><code>store<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>keys<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>map<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>listingId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Removes a listing and its index entry outright, for a host shutting down
+  cleanly. A host that dies instead is evicted by <code>listingExpiration</code>.
+</p>
+</div></div></article></div><details><summary>Show raw api</summary><pre style="max-width:100%;white-space:pre-wrap">{
+    &quot;functions&quot;: [
+        {
+            &quot;name&quot;: &quot;freeSlots&quot;,
+            &quot;desc&quot;: &quot;Seats nobody holds: capacity less the last reported count, less every live\nreservation. Prune first, or seats already given up still count against it.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;listing&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 60,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;prune&quot;,
+            &quot;desc&quot;: &quot;Drops reservations that have expired or whose players have arrived. Mutates\n`listing` and reports whether anything went.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;listing&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;now&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;present&quot;,
+                    &quot;desc&quot;: &quot;A set of userIds the host currently holds, or `nil` to only age reservations out.&quot;,
+                    &quot;lua_type&quot;: &quot;{ [number]: boolean }?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 87,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;isJoinable&quot;,
+            &quot;desc&quot;: &quot;Whether a ticket of `size` may join. A closed or lapsed listing is refused\neven while its record survives, since the record outlives the host by design.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;listing&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;size&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;now&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 107,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;viewFor&quot;,
+            &quot;desc&quot;: &quot;The reduced copy held in the lane index. Kept small because it is read far\nmore often than the listing itself.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;listing&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;free&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;ListingView\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 117,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;index&quot;,
+            &quot;desc&quot;: &quot;Writes the listing&#x27;s index entry, or removes it once there is nothing left to\njoin. Removing rather than writing a zero is what keeps a range read full of\nmatches a searcher can actually use.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;store&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;qp&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;map&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;listing&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;free&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 138,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;read&quot;,
+            &quot;desc&quot;: &quot;Reads the joinable listings in one lane, oldest generation included.\n\nThe lane&#x27;s own map is read first so its entries are the leading run of the\nresult, which is what lets [LaneScaler] judge this lane&#x27;s depth from them\nalone. Maps from a generation still draining follow, so a resize never hides a\nlisting that has not migrated yet.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;store&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;descriptor&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;count&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;Fullest first.&quot;,
+                    &quot;lua_type&quot;: &quot;{ ListingView }&quot;
+                },
+                {
+                    &quot;desc&quot;: &quot;How many came from the lane&#x27;s own map.&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 159,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;publish&quot;,
+            &quot;desc&quot;: &quot;Writes a new listing record.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;store&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;keys&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;qp&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;listing&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean&quot;
+                },
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 200,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;get&quot;,
+            &quot;desc&quot;: &quot;Reads one listing record.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;store&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;keys&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;listingId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean&quot;
+                },
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 209,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;claim&quot;,
+            &quot;desc&quot;: &quot;Takes `reservation.size` seats, or nothing at all.\n\nThe whole contention story lives in this transform. See the note on this\nclass for why one compare-and-set is sufficient.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;store&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;keys&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;qp&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;listingId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;reservation&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;now&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number\n&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;True when the seats are ours.&quot;,
+                    &quot;lua_type&quot;: &quot;boolean&quot;
+                },
+                {
+                    &quot;desc&quot;: &quot;The listing as it stands after the write, for refreshing the index.&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 223,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;release&quot;,
+            &quot;desc&quot;: &quot;Gives a reservation&#x27;s seats back, for a teleport that failed or a ticket that\nturned out to be spoken for.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;store&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;keys&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;qp&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;listingId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;reservationId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean&quot;
+                },
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 265,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;heartbeat&quot;,
+            &quot;desc&quot;: &quot;Refreshes a listing: its player count, its lease on life, and whichever\nreservations have now been fulfilled.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;store&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;keys&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;qp&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;listingId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;update&quot;,
+                    &quot;desc&quot;: &quot;`players`, `present`, `open`, and the lane stamp when migrating.&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;now&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;number&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean&quot;
+                },
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 305,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;remove&quot;,
+            &quot;desc&quot;: &quot;Removes a listing and its index entry outright, for a host shutting down\ncleanly. A host that dies instead is evicted by `listingExpiration`.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;store&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;keys&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;map&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;listingId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 342,
+                &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+            }
+        }
+    ],
+    &quot;properties&quot;: [],
+    &quot;types&quot;: [],
+    &quot;name&quot;: &quot;Listings&quot;,
+    &quot;desc&quot;: &quot;Store layout and atomic operations for the Quick Play listing index.\n\nThe shape mirrors the ticket index exactly: a hash map holding the record,\nand a lane sorted map holding a small denormalized copy for discovery.\nEverything that changes occupancy goes through the hash map, because that is\nthe only structure the [Store] contract can compare-and-set.\n\n### The sort key is free seats\n\nEntries are sorted by seats free, ascending, so a range read returns the\n*fullest joinable* match first, which is what backfill wants: a 7/8 game is\ncompleted before a 2/8 one is grown. A listing with no seats left is removed\nfrom the index entirely rather than left in it with a zero, so a range read is\nnever spent on matches nobody can join.\n\n### Why claiming needs no lock\n\nFifty lobby servers can see the same 7/8 match at once, and exactly one of\nthem may take the last seat. `claim` is a single compare-and-set: the store\nre-runs the loser&#x27;s transform against the winner&#x27;s write, the seat is gone the\nsecond time around, and the loser moves on to its next candidate. There is no\nlease and no coordination, because the store is already a serialization point.\n\n### Reservations\n\nA host reports its player count on a heartbeat, so between beats the count is\nstale by up to `heartbeatInterval`. A claim writes a *reservation* holding the\nseats until the players actually arrive, which is what stops two lobbies from\nboth filling the same slot inside one heartbeat window.\n\nA reservation retires in one of two ways, and both matter:\n\n- The host&#x27;s next heartbeat reports every one of its userIds as present. They\n  arrived, so they are already inside `players` and counting them again would\n  under-fill the match for the rest of the reservation window.\n- It expires. That is the backstop for a player who took a seat and never\n  arrived, because their teleport failed or their server died.&quot;,
+    &quot;private&quot;: true,
+    &quot;source&quot;: {
+        &quot;line&quot;: 45,
+        &quot;path&quot;: &quot;src/internal/Listings.luau&quot;
+    }
+}</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#claim" class="table-of-contents__link toc-highlight">.claim</a></li><li><a href="#freeSlots" class="table-of-contents__link toc-highlight">.freeSlots</a></li><li><a href="#get" class="table-of-contents__link toc-highlight">.get</a></li><li><a href="#heartbeat" class="table-of-contents__link toc-highlight">.heartbeat</a></li><li><a href="#index" class="table-of-contents__link toc-highlight">.index</a></li><li><a href="#isJoinable" class="table-of-contents__link toc-highlight">.isJoinable</a></li><li><a href="#prune" class="table-of-contents__link toc-highlight">.prune</a></li><li><a href="#publish" class="table-of-contents__link toc-highlight">.publish</a></li><li><a href="#read" class="table-of-contents__link toc-highlight">.read</a></li><li><a href="#release" class="table-of-contents__link toc-highlight">.release</a></li><li><a href="#remove" class="table-of-contents__link toc-highlight">.remove</a></li><li><a href="#viewFor" class="table-of-contents__link toc-highlight">.viewFor</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 shmeatley. Built with Moonwave and Docusaurus.</div></div></div></footer></div>
+</body>
+</html>
