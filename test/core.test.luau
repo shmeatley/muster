@@ -46,17 +46,70 @@ return function()
 
 		equal("auto by default", settings.laneMode, "auto")
 		equal("starting on one lane", settings.lanes, 1)
-		equal("every ticket lands in lane 0 at count 1", Lanes.laneFor(1, "anything"), 0)
+		equal("an unrated queue has nothing to order players by", settings.laneSplit, "hash")
 
-		local descriptor = Lanes.forTicket(settings, "all", 1, "t1")
-		equal("the count is stamped into the map", descriptor.map, "mu1:q:idx:all:n01:00")
-		equal("and into the lease key", descriptor.key, "all:n01:00")
+		local start = Lanes.starting(settings)
+		equal("so it starts on one hashed lane", start.count, 1)
+		equal("at generation zero", start.generation, 0)
+		equal("where every ticket lands", Lanes.laneFor(start, "anything", nil), 0)
+
+		local descriptor = Lanes.forTicket(settings, "all", start, "t1", nil)
+		equal("the layout is stamped into the map", descriptor.map, "mu1:q:idx:all:n01g0:00")
+		equal("and into the lease key", descriptor.key, "all:n01g0:00")
 		equal("nothing to drain initially", #descriptor.legacy, 0)
+		equal("a hashed lane has no neighbour worth reading", #descriptor.neighbours, 0)
+
+		-- The whole point of the band scheme: a rated queue splits along the axis
+		-- it already matches on, so a split never separates players who were
+		-- about to be put in the same game.
+		local rated = Muster.Config.resolve({ name = "q", size = 2, rating = { window = 200 } })
+		equal("a rated queue splits by rating instead", rated.laneSplit, "band")
+		equal("and still starts on one lane", Lanes.starting(rated).count, 1)
+
+		local bands = Lanes.banded({ 1200, 1800 }, 4)
+		equal("two boundaries make three lanes", bands.count, 3)
+		equal("below the first boundary is the bottom lane", Lanes.laneFor(bands, "t", 900), 0)
+		equal("a boundary belongs to the lane above it", Lanes.laneFor(bands, "t", 1200), 1)
+		equal("just under the next is still the middle", Lanes.laneFor(bands, "t", 1799), 1)
+		equal("and above the last is the top lane", Lanes.laneFor(bands, "t", 5000), 2)
+
+		local floor, ceiling = Lanes.band(bands, 0)
+		check("the bottom band is open below", floor == -math.huge and ceiling == 1200, `{floor}..{ceiling}`)
+		local top, roof = Lanes.band(bands, 2)
+		check("and the top one open above", top == 1800 and roof == math.huge, `{top}..{roof}`)
+
+		local middle = Lanes.descriptor(rated, "all", bands, 1)
+		equal("a band knows the lane below it", middle.neighbours[1], Lanes.name(rated, "all", 3, 4, 0))
+		equal("and the one above", middle.neighbours[2], Lanes.name(rated, "all", 3, 4, 2))
+		check("the middle band is bounded both ways", middle.low == 1200 and middle.high == 1800)
+
+		local split = Lanes.split(bands, 2, 2400)
+		equal("splitting a lane adds a boundary", split.count, 4)
+		equal("and moves the generation on", split.generation, 5)
+		equal("a cut outside the lane is refused", Lanes.split(bands, 0, 1500), nil)
+		equal("a cut on the boundary itself is refused", Lanes.split(bands, 1, 1200), nil)
+		equal("merging drops the boundary below the lane", Lanes.merge(bands, 1).bounds[1], 1800)
+		equal("and the bottom lane folds upward instead", Lanes.merge(bands, 0).bounds[1], 1800)
+		equal("one lane has nothing to merge into", Lanes.merge(Lanes.banded({}, 0), 0), nil)
+
+		-- A stored layout is whatever MemoryStore hands back, so it is checked
+		-- rather than trusted.
+		equal("a layout of the wrong scheme is rejected", Lanes.validate(bands, "hash", 64), nil)
+		local descending = { mode = "band", generation = 1, bounds = { 1800, 1200 } }
+		equal("so is a descending set of bounds", Lanes.validate(descending, "band", 64), nil)
+		local infinite = { mode = "band", generation = 1, bounds = { math.huge } }
+		equal("and an infinite boundary", Lanes.validate(infinite, "band", 64), nil)
+		equal("a sound one reads back", Lanes.validate(bands, "band", 64).count, 3)
+		equal("a hash layout off a power of two is rejected", Lanes.validate(Lanes.hashed(6, 1), "hash", 64), nil)
 
 		local pinned = Muster.Config.resolve({ name = "q", size = 2, lanes = 8 })
 		equal("a number pins the count", pinned.laneMode, "fixed")
-		equal("eight lanes are enumerable", #Lanes.allFor(pinned, "all", 8), 8)
-		local lane = Lanes.laneFor(8, "ticket-1")
+		-- Bands are placed from what the scaler observes, and pinning turns the
+		-- scaler off, so a pinned queue keeps the hash spread.
+		equal("and pins it to a hash spread", pinned.laneSplit, "hash")
+		local eight = Lanes.starting(pinned)
+		equal("eight lanes are enumerable", #Lanes.allFor(pinned, "all", eight), 8)
+		local lane = Lanes.laneFor(eight, "ticket-1", nil)
 		check("sharded lanes are in range", lane >= 0 and lane < 8, `got {lane}`)
 
 		-- A pinned count never resizes, so it is not bound by the power-of-two
@@ -64,9 +117,10 @@ return function()
 		local three = Muster.Config.resolve({ name = "q", size = 2, lanes = 3 })
 		equal("a pinned count may be any integer", three.lanes, 3)
 		equal("and is fixed", three.laneMode, "fixed")
-		local lane = Lanes.laneFor(3, "ticket-1")
-		check("three lanes are addressable", lane >= 0 and lane < 3, `got {lane}`)
-		equal("and enumerable", #Lanes.allFor(three, "all", 3), 3)
+		local triple = Lanes.starting(three)
+		local odd = Lanes.laneFor(triple, "ticket-1", nil)
+		check("three lanes are addressable", odd >= 0 and odd < 3, `got {odd}`)
+		equal("and enumerable", #Lanes.allFor(three, "all", triple), 3)
 
 		local _, zeroProblem = Muster.Config.resolve({ name = "q", size = 2, lanes = 0 })
 		check("rejects zero", zeroProblem ~= nil, zeroProblem)
@@ -84,27 +138,36 @@ return function()
 
 	Harness.suite("resizing loses nothing")
 	do
-		-- The property the whole dynamic-lane design rests on: after the count
-		-- changes, a worker on a ticket's NEW lane must still read the map that
+		-- The property the whole dynamic-lane design rests on: after the layout
+		-- changes, a worker on a ticket's new lane must still read the map that
 		-- ticket was actually written to. If this ever fails, tickets sit in a
 		-- map nobody scans and silently expire.
 		local Lanes = Muster.internal.Lanes
 		local settings = Muster.Config.resolve({ name = "q", size = 2 })
+		local rated = Muster.Config.resolve({ name = "q", size = 2, rating = { window = 200 } })
+
+		local function reachable(config: any, before: any, after: any, ticketId: string, rating: number?): boolean
+			local writtenTo =
+				Lanes.name(config, "all", before.count, before.generation, Lanes.laneFor(before, ticketId, rating))
+			local nowIn = Lanes.descriptor(config, "all", after, Lanes.laneFor(after, ticketId, rating), before)
+			if nowIn.map == writtenTo then
+				return true
+			end
+			for _, legacy in nowIn.legacy do
+				if legacy == writtenTo then
+					return true
+				end
+			end
+			return false
+		end
 
 		local function everyTicketStillVisible(from: number, to: number): (boolean, string?)
+			local before = Lanes.hashed(from, 1)
+			local after = Lanes.hashed(to, 2)
 			for index = 1, 400 do
 				local ticketId = `ticket-{index}`
-				local writtenTo = Lanes.name(settings, "all", from, Lanes.laneFor(from, ticketId))
-				local nowIn = Lanes.descriptor(settings, "all", to, Lanes.laneFor(to, ticketId), from)
-
-				local reachable = nowIn.map == writtenTo
-				for _, legacy in nowIn.legacy do
-					if legacy == writtenTo then
-						reachable = true
-					end
-				end
-				if not reachable then
-					return false, `{ticketId} written to {writtenTo}, unreachable from {nowIn.map}`
+				if not reachable(settings, before, after, ticketId, nil) then
+					return false, `{ticketId} is unreachable from lane {Lanes.laneFor(after, ticketId, nil)}`
 				end
 			end
 			return true, nil
@@ -120,9 +183,42 @@ return function()
 		end
 
 		-- And the cost of that coverage stays bounded.
-		equal("growing reads one old map", #Lanes.descriptor(settings, "all", 4, 3, 2).legacy, 1)
-		equal("halving reads two", #Lanes.descriptor(settings, "all", 2, 1, 4).legacy, 2)
-		equal("no previous count means no extra reads", #Lanes.descriptor(settings, "all", 4, 3, nil).legacy, 0)
+		local grown = Lanes.descriptor(settings, "all", Lanes.hashed(4, 2), 3, Lanes.hashed(2, 1))
+		equal("growing reads one old map", #grown.legacy, 1)
+		local halved = Lanes.descriptor(settings, "all", Lanes.hashed(2, 2), 1, Lanes.hashed(4, 1))
+		equal("halving reads two", #halved.legacy, 2)
+		local settled = Lanes.descriptor(settings, "all", Lanes.hashed(4, 2), 3, nil)
+		equal("no previous layout means no extra reads", #settled.legacy, 0)
+
+		-- The same property for bands, where a ticket's lane follows from its
+		-- rating rather than its id.
+		local function everyRatingStillVisible(before: any, after: any): (boolean, string?)
+			for rating = -500, 4000, 7 do
+				if not reachable(rated, before, after, "t", rating) then
+					return false, `rating {rating} is unreachable from lane {Lanes.laneFor(after, "t", rating)}`
+				end
+			end
+			return true, nil
+		end
+
+		local one = Lanes.banded({}, 1)
+		local two = Lanes.split(one, 0, 1500)
+		local three = Lanes.split(two, 1, 2100)
+		local four = Lanes.split(three, 0, 900)
+		check("splitting the only lane", everyRatingStillVisible(one, two))
+		check("splitting the upper one", everyRatingStillVisible(two, three))
+		check("splitting the lower one", everyRatingStillVisible(three, four))
+		check("merging a lane downward", everyRatingStillVisible(four, Lanes.merge(four, 2)))
+		check("merging the bottom lane upward", everyRatingStillVisible(four, Lanes.merge(four, 0)))
+
+		equal(
+			"a split leaves each lane one old band to read",
+			#Lanes.descriptor(rated, "all", four, 3, three).legacy,
+			1
+		)
+		local merged = Lanes.merge(four, 2)
+		equal("and a merge leaves the widened lane two", #Lanes.descriptor(rated, "all", merged, 1, four).legacy, 2)
+		equal("while its neighbours still read one", #Lanes.descriptor(rated, "all", merged, 0, four).legacy, 1)
 	end
 
 	Harness.suite("config")

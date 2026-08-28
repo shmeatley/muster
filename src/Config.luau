@@ -119,6 +119,93 @@ local function resolveRating(raw: any): (any, string?)
 		nil
 end
 
+--[=[
+	Validates the `quickPlay` table, or `nil` when the feature is off.
+
+	`quickPlay = true` is shorthand for every default. The lane count is
+	validated the same way the ticket lane count is, and for the same reason:
+	listings shard by hash, and only the scaler's own resize path depends on the
+	count being a power of two.
+
+	@within Config
+	@private
+]=]
+local function resolveQuickPlay(raw: any, size: any): (any, string?)
+	if raw == nil or raw == false then
+		return nil, nil
+	end
+	local given = if raw == true then {} else raw
+	if type(given) ~= "table" then
+		return nil, "Muster: `quickPlay` must be a table, `true`, or nil to leave Quick Play off"
+	end
+
+	local capacity = given.capacity or size.max
+	if not isPositiveInteger(capacity) then
+		return nil, "Muster: `quickPlay.capacity` must be a positive integer"
+	end
+
+	local heartbeatInterval = given.heartbeatInterval or Defaults.LISTING_HEARTBEAT_INTERVAL
+	if not (type(heartbeatInterval) == "number" and heartbeatInterval > 0) then
+		return nil, "Muster: `quickPlay.heartbeatInterval` must be a positive number of seconds"
+	end
+
+	-- Three missed beats by default. A listing has to outlive more than one
+	-- dropped heartbeat, or a single slow request evicts a healthy match.
+	local listingExpiration = given.listingExpiration or heartbeatInterval * 3
+	if not (type(listingExpiration) == "number" and listingExpiration > heartbeatInterval) then
+		return nil, "Muster: `quickPlay.listingExpiration` must be a number larger than `quickPlay.heartbeatInterval`"
+	end
+
+	local reservationTimeout = given.reservationTimeout or Defaults.RESERVATION_TIMEOUT
+	if not (type(reservationTimeout) == "number" and reservationTimeout > 0) then
+		return nil, "Muster: `quickPlay.reservationTimeout` must be a positive number of seconds"
+	end
+
+	local searchInterval = given.searchInterval or Defaults.QUICKPLAY_SEARCH_INTERVAL
+	if not (type(searchInterval) == "number" and searchInterval > 0) then
+		return nil, "Muster: `quickPlay.searchInterval` must be a positive number of seconds"
+	end
+
+	local laneMode = "auto"
+	local lanes = Defaults.LANES
+	if given.lanes ~= nil and given.lanes ~= "auto" then
+		laneMode = "fixed"
+		lanes = given.lanes
+		if not isPositiveInteger(lanes) or lanes > Defaults.LANE_MAX then
+			return nil,
+				`Muster: \`quickPlay.lanes\` must be "auto" or an integer from 1 to {Defaults.LANE_MAX} (got {tostring(
+					given.lanes
+				)})`
+		end
+	end
+
+	local maxListingDataBytes = given.maxListingDataBytes or Defaults.MAX_LISTING_DATA_BYTES
+	if not isPositiveInteger(maxListingDataBytes) then
+		return nil, "Muster: `quickPlay.maxListingDataBytes` must be a positive integer"
+	end
+
+	return {
+		capacity = capacity,
+		heartbeatInterval = heartbeatInterval,
+		listingExpiration = listingExpiration,
+		-- Index entries outlive their listing slightly, for the same reason
+		-- ticket index entries do: a search must never see an entry vanish out
+		-- from under a listing that is still live.
+		indexExpiration = listingExpiration + 10,
+		reservationTimeout = reservationTimeout,
+		searchInterval = searchInterval,
+		lanes = lanes,
+		laneMode = laneMode,
+		-- A listing outlives a resize, unlike a ticket, so it migrates to its new
+		-- lane on its next heartbeat rather than draining. The resize cooldown has
+		-- to comfortably exceed that, or a second resize could land while the
+		-- fleet is still moving.
+		laneCooldown = math.max(heartbeatInterval * 3, listingExpiration),
+		maxListingDataBytes = maxListingDataBytes,
+	},
+		nil
+end
+
 local FUNCTION_FIELDS = {
 	"partitionKey",
 	"finalize",
@@ -182,6 +269,11 @@ function Config.resolve(raw: any): (any, string?)
 		return nil, ratingProblem
 	end
 
+	local quickPlay, quickPlayProblem = resolveQuickPlay(raw.quickPlay, size)
+	if quickPlayProblem then
+		return nil, quickPlayProblem
+	end
+
 	for _, field in FUNCTION_FIELDS do
 		if raw[field] ~= nil and not isCallable(raw[field]) then
 			return nil, `Muster: \`{field}\` must be a function`
@@ -205,8 +297,8 @@ function Config.resolve(raw: any): (any, string?)
 	--
 	-- A pinned count may be any integer in range. The power-of-two rule exists
 	-- only so the scaler can map old lanes onto new ones exactly when it
-	-- resizes, and a pinned count never resizes. With no previous count,
-	-- `Lanes.legacyMaps` is never reached. The invariant stays enforced where it
+	-- resizes, and a pinned count never resizes. With no previous layout,
+	-- `Lanes.legacyLanes` is never reached. The invariant stays enforced where it
 	-- is actually load-bearing, inside LaneScaler.
 	local laneMode = "auto"
 	local lanes = Defaults.LANES
@@ -218,6 +310,13 @@ function Config.resolve(raw: any): (any, string?)
 				`Muster: \`lanes\` must be "auto" or an integer from 1 to {Defaults.LANE_MAX} (got {tostring(raw.lanes)})`
 		end
 	end
+
+	-- How a partition's pool is divided. A scaling rated queue splits by rating
+	-- band, which separates players who would not have matched anyway; anything
+	-- else has no ordering to split on and spreads tickets by hash. A pinned
+	-- count is deliberately included in "anything else": bands are placed from
+	-- what the scaler observes, and a pinned queue never runs it.
+	local laneSplit = if laneMode == "auto" and rating ~= nil then "band" else "hash"
 
 	local fallbackAfter = raw.fallbackAfter or Defaults.FALLBACK_AFTER
 	if not (type(fallbackAfter) == "number" and fallbackAfter >= 0) then
@@ -266,8 +365,11 @@ function Config.resolve(raw: any): (any, string?)
 		fallbackAfter = fallbackAfter,
 		lanes = lanes,
 		laneMode = laneMode,
-		-- The shared count outlives any ticket written against it, so a partition
-		-- that goes quiet does not silently reset to one lane mid-drain.
+		laneSplit = laneSplit,
+		-- The shared layout outlives any ticket written against it, so a partition
+		-- that goes quiet does not silently reset to one lane mid-drain. A
+		-- partition that stays busy without resizing has its record refreshed
+		-- before it gets here; see `LaneScaler._touch`.
 		laneStateExpiration = ticketExpiration * 4,
 		partitionKey = raw.partitionKey,
 
@@ -296,6 +398,8 @@ function Config.resolve(raw: any): (any, string?)
 		autoStart = raw.autoStart ~= false,
 		autoCancelOnLeave = raw.autoCancelOnLeave ~= false,
 		manualAcknowledge = raw.manualAcknowledge == true,
+
+		quickPlay = if quickPlay then table.freeze(quickPlay) else nil,
 
 		store = raw.store,
 		messaging = raw.messaging,
@@ -326,6 +430,10 @@ function Config.resolve(raw: any): (any, string?)
 		leases = `{prefix}:{raw.name}:leases`,
 		-- Keyed by partition: each one scales on its own depth.
 		lanes = `{prefix}:{raw.name}:lanes`,
+		-- Quick Play keeps its own ledger and its own lane layout, so a listing
+		-- never shares a key space with a ticket.
+		quickplay = `{prefix}:{raw.name}:qp`,
+		quickplayLanes = `{prefix}:{raw.name}:qplanes`,
 		-- Shared across every queue in the namespace, so a player cannot hold
 		-- tickets in two queues at once. Use a distinct `namespace` for queues
 		-- that should be independent.

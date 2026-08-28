@@ -60,10 +60,13 @@ export type Member = {
 	.metadata Metadata?
 	.queuedAt number
 	.expiresAt number
-	.state "Queued" | "Claimed" | "Matched" | "Cancelled"
+	.state "Queued" | "Claimed" | "Matched" | "Cancelled" | "QuickPlayed"
 	.matchId string?
 	.lane number -- Index within the partition.
 	.laneCount number -- Lane count in force when the ticket was written; lanes scale at runtime.
+	.laneGeneration number -- Which revision of the partition's lane layout that count belonged to.
+	.quickPlay boolean? -- True when this ticket may also backfill into a live match. See [QuickPlay].
+	.listingId string? -- The listing a `QuickPlayed` ticket was backfilled into.
 
 	A queue entry covering one player or one group. A ticket is never split
 	across matches.
@@ -80,10 +83,13 @@ export type Ticket = {
 	metadata: Metadata?,
 	queuedAt: number,
 	expiresAt: number,
-	state: "Queued" | "Claimed" | "Matched" | "Cancelled",
+	state: "Queued" | "Claimed" | "Matched" | "Cancelled" | "QuickPlayed",
 	matchId: string?,
 	lane: number,
 	laneCount: number,
+	laneGeneration: number,
+	quickPlay: boolean?,
+	listingId: string?,
 }
 
 --[=[
@@ -220,13 +226,15 @@ export type Finalizer<T> = (context: MatchContext) -> T
 export type AbortHandler = (context: AbortContext) -> ()
 
 --[=[
-	@type QueueStatus { state: "Queued", queuedAt: number } | { state: "Claiming" } | { state: "Matched", match: MatchEnvelope<T> } | { state: "Cancelled" } | { state: "Expired" }
+	@type QueueStatus { state: "Queued", queuedAt: number } | { state: "Claiming" } | { state: "Matched", match: MatchEnvelope<T> } | { state: "QuickPlayed", listingId: string? } | { state: "Cancelled" } | { state: "Expired" }
 	@within Types
 ]=]
 export type QueueStatus<T> =
 	{ state: "Queued", queuedAt: number }
 	| { state: "Claiming" }
 	| { state: "Matched", match: MatchEnvelope<T> }
+	-- Backfilled into a live match by [QuickPlay] rather than matched into a new one.
+	| { state: "QuickPlayed", listingId: string? }
 	| { state: "Cancelled" }
 	| { state: "Expired" }
 
@@ -260,6 +268,11 @@ export type ErrorCode =
 	| "InvalidTarget"
 	| "InviteNotFound"
 	| "MatchMismatch"
+	-- Quick Play
+	| "QuickPlayDisabled"
+	| "ListingNotFound"
+	| "ListingFull"
+	| "InvalidListingData"
 
 --[=[
 	@interface ServiceError
@@ -446,12 +459,14 @@ export type SizeConfig = { min: number, target: number?, max: number? }
 	.metadata Metadata?
 	.partition string? -- Overrides `partitionKey` for this ticket. Partitions never match each other.
 	.serverId string? -- Overrides where this member's match is delivered. Defaults to this server.
+	.quickPlay boolean? -- Also let this ticket backfill into a live match. Requires the `quickPlay` config.
 ]=]
 export type EnqueueOptions = {
 	rating: number?,
 	metadata: Metadata?,
 	partition: string?,
 	serverId: string?,
+	quickPlay: boolean?,
 }
 
 --[=[
@@ -461,12 +476,14 @@ export type EnqueueOptions = {
 	.metadata Metadata?
 	.partition string? -- Overrides `partitionKey` for this ticket.
 	.serverIds { [number]: string }? -- Per-userId delivery addresses, for members on other servers.
+	.quickPlay boolean? -- Also let this ticket backfill into a live match. Requires the `quickPlay` config.
 ]=]
 export type GroupOptions = {
 	ratings: { [number]: number }?,
 	metadata: Metadata?,
 	partition: string?,
 	serverIds: { [number]: string }?,
+	quickPlay: boolean?,
 }
 
 --[=[
@@ -480,6 +497,7 @@ export type PartyMember = {
 	userId: number,
 	joinedAt: number,
 	serverId: string?,
+	quickPlay: boolean?,
 }
 
 --[=[
@@ -534,6 +552,165 @@ export type PartyInvite = {
 	targetUserId: number,
 	createdAt: number,
 	expiresAt: number,
+}
+
+--[=[
+	@interface QuickPlayConfig
+	@within Types
+	.capacity number? -- Players a hosted match holds. Defaults to `size.max`.
+	.heartbeatInterval number? -- Seconds between player-count refreshes. Default 30.
+	.listingExpiration number? -- Seconds a listing survives without a heartbeat. Default 90.
+	.reservationTimeout number? -- Seconds a claimed seat is held. Default 45.
+	.searchInterval number? -- Seconds between search attempts by a queued ticket. Default 3.
+	.lanes ("auto" | number)? -- Listing lane count. Default `"auto"`.
+	.maxListingDataBytes number? -- Budget for a listing's `data`. Default 1024.
+
+	Supplying this table, or `true` for all of its defaults, turns Quick Play on
+	for a queue. Omit it and the feature is off: [Matchmaker:quickPlay] and
+	`queue.quickplay` both throw.
+
+	See [QuickPlay].
+]=]
+export type QuickPlayConfig = {
+	capacity: number?,
+	heartbeatInterval: number?,
+	listingExpiration: number?,
+	reservationTimeout: number?,
+	searchInterval: number?,
+	lanes: (string | number)?,
+	maxListingDataBytes: number?,
+}
+
+--[=[
+	@interface Reservation
+	@within Types
+	.id string
+	.size number -- Seats held.
+	.userIds { number } -- Who the seats are for. Used to retire the reservation once they arrive.
+	.expiresAt number
+
+	A seat held in a listing between a claim and the player arriving. Counted
+	against capacity for as long as it lives, so two lobbies cannot fill the same
+	slot.
+]=]
+export type Reservation = {
+	id: string,
+	size: number,
+	userIds: { number },
+	expiresAt: number,
+}
+
+--[=[
+	@interface Listing
+	@within Types
+	.v number -- Schema version.
+	.id string
+	.queue string
+	.partition string
+	.serverId string -- JobId of the match server hosting it.
+	.capacity number
+	.players number -- Count at the last heartbeat, so up to `heartbeatInterval` stale.
+	.open boolean -- False once the host has stopped taking players.
+	.reservations { Reservation }
+	.data T -- Whatever the host published: an access code, a place id, a map name.
+	.lane number
+	.laneCount number
+	.laneGeneration number
+	.updatedAt number
+	.expiresAt number
+
+	One live match, advertised for backfill. Generic over the host's `data`, so
+	`listing.data.accessCode` is typed.
+]=]
+export type Listing<T> = {
+	v: number,
+	id: string,
+	queue: string,
+	partition: string,
+	serverId: string,
+	capacity: number,
+	players: number,
+	open: boolean,
+	reservations: { Reservation },
+	data: T,
+	lane: number,
+	laneCount: number,
+	laneGeneration: number,
+	updatedAt: number,
+	expiresAt: number,
+}
+
+--[=[
+	@interface ListingView
+	@within Types
+	.listingId string
+	.serverId string
+	.capacity number
+	.free number -- Seats free as of the last write. A hint, not a guarantee.
+	.updatedAt number
+
+	The reduced copy of a listing held in the lane index, kept small because it
+	is read far more often than the listing itself. `free` is what the index is
+	sorted by, ascending, so the fullest joinable match is returned first.
+]=]
+export type ListingView = {
+	listingId: string,
+	serverId: string,
+	capacity: number,
+	free: number,
+	updatedAt: number,
+}
+
+--[=[
+	@interface HostOptions
+	@within Types
+	.data T -- Published to whoever joins. Put the access code and place id here.
+	.capacity number? -- Overrides `quickPlay.capacity` for this match.
+	.partition string? -- Only searchers on the same partition find it. Defaults to `"all"`.
+	.players number? -- Starting player count. Defaults to `playerCount()`.
+	.playerCount (() -> number)? -- Read on every heartbeat. Defaults to the `Players` service.
+	.presentUserIds (() -> { number })? -- Who is in the match now, used to retire fulfilled reservations.
+	.listingId string? -- Reuse a known id, so a restarted host adopts its own listing.
+
+	The argument to [QuickPlay:host].
+]=]
+export type HostOptions<T> = {
+	data: T,
+	capacity: number?,
+	partition: string?,
+	players: number?,
+	playerCount: (() -> number)?,
+	presentUserIds: (() -> { number })?,
+	listingId: string?,
+}
+
+--[=[
+	@interface QuickPlayAssignment
+	@within Types
+	.listingId string
+	.reservationId string -- Pass to [QuickPlay:release] if the teleport fails.
+	.queue string
+	.partition string
+	.serverId string -- The match server hosting the listing.
+	.members { Member }
+	.ticketId string -- The ticket this assignment consumed.
+	.size number
+	.data T -- The listing's published data.
+
+	Delivered on `queue.quickPlayMatched` when a queued player is backfilled into
+	a live match. Unlike a [MatchEnvelope] this fires only on the server that
+	claimed the seat, since that is the server holding the players.
+]=]
+export type QuickPlayAssignment<T> = {
+	listingId: string,
+	reservationId: string,
+	queue: string,
+	partition: string,
+	serverId: string,
+	members: { Member },
+	ticketId: string,
+	size: number,
+	data: T,
 }
 
 --[=[

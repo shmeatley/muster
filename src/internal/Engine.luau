@@ -81,6 +81,9 @@ function Engine.new(settings: any, deps: any)
 		_settings = settings,
 		_store = deps.store,
 		_getParties = deps.parties,
+		-- Like `parties`, an accessor rather than an instance: the service is only
+		-- built once a quickplay ticket or a hosted listing actually needs it.
+		_getQuickPlay = deps.quickplay,
 		_isThrottled = deps.isThrottled or function()
 			return false
 		end,
@@ -107,6 +110,7 @@ function Engine.new(settings: any, deps: any)
 		onAborted = nil :: ((any) -> ())?,
 		onQueued = nil :: ((any) -> ())?,
 		onCancelled = nil :: ((any) -> ())?,
+		onQuickPlayMatched = nil :: ((any) -> ())?,
 	}, Engine)
 
 	-- The broadcaster has already deduplicated by the time it calls back, so
@@ -253,11 +257,6 @@ function Engine.enqueue(self: any, request: any): any
 
 	local now = self._clock()
 	local partition = request.partition or "all"
-	-- Read the partition's current lane count (cached) so this ticket lands
-	-- where the rest of the fleet is looking.
-	local laneState = self._scaler:current(partition)
-	local lane =
-		self._layout.forTicket(settings, partition, laneState.count, ticketId, self._scaler:draining(laneState))
 
 	local rating: number? = nil
 	if settings.rated then
@@ -268,15 +267,29 @@ function Engine.enqueue(self: any, request: any): any
 		rating = settings.rating.aggregate(ratings)
 	end
 
+	-- Read the partition's current layout (cached) so this ticket lands where
+	-- the rest of the fleet is looking. The rating has to be aggregated first:
+	-- on a banded queue it is what picks the lane.
+	local laneState = self._scaler:current(partition)
+	local lane = self._layout.forTicket(
+		settings,
+		partition,
+		laneState.layout,
+		ticketId,
+		rating,
+		self._scaler:draining(laneState)
+	)
+
 	local ticket = {
 		v = settings.version,
 		id = ticketId,
 		queue = settings.name,
 		partition = partition,
 		lane = lane.lane,
-		-- Recorded, not recomputed later: the count can change while this ticket
+		-- Recorded, not recomputed later: the layout can change while this ticket
 		-- is queued, and its index entry stays in the map it was written to.
 		laneCount = lane.count,
+		laneGeneration = lane.generation,
 		partyId = request.partyId,
 		leaderUserId = request.leaderUserId,
 		members = members,
@@ -288,6 +301,8 @@ function Engine.enqueue(self: any, request: any): any
 		state = "Queued",
 		claim = nil,
 		matchId = nil,
+		-- Set only when true, so an ordinary ticket carries no extra bytes.
+		quickPlay = if request.quickPlay then true else nil,
 	}
 
 	local stored, failure = self._store:set(settings.keys.tickets, ticketId, ticket, settings.ticketExpiration, 3)
@@ -311,6 +326,9 @@ function Engine.enqueue(self: any, request: any): any
 		polls = 0,
 		nextPoll = mono + self._broadcaster:pollInterval(0),
 		nextHeartbeat = mono + settings.heartbeatInterval,
+		-- Zero, not an interval away: a quickplay ticket looks for a seat on the
+		-- very next pass, which is usually the same one the caller is still in.
+		nextQuickPlay = 0,
 	}
 	self._work[lane.key] = self._work[lane.key] or lane
 
@@ -362,6 +380,9 @@ function Engine._pollLocal(self: any, ticketId: string, localState: any, mono: n
 		return
 	end
 
+	if ticket.state == "QuickPlayed" then
+		return ok({ state = "QuickPlayed", listingId = ticket.listingId })
+	end
 	if ticket.state == "Cancelled" then
 		self._localTickets[ticketId] = nil
 		if self.onCancelled then
@@ -444,6 +465,121 @@ function Engine._heartbeatLocal(self: any, localState: any, now: number, mono: n
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Quick Play
+--------------------------------------------------------------------------------
+
+--[=[
+	Tries to backfill one ticket into a live match.
+
+	The order here is load-bearing, and it is the same shape as `_commit`:
+
+	1. **Take the seat.** Atomic, so only one server can hold it.
+	2. **Take the ticket**, by the compare-and-set in `_release`. A lane worker
+	   may have claimed it into a fresh match a moment ago, in which case this
+	   fails and the player is already spoken for.
+	3. **Give the seat back** if step 2 lost, so a match we are not sending
+	   anybody to does not sit there holding capacity until the reservation
+	   lapses.
+
+	Doing it the other way round, taking the ticket first, would take a player
+	out of the queue before knowing there was anywhere to put them.
+
+	@within Engine
+	@private
+]=]
+function Engine._tryQuickPlay(self: any, ticket: any, now: number): boolean
+	local quickplay = self._getQuickPlay()
+
+	local userIds = table.create(#ticket.members)
+	for index, member in ticket.members do
+		userIds[index] = member.userId
+	end
+
+	local found = quickplay:search({
+		partition = ticket.partition,
+		size = ticket.size,
+		userIds = userIds,
+		now = now,
+	})
+	if not found.ok or found.value == nil then
+		return false
+	end
+	local claim = found.value
+
+	local taken = self:_release(ticket.leaderUserId, ticket.id, "QuickPlayed", claim.listingId)
+	if taken == nil then
+		quickplay:release(claim.listingId, claim.reservationId)
+		self:_log("info", "backfill lost the ticket to a match", {
+			ticketId = ticket.id,
+			listingId = claim.listingId,
+		})
+		return false
+	end
+
+	local assignment = {
+		listingId = claim.listingId,
+		reservationId = claim.reservationId,
+		queue = self._settings.name,
+		partition = ticket.partition,
+		serverId = claim.listing.serverId,
+		members = ticket.members,
+		ticketId = ticket.id,
+		size = ticket.size,
+		data = claim.listing.data,
+	}
+
+	self:_metric("muster.quickplay.assigned", ticket.size, { queue = self._settings.name })
+	self:_log("info", `backfilled {ticket.size} players`, {
+		ticketId = ticket.id,
+		listingId = claim.listingId,
+		queue = self._settings.name,
+	})
+	if self.onQuickPlayMatched then
+		self.onQuickPlayMatched(assignment)
+	end
+	return true
+end
+
+--[=[
+	Runs the backfill search for every local ticket that is due one.
+
+	Tickets are collected before any of them is acted on, because a successful
+	backfill removes its entry from `_localTickets` and mutating that while
+	iterating it is undefined.
+
+	@within Engine
+	@private
+]=]
+function Engine._advanceQuickPlay(self: any, now: number, mono: number)
+	if self._settings.quickPlay == nil or self._getQuickPlay == nil then
+		return
+	end
+
+	local due = nil
+	for ticketId, localState in self._localTickets do
+		local ticket = localState.ticket
+		if ticket.quickPlay and ticket.state == "Queued" and mono >= (localState.nextQuickPlay or 0) then
+			due = due or {}
+			table.insert(due, ticketId)
+		end
+	end
+	if due == nil then
+		return
+	end
+
+	for _, ticketId in due do
+		local localState = self._localTickets[ticketId]
+		if localState ~= nil then
+			-- Charged whether or not a seat was found, so a queue with nothing
+			-- joinable costs one read per ticket per interval rather than one per
+			-- pass.
+			localState.nextQuickPlay = mono + self._settings.quickPlay.searchInterval
+			self:_tryQuickPlay(localState.ticket, now)
+		end
+	end
+end
+
 function Engine._advanceTickets(self: any, now: number, mono: number)
 	local active: { [string]: boolean } = {}
 	for ticketId, localState in self._localTickets do
@@ -508,6 +644,11 @@ function Engine._acquireWork(self: any, now: number, mono: number)
 				renewAt = now + Defaults.LEASE_RENEW_INTERVAL,
 				nextScan = mono,
 				lastCount = 0,
+				-- Candidates from this lane's own map, and the queue time of the
+				-- oldest of them. Both start at "nothing seen", which is what
+				-- makes a freshly taken lane read wide on its first pass.
+				ownCount = 0,
+				oldest = 0,
 				batchSize = Defaults.MIN_BATCH_SIZE,
 				emptyPasses = 0,
 			}
@@ -520,36 +661,92 @@ function Engine._acquireWork(self: any, now: number, mono: number)
 	end
 end
 
-function Engine._readCandidates(self: any, owned: any): { Candidate }
+--[=[
+	Whether this lane should read the bands either side of it as well as its own.
+
+	Band boundaries are hard walls, which is the price of splitting by rating,
+	and two cases are worth paying to cross:
+
+	- **Too thin to match.** A band holding a handful of players has nothing to
+	  gain from privacy and everything to gain from the pool next door. This is
+	  also what rescues a lone player at the top of the ladder, whose band can
+	  hold nobody else at all, long before a merge would.
+	- **Too stale.** Once the anchor's rating window has relaxed past the width
+	  of the band, the players it should now reach are by definition outside it.
+
+	Neither is free, so neither is the default: a busy band that is still turning
+	players over reads only itself.
+
+	@within Engine
+	@private
+]=]
+function Engine._shouldWiden(self: any, owned: any, now: number): boolean
+	if #owned.descriptor.neighbours == 0 then
+		return false
+	end
+	if owned.ownCount < Defaults.LANE_STARVED_DEPTH then
+		return true
+	end
+	local rating = self._settings.rating
+	return rating ~= nil and owned.oldest > 0 and now - owned.oldest >= rating.unbounded
+end
+
+--[=[
+	Reads the lane's candidates, oldest first.
+
+	Returns the count from the lane's own map alongside them, which is what the
+	scaler judges this lane's depth by, and the count from everything this lane
+	is responsible for, which is what decides whether the lease is worth keeping.
+	Candidates borrowed from a neighbour count towards neither: they belong to a
+	lane somebody else is holding.
+
+	@within Engine
+	@private
+]=]
+function Engine._readCandidates(self: any, owned: any, now: number): ({ Candidate }, number, number)
 	local descriptor = owned.descriptor
 	local candidates = {}
 	local seen = {}
 
-	-- The lane itself, then any map from a count still draining. Reading both
-	-- means a resize never splits the pool: tickets written before and after it
-	-- can still match each other.
+	-- The lane itself, then any map from a generation still draining. Reading
+	-- both means a resize never splits the pool: tickets written before and
+	-- after it can still match each other.
 	local maps = { descriptor.map }
 	for _, legacy in descriptor.legacy do
 		table.insert(maps, legacy)
 	end
+	local core = #maps
+	if self:_shouldWiden(owned, now) then
+		for _, neighbour in descriptor.neighbours do
+			table.insert(maps, neighbour)
+		end
+	end
 
+	local ownCount = 0
+	local coreCount = 0
 	local perMap = if #maps > 1 then math.max(1, math.ceil(owned.batchSize / #maps)) else owned.batchSize
-	for _, map in maps do
+	for index, map in maps do
 		local success, items = self._store:sortedRange(map, perMap, 5)
 		if success then
 			for _, item in items do
 				local value = item.value
-				-- Deduplicated because overlapping legacy maps can surface the
-				-- same ticket to two lanes during a shrink.
+				-- Deduplicated because overlapping maps can surface the same
+				-- ticket twice, during a shrink or across a band boundary.
 				if value ~= nil and not seen[value.ticketId] then
 					seen[value.ticketId] = true
 					table.insert(candidates, value)
+					if index == 1 then
+						ownCount += 1
+					end
+					if index <= core then
+						coreCount += 1
+					end
 				end
 			end
 		end
 	end
 
-	return candidates
+	return candidates, ownCount, coreCount
 end
 
 --------------------------------------------------------------------------------
@@ -694,9 +891,15 @@ function Engine._claimTicket(self: any, candidate: Candidate, matchId: string, o
 end
 
 function Engine._cleanupTicket(self: any, ticket: any)
-	-- Uses the count the ticket was written under, so a resize in the meantime
+	-- Uses the layout the ticket was written under, so a resize in the meantime
 	-- does not leave its index entry behind in an abandoned map.
-	local map = Lanes.name(self._settings, ticket.partition, ticket.laneCount or 1, ticket.lane or 0)
+	local map = Lanes.name(
+		self._settings,
+		ticket.partition,
+		ticket.laneCount or 1,
+		ticket.laneGeneration or 0,
+		ticket.lane or 0
+	)
 	self._store:sortedRemove(map, ticket.id, 4)
 end
 
@@ -979,6 +1182,7 @@ function Engine._scan(self: any, key: string, owned: any, now: number, mono: num
 		local lease = self._leases:renew(key, owned.epoch)
 		if lease == nil then
 			self._owned[key] = nil
+			self._scaler:forget(key)
 			owned.descriptor.nextAttempt = mono + 2 + self._random() * 3
 			self:_log("info", "lost lane", { lane = key, epoch = owned.epoch })
 			return
@@ -990,25 +1194,44 @@ function Engine._scan(self: any, key: string, owned: any, now: number, mono: num
 		return
 	end
 
-	local candidates = self:_readCandidates(owned)
+	local candidates, ownCount, coreCount = self:_readCandidates(owned, now)
 	owned.lastCount = #candidates
+	owned.ownCount = ownCount
 	if #candidates >= owned.batchSize then
 		owned.batchSize = math.min(Defaults.MAX_BATCH_SIZE, owned.batchSize * 2)
 	elseif #candidates <= owned.batchSize / 4 then
 		owned.batchSize = math.max(Defaults.MIN_BATCH_SIZE, math.floor(owned.batchSize / 2))
 	end
 
+	-- What this lane holds on its own: how deep it is, how long its oldest player
+	-- has been in it, and the ratings a band split would be placed from.
+	-- Candidates pulled in from a neighbour or a draining generation are matched
+	-- against, but they say nothing about this lane and are left out.
+	local ratings = table.create(ownCount)
+	local oldest = 0
+	for index = 1, ownCount do
+		local candidate = candidates[index]
+		if candidate.rating ~= nil then
+			table.insert(ratings, candidate.rating)
+		end
+		if oldest == 0 or candidate.queuedAt < oldest then
+			oldest = candidate.queuedAt
+		end
+	end
+	owned.oldest = oldest
+
 	-- Judged against the largest batch we would ever ask for, not the one we
 	-- happened to ask for. A small early batch filling up says nothing about
 	-- how deep the lane really is.
-	local resized =
-		self._scaler:observe(owned.descriptor.partition, owned.descriptor.count, #candidates, Defaults.MAX_BATCH_SIZE)
+	local resized = self._scaler:observe(owned.descriptor, ownCount, Defaults.MAX_BATCH_SIZE, ratings)
 	if resized ~= nil then
-		self:_metric("muster.lanes.resized", resized, { queue = self._settings.name })
-		self:_log("info", `lane count for {owned.descriptor.partition} is now {resized}`, {
+		self:_metric("muster.lanes.resized", resized.count, { queue = self._settings.name })
+		self:_log("info", `lanes for {owned.descriptor.partition} are now {resized.count}`, {
 			partition = owned.descriptor.partition,
 			from = owned.descriptor.count,
-			to = resized,
+			to = resized.count,
+			generation = resized.generation,
+			bounds = table.concat(resized.bounds, ","),
 		})
 	end
 
@@ -1017,7 +1240,10 @@ function Engine._scan(self: any, key: string, owned: any, now: number, mono: num
 		self:_commit(group, owned)
 	end
 
-	if #candidates == 0 then
+	-- Judged on what this lane is responsible for, not on what it borrowed. A
+	-- lane kept alive by its neighbour's queue is a lane this server is holding
+	-- for nothing, and holding it counts against `MAX_LANES_PER_SERVER`.
+	if coreCount == 0 then
 		owned.emptyPasses += 1
 	else
 		owned.emptyPasses = 0
@@ -1026,6 +1252,7 @@ function Engine._scan(self: any, key: string, owned: any, now: number, mono: num
 	if owned.emptyPasses >= Defaults.EMPTY_PASSES_BEFORE_RELEASE then
 		self._leases:release(key, owned.epoch)
 		self._owned[key] = nil
+		self._scaler:forget(key)
 		owned.descriptor.nextAttempt = mono + Defaults.MAX_SCAN_DELAY
 		self:_log("info", "released idle lane", { lane = key })
 		return
@@ -1045,9 +1272,31 @@ function Engine.step(self: any)
 	local now = self._clock()
 	local mono = self._monotonic()
 	self:_advanceTickets(now, mono)
+	-- Before lane work: a ticket that can be backfilled right now should not
+	-- wait out a scan it is about to leave the queue anyway.
+	self:_advanceQuickPlay(now, mono)
+	self:_advanceListings(mono)
 	self:_acquireWork(now, mono)
 	for key, owned in self._owned do
 		self:_scan(key, owned, now, mono)
+	end
+end
+
+--[=[
+	Heartbeats whichever listings this server is hosting. Only reaches for the
+	service if it has already been built, so a lobby server that never hosts
+	anything pays nothing.
+
+	@within Engine
+	@private
+]=]
+function Engine._advanceListings(self: any, mono: number)
+	if self._settings.quickPlay == nil or self._getQuickPlay == nil then
+		return
+	end
+	local quickplay = self._getQuickPlay(true)
+	if quickplay ~= nil then
+		quickplay:step(mono)
 	end
 end
 
@@ -1086,6 +1335,7 @@ function Engine.stop(self: any)
 	self._broadcaster:stop()
 	for key, owned in self._owned do
 		self._leases:release(key, owned.epoch)
+		self._scaler:forget(key)
 	end
 	table.clear(self._owned)
 end
@@ -1115,30 +1365,55 @@ function Engine.getTicketForUser(self: any, userId: number): any
 	return ok(ticket)
 end
 
-function Engine.cancel(self: any, requesterUserId: number, ticketId: string): any
+--[=[
+	Moves a ticket out of `Queued` and tears down everything that referenced it:
+	its lane index entry, its members' user reservations, this server's local
+	copy, and its party lock.
+
+	The compare-and-set is the interesting part. `_claimTicket` also only
+	succeeds on a `Queued` ticket, so this is the single point where cancelling,
+	backfilling and matching arbitrate against each other. Whichever writes
+	first wins, and the others see a state they cannot act on.
+
+	@param state -- The terminal state to write: `Cancelled` or `QuickPlayed`.
+	@return any -- The ticket, or `nil` when it could not be taken.
+	@return any -- The failure to hand back, when there is one.
+	@within Engine
+	@private
+]=]
+function Engine._release(
+	self: any,
+	requesterUserId: number,
+	ticketId: string,
+	state: string,
+	matchId: string?
+): (any, any)
 	local settings = self._settings
-	local cancelled = false
+	local taken = false
 	local success, ticket = self._store:update(
 		settings.keys.tickets,
 		ticketId,
 		settings.ticketExpiration,
 		function(current: any): any
-			cancelled = false
+			taken = false
 			if current == nil or current.leaderUserId ~= requesterUserId or current.state ~= "Queued" then
 				return nil
 			end
-			current.state = "Cancelled"
-			cancelled = true
+			current.state = state
+			if matchId ~= nil then
+				current.listingId = matchId
+			end
+			taken = true
 			return current
 		end,
 		3
 	)
 
 	if not success then
-		return err("StoreUnavailable", tostring(ticket), true)
+		return nil, err("StoreUnavailable", tostring(ticket), true)
 	end
-	if not cancelled then
-		return err("NotQueued", "That ticket is missing, already matched, or owned by someone else")
+	if not taken then
+		return nil, err("NotQueued", "That ticket is missing, already matched, or owned by someone else")
 	end
 
 	self:_cleanupTicket(ticket)
@@ -1147,6 +1422,15 @@ function Engine.cancel(self: any, requesterUserId: number, ticketId: string): an
 	if ticket.partyId and self._getParties then
 		self._getParties():unlockQueue(ticket.partyId, ticket.id)
 	end
+	return ticket, nil
+end
+
+function Engine.cancel(self: any, requesterUserId: number, ticketId: string): any
+	local ticket, failure = self:_release(requesterUserId, ticketId, "Cancelled")
+	if failure then
+		return failure
+	end
+
 	self:_log("info", "ticket cancelled", { ticketId = ticketId, user = requesterUserId })
 	if self.onCancelled then
 		self.onCancelled(ticket)
@@ -1165,6 +1449,9 @@ function Engine.getStatus(self: any, ticketId: string): any
 	end
 	if ticket.state == "Queued" then
 		return ok({ state = "Queued", queuedAt = ticket.queuedAt })
+	end
+	if ticket.state == "QuickPlayed" then
+		return ok({ state = "QuickPlayed", listingId = ticket.listingId })
 	end
 	if ticket.state == "Cancelled" then
 		return ok({ state = "Cancelled" })

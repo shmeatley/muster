@@ -124,7 +124,7 @@ return function()
 		world.store:set(keys.tickets, ticketId, ticket, 180)
 		-- Derived rather than hardcoded, so the lane key layout can change
 		-- without this test quietly writing into a map nobody reads.
-		local map = Muster.internal.Lanes.name(a._settings, "all", ticket.laneCount, ticket.lane)
+		local map = Muster.internal.Lanes.name(a._settings, "all", ticket.laneCount, ticket.laneGeneration, ticket.lane)
 		world.store:sortedSet(map, ticketId, {
 			ticketId = ticketId,
 			size = 1,

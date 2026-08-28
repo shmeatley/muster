@@ -32,6 +32,7 @@ local Defaults = require(script.Defaults)
 local Hash = require(script.Hash)
 local Matchmaker = require(script.Matchmaker)
 local Party = require(script.Party)
+local QuickPlay = require(script.QuickPlay)
 local Result = require(script.Result)
 local Signal = require(script.Signal)
 local Types = require(script.Types)
@@ -42,6 +43,7 @@ local Finalizer = require(script.internal.Finalizer)
 local LaneScaler = require(script.internal.LaneScaler)
 local Lanes = require(script.internal.Lanes)
 local LeaseManager = require(script.internal.LeaseManager)
+local Listings = require(script.internal.Listings)
 local Matcher = require(script.internal.Matcher)
 local RequestExecutor = require(script.internal.RequestExecutor)
 local Serialize = require(script.internal.Serialize)
@@ -78,6 +80,12 @@ export type PartyMember = Types.PartyMember
 export type PartyQueue = Types.PartyQueue
 export type PartyView = Types.PartyView
 export type PartyInvite = Types.PartyInvite
+export type QuickPlayConfig = Types.QuickPlayConfig
+export type Reservation = Types.Reservation
+export type Listing<T> = Types.Listing<T>
+export type ListingView = Types.ListingView
+export type HostOptions<T> = Types.HostOptions<T>
+export type QuickPlayAssignment<T> = Types.QuickPlayAssignment<T>
 export type Logger = Types.Logger
 export type Metrics = Types.Metrics
 export type Party = Party.Party
@@ -94,6 +102,16 @@ local Muster = {
 		`queue.parties`; this export is for using parties without a queue.
 	]=]
 	Party = Party,
+
+	--[=[
+		@prop QuickPlay QuickPlay
+		@within Muster
+		@readonly
+
+		Backfilling players into live matches. A [Matchmaker] with a `quickPlay`
+		config exposes its own instance as `queue.quickplay`.
+	]=]
+	QuickPlay = QuickPlay,
 
 	--[=[
 		@prop Result Result
@@ -173,6 +191,7 @@ local Muster = {
 		LaneScaler = LaneScaler,
 		Lanes = Lanes,
 		LeaseManager = LeaseManager,
+		Listings = Listings,
 		Matcher = Matcher,
 		RequestExecutor = RequestExecutor,
 		Serialize = Serialize,

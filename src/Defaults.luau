@@ -57,7 +57,9 @@ Defaults.MAX_PARTY_INVITES = 20
 -- players almost never land in the same one and nobody ever matches.
 Defaults.LANES = 1
 Defaults.LANE_MIN = 1
--- Counts are powers of two so a resize maps old lanes onto new ones exactly.
+-- Hash counts are powers of two so a resize maps old lanes onto new ones
+-- exactly. Band layouts change one boundary at a time and are not constrained
+-- to a power of two, but they share the ceiling.
 Defaults.LANE_MAX = 64
 Defaults.MAX_LANES_PER_SERVER = 8
 Defaults.EMPTY_PASSES_BEFORE_RELEASE = 3
@@ -70,9 +72,16 @@ Defaults.LANE_SATURATED_PASSES = 3
 -- lull is common, and over-sharding a thin queue is the worse failure.
 Defaults.LANE_STARVED_PASSES = 5
 Defaults.LANE_STARVED_DEPTH = 8
--- How long a server may go before re-reading the shared lane count. A stale
--- read only means writing into the previous count's lane, which is still read.
+-- How long a server may go before re-reading the shared lane layout. A stale
+-- read only means writing into the previous generation's lane, which is still
+-- read.
 Defaults.LANE_STATE_REFRESH = 30
+-- Rating windows a band has to span before it may be split in two. Below this
+-- the whole lane is close enough to match against itself, and a boundary
+-- through it would separate players who are supposed to meet. It is what stops
+-- a thin, tightly clustered population at the top of the ladder from being
+-- sharded into lanes of one.
+Defaults.LANE_SPLIT_SPREAD = 2
 
 Defaults.MIN_SCAN_DELAY = 0.25
 Defaults.MAX_SCAN_DELAY = 5
@@ -112,6 +121,27 @@ Defaults.MAX_METADATA_BYTES = 1024
 Defaults.MAX_MATCH_DATA_BYTES = 4096
 Defaults.MAX_DATA_DEPTH = 8
 Defaults.SEEN_CAPACITY = 256
+
+-- Quick Play: an optional index of live matches that players may backfill into.
+-- A listing refreshes its player count on this interval; three missed beats and
+-- it evicts itself, which is how a crashed match server leaves the index.
+Defaults.LISTING_HEARTBEAT_INTERVAL = 30
+Defaults.LISTING_EXPIRATION = 90
+-- A claimed seat is held for this long. It has to outlast a teleport, and it is
+-- the backstop for a player who takes a seat and never arrives.
+Defaults.RESERVATION_TIMEOUT = 45
+-- How often a queued quickplay ticket retries the listing search.
+Defaults.QUICKPLAY_SEARCH_INTERVAL = 3
+-- Listings read from one lane per search. Well under MemoryStore's 200-item
+-- range cap, and the depth at which a listing lane counts as saturated.
+Defaults.MAX_LISTING_BATCH = 100
+-- Lanes one search walks before giving up for this pass, and how many listings
+-- it tries to claim within them. Claims are attempted over a shuffled head of
+-- the viable candidates rather than always the fullest, so a fleet of lobbies
+-- does not converge on the same match.
+Defaults.LISTING_SEARCH_LANES = 3
+Defaults.LISTING_CLAIM_ATTEMPTS = 3
+Defaults.MAX_LISTING_DATA_BYTES = 1024
 
 Defaults.MAX_NAME_LENGTH = 16
 Defaults.MAX_PARTITION_LENGTH = 32

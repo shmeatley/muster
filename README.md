@@ -134,6 +134,116 @@ distributed system where servers cannot see each other.
 - If it throws, exceeds `finalizeTimeout`, or returns something unstorable, the
   match aborts cleanly and every player goes back in the queue.
 
+## Quick Play (optional)
+
+Everything above forms **new** matches. Quick Play adds the other half: dropping
+a player straight into a match that is already running with room to spare. It is
+off unless you ask for it, and it **ignores rating entirely**, so it belongs on
+casual queues rather than ranked ones.
+
+```lua
+local casual = Muster.new({ name = "casual", size = 8, quickPlay = true })
+```
+
+On the arena server, advertise yourself once you are ready for players:
+
+```lua
+casual.quickplay:host({
+	data = { accessCode = code, placeId = ARENA_PLACE },
+})
+```
+
+That is the whole match-server side. The listing refreshes its player count
+every 30 seconds off the back of the worker that is already running, and a
+server that crashes is delisted 90 seconds later without anyone cleaning up.
+
+`host` hands back a handle for the two things a round actually needs:
+
+```lua
+local listing = Muster.Result.unwrap(casual.quickplay:host({ data = ... }))
+
+listing:setOpen(false)  -- round underway; stop taking players, stay listed
+listing:setOpen(true)   -- intermission; take them again
+listing:close()         -- delist now rather than waiting to expire
+```
+
+Calling `queue:stop()` closes everything this server hosts, so binding it to
+`game:BindToClose` is enough to stop a shutting-down arena from being sent
+players it will not be around to seat.
+
+In the lobby:
+
+```lua
+casual.quickPlayMatched:connect(function(assignment)
+	TeleportService:TeleportToPrivateServer(
+		assignment.data.placeId, assignment.data.accessCode, { player })
+end)
+
+casual:quickPlay(player.UserId)
+```
+
+### Queueing a group
+
+Quick Play can backfill a group together using the same userId list accepted by
+`enqueueGroup`:
+
+```lua
+casual:quickPlayGroup({ leaderId, friendId })
+```
+
+The group is one indivisible ticket. It reserves enough seats for every member
+in one listed match, or reserves nothing and stays in the normal queue. The
+equivalent lower-level form is
+`casual:enqueueGroup({ leaderId, friendId }, { quickPlay = true })`.
+
+### If everything is full, nothing special happens
+
+`quickPlay` writes an **ordinary ticket** and then looks for a seat. If every
+listed match is full, the player simply stays in the normal queue and forms a
+fresh match the usual way, retrying the backfill search every few seconds while
+they wait. So a slot opening up mid-wait pulls them in, and a slot never opening
+still gets them a game.
+
+The two outcomes race, which is why `quickPlay` returns the ticket rather than
+the match: a backfill arrives on `quickPlayMatched`, a fresh match on `matched`,
+and exactly one of them fires.
+
+### Two lobbies, one last seat
+
+This is the part that has to be right. When a 7/8 match is visible to fifty
+lobby servers, exactly one of them may take the last seat.
+
+Every claim is a single compare-and-set on the listing record. The store re-runs
+the loser's transform against the winner's write, the seat is gone the second
+time around, and the loser moves on to its next candidate. There is no lock and
+no coordination between lobbies.
+
+A claimed seat is held as a **reservation** until the player arrives, because a
+player count that refreshes every 30 seconds cannot be trusted on its own. The
+reservation retires when the host's next heartbeat reports that player present,
+and expires after 45 seconds if they never show.
+
+The index is sorted by seats free, ascending, so backfill completes a 7/8 game
+before it grows a 2/8 one, and full matches are dropped from it entirely rather
+than read and discarded.
+
+### Options
+
+| Field | Default | Effect |
+| --- | --- | --- |
+| `capacity` | `size.max` | Players a hosted match holds. |
+| `heartbeatInterval` | `30` | Seconds between player-count refreshes. |
+| `listingExpiration` | `heartbeatInterval * 3` | Seconds a listing survives without one. |
+| `reservationTimeout` | `45` | Seconds a claimed seat is held. |
+| `searchInterval` | `3` | Seconds between retries by a queued player. |
+| `lanes` | `"auto"` | Listing lane count. Pin it with an integer. |
+| `maxListingDataBytes` | `1024` | Budget for the listing's `data`. |
+
+Listings shard into lanes exactly as tickets do, because a MemoryStore range
+read returns at most 200 items and a busy game can have more live matches than
+that. The count starts at one and doubles only once a lane is consistently too
+full to read in one go, so a game with six live matches pays for none of it.
+
 ## Queueing a group
 
 If you already have parties, or your parties form in one lobby and live in a
@@ -249,46 +359,69 @@ queued costs nothing at all.
 ## Lanes scale themselves
 
 A queue is split into lanes, and a ticket is matched against the others in its
-own lane. **Lanes buy parallelism by splitting the pool**, so the right number
-depends on how deep the queue actually is. You don't have to guess it.
+own lane. **Lanes buy parallelism by splitting the pool**, so how many you want
+depends on how deep the queue is, and _where_ you cut depends on what the queue
+knows about its players. You don't have to guess either.
 
 By default (`lanes = "auto"`) a queue starts on **one** lane, so two players
-match on the first scan, and it doubles only once a single lane is consistently
-too full for one worker to see all of. When the queue thins out again, it halves
-back down. No sizing table, no tuning.
+match on the first scan. It divides only once a single lane is consistently too
+full for one worker to see all of, and folds back down when the queue thins out
+again. No sizing table, no tuning.
 
-Pin it if you'd rather: `lanes = 4` (any integer, 1–64) disables scaling
-entirely and writes no lane record.
+**A rated queue divides by rating.** Every lane is a contiguous rating range,
+and the boundaries come from the ratings actually queueing: a lane that grows
+too deep splits at its own median, and one that goes quiet merges back into its
+neighbour. Cutting along the axis matchmaking already cares about means a split
+only separates players who were never going to be put in the same game, so four
+high-rated players queueing at once land in one lane instead of scattering
+across four.
+
+Bands never get narrower than the rating window. A lane whose players are all
+within one window of each other has no boundary that would not cut through a set
+that all match, so it stays whole however deep it gets, which is exactly the
+shape the top of a ladder has. And a band that is nearly empty, or one holding
+somebody whose window has already relaxed past its width, reads the lanes either
+side of it as well, so a boundary is never a wall to a player with nobody left
+on their own side of it.
+
+**An unrated queue divides by hash**, `hash(ticketId) % count`, doubling and
+halving. With no ratings there is nothing to order players by and every ticket
+may match every other, so an even spread is the best split available.
+
+Pin it if you'd rather: `lanes = 4` (any integer, 1 to 64) disables scaling
+entirely, writes no lane record, and spreads by hash.
 
 <details>
-<summary>How resizing avoids losing tickets</summary>
+<summary>How resharding avoids losing tickets</summary>
 
-Changing a lane count naively is a good way to strand players: a ticket written
+Moving lanes around naively is a good way to strand players: a ticket written
 under 2 lanes lives in `hash % 2`, and a server that has moved to 4 lanes looks
 in `hash % 4` and never finds it. It doesn't error, the player just waits until
 their ticket expires.
 
-Muster stamps the count into every key:
+Muster stamps the layout into every key:
 
 ```
-mu1:ranked:idx:EMEA:n04:02
-                    ^^^ ^^
-                  count lane
+mu1:ranked:idx:EMEA:n04g7:02
+                    ^^^^^ ^^
+                   layout lane
 ```
 
-So servers that disagree read and write _different_ key spaces rather than
-corrupting one, and every ticket stays exactly where its writer put it. During a
-resize, workers on the new count also read the old maps the new lane could draw
-from, one extra when growing and two when halving, so the old and new pools
-still match against each other. Changes are spaced a full `ticketExpiration`
-apart, which guarantees an abandoned count has drained before it can be reused.
+`n04` is the lane count and `g7` the revision it belongs to, tracked separately
+because a rating boundary can move without the count changing. Servers that
+disagree read and write _different_ key spaces rather than corrupting one, and
+every ticket stays exactly where its writer put it. While the old layout drains,
+workers on the new one also read the old lanes theirs draws from: one extra
+where a lane was split, two where two were merged, and the same one or two when
+a hash count doubles or halves. Changes are spaced a full `ticketExpiration`
+apart, which guarantees an abandoned layout has drained before another lands.
 
 </details>
 
 ## Partitions
 
-`partitionKey` splits a queue into pools that never mix: regions, skill
-brackets, mode variants, platforms.
+`partitionKey` splits a queue into pools that never mix: regions, mode variants,
+platforms.
 
 ```lua
 partitionKey = function(request)
@@ -299,6 +432,11 @@ end
 Muster deliberately ships no region system of its own. A partition never merges
 with another, so partitioning a thin queue is how matchmaking stops working; the
 decision of when it is safe belongs to you.
+
+Skill brackets are the one split worth _not_ doing here. Give the queue a
+`rating` instead and its lanes become rating ranges on their own, with the
+difference that a lane rejoins its neighbour when it empties out and a partition
+never does.
 
 ## Testing your own game against it
 
@@ -347,6 +485,11 @@ matchmaker server to elect or provision.
    server that stalled and lost its lease cannot commit, because the store itself
    rejects the write.
 5. **Deliver** publishes to the servers holding the players.
+
+Quick Play runs alongside that rather than inside it: a flagged ticket also tries
+to claim a seat in a live match on every pass, and the two paths arbitrate on the
+same compare-and-set that moves a ticket out of `Queued`, so a player resolves to
+exactly one of them.
 
 Nothing needs cleaning up when a server dies. Leases expire and the epoch fences
 out the dead holder; claims expire and the next worker either adopts a match that
