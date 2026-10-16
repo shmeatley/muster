@@ -92,6 +92,7 @@ export type Member = {
 --[=[
 	@interface Ticket
 	@within Types
+	.region string? -- Routing region when built-in regions are enabled.
 	.id string
 	.queue string
 	.partition string
@@ -115,6 +116,7 @@ export type Member = {
 	across matches.
 ]=]
 export type Ticket = {
+	region: string?,
 	ruleKey: string?,
 	id: string,
 	queue: string,
@@ -301,6 +303,7 @@ export type ErrorCode =
 	| "MissingRating"
 	| "InvalidMetadata"
 	| "InvalidAttributes"
+	| "InvalidRegion"
 	-- Party
 	| "PartyNotFound"
 	| "PartyUnavailable"
@@ -479,6 +482,18 @@ export type MatcherPolicy = {
 }
 
 --[=[
+	@interface RegionsConfig
+	@within Types
+	.names { string } -- One to eight unique region names. Ordering does not matter.
+	.fallbackAfter number? -- Both tickets must wait this long before crossing regions. Default 30 seconds; zero allows immediate fallback.
+
+	One lane per region inside each permanent partition. Discovery widens without
+	moving tickets, resetting queue age or splitting parties. Region labels are
+	provided by the game, not inferred from IP addresses or measured ping.
+]=]
+export type RegionsConfig = { names: { string }, fallbackAfter: number? }
+
+--[=[
 	@interface RatingConfig
 	@within Types
 	.window number? -- Starting rating tolerance. Default 200.
@@ -522,6 +537,7 @@ export type SizeConfig = { min: number, target: number?, max: number? }
 --[=[
 	@interface EnqueueOptions
 	@within Types
+	.region string? -- Required with built-in regions; one routing region for the whole ticket.
 	.attributes Attributes? -- Required when rules are configured.
 	.rating number? -- Required on a rated queue unless `rating.default` is set. Throws on an unrated queue.
 	.metadata Metadata?
@@ -530,6 +546,7 @@ export type SizeConfig = { min: number, target: number?, max: number? }
 	.quickPlay boolean? -- Also let this ticket backfill into a live match. Requires the `quickPlay` config.
 ]=]
 export type EnqueueOptions = {
+	region: string?,
 	attributes: Attributes?,
 	rating: number?,
 	metadata: Metadata?,
@@ -541,6 +558,7 @@ export type EnqueueOptions = {
 --[=[
 	@interface GroupOptions
 	@within Types
+	.region string? -- Required with built-in regions; one routing region for the whole ticket.
 	.attributes { [number]: Attributes }? -- Matching snapshots keyed by userId.
 	.ratings { [number]: number }? -- Per-userId ratings, required on a rated queue without a default.
 	.metadata Metadata?
@@ -549,6 +567,7 @@ export type EnqueueOptions = {
 	.quickPlay boolean? -- Also let this ticket backfill into a live match. Requires the `quickPlay` config.
 ]=]
 export type GroupOptions = {
+	region: string?,
 	attributes: { [number]: Attributes }?,
 	ratings: { [number]: number }?,
 	metadata: Metadata?,

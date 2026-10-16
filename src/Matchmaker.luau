@@ -29,14 +29,15 @@
 	| --- | --- | --- | --- |
 	| `name` | `string` | required | Namespaces this queue's keys. Max 16 characters, alphanumeric plus `_` and `-`. |
 	| `size` | `number \| SizeConfig` | required | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
-	| `rules` | `{ [string]: AttributeRule }?` | `nil` | Independent attribute constraints and preferences for new matches. Rule queues use one lane; Quick Play bypasses these rules. |
+	| `rules` | `{ [string]: AttributeRule }?` | `nil` | Independent attribute constraints and preferences for new matches. Without regions, rule queues use one lane per partition; Quick Play bypasses these rules. |
+	| `regions` | `RegionsConfig?` | `nil` | One lane per region, with mutual cross-region fallback. Pass `region` on each enqueue. Quick Play bypasses regional rules. |
 	| `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |
 	| `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |
 	| `finalize` | `Finalizer<T>?` | `nil` | Runs once per match; its return value becomes `match.data`. |
 	| `finalizeTimeout` | `number` | `5` | Seconds. Must not exceed 15. |
 	| `onAbort` | `AbortHandler?` | `nil` | Called when a match fails after its hook ran. Requires `finalize`. |
-	| `partitionKey` | `function?` | `nil` | Returns a permanent pool name per ticket. Prefer attributes for regional preferences; partitions never match each other. |
-	| `lanes` | `"auto" \| number` | `"auto"` | Left on `"auto"`, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. With `rules`, auto resolves to one fixed lane and counts above one are rejected. See [LaneScaler]. |
+	| `partitionKey` | `function?` | `nil` | Returns a permanent pool name per ticket. Use built-in regions for regional fallback; partitions never match each other. |
+	| `lanes` | `"auto" \| number` | `"auto"` | Left on `"auto"`, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. With `rules`, auto resolves to one fixed lane. With `regions`, auto resolves to one lane per region and explicit counts are rejected. See [LaneScaler]. |
 	| `broadcast` | `boolean` | `true` | Publish match notifications over MessagingService. |
 	| `autoStart` | `boolean` | `true` | Start the worker thread on construction. |
 	| `autoCancelOnLeave` | `boolean` | `true` | Cancel a player's ticket when they leave. |
@@ -368,6 +369,7 @@ function Matchmaker.enqueue(self: any, userId: number, options: any?): any
 		members = { member },
 		leaderUserId = userId,
 		partition = self:_partitionFor(opts, { userId }),
+		region = opts.region,
 		quickPlay = self:_resolveQuickPlay(opts.quickPlay),
 		metadata = opts.metadata,
 	})
@@ -412,6 +414,7 @@ function Matchmaker.enqueueGroup(self: any, userIds: { number }, options: any?):
 		members = members,
 		leaderUserId = userIds[1],
 		partition = self:_partitionFor(opts, userIds),
+		region = opts.region,
 		quickPlay = self:_resolveQuickPlay(opts.quickPlay),
 		metadata = opts.metadata,
 	})
@@ -468,6 +471,7 @@ function Matchmaker.enqueueParty(self: any, partyId: string, requesterUserId: nu
 		leaderUserId = requesterUserId,
 		partyId = party.id,
 		partition = self:_partitionFor(opts, userIds),
+		region = opts.region,
 		quickPlay = self:_resolveQuickPlay(opts.quickPlay),
 		metadata = opts.metadata,
 		ticketId = ticketId,
@@ -742,7 +746,7 @@ end
 	| `localTickets` | Tickets this server enqueued and is still tracking. |
 	| `ownedLanes` | Lane leases this server currently holds. |
 	| `laneMode` | `"auto"` or `"fixed"`. |
-	| `laneSplit` | `"band"` if lanes are rating ranges, `"hash"` if they are an even spread. |
+	| `laneSplit` | `"band"` if lanes are rating ranges, `"hash"` if they are an even spread, `"region"` for built-in regional routing. |
 	| `laneCount` | Lanes the default partition is sharded into. |
 	| `laneBounds` | The rating boundaries between them, empty unless `laneSplit` is `"band"`. |
 	| `laneChanges` | Resizes this server has applied. |

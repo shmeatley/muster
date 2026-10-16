@@ -77,6 +77,7 @@ export type SortedItem = Types.SortedItem
 export type SortedCursor = Types.SortedCursor
 export type Candidate = Types.Candidate
 export type MatcherPolicy = Types.MatcherPolicy
+export type RegionsConfig = Types.RegionsConfig
 export type RatingConfig = Types.RatingConfig
 export type SizeConfig = Types.SizeConfig
 export type EnqueueOptions = Types.EnqueueOptions

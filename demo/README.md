@@ -23,9 +23,10 @@ queue integration and delivery, not the optimized attribute matcher or its
 capacity. See the [attribute API](../README.md#multiple-matching-attributes),
 [performance guidance](../README.md#attribute-matching-performance) and
 [benchmark guide](../bench/optimization/README.md) for the attribute
-system added in 0.4.0. Rule queues currently use one lane per partition and bounded
+system added in 0.4.0. Ordinary rule queues use one lane per partition and bounded
 100-ticket windows with forward paging; local headless timings do not establish live Roblox limits. The committed
-built place has not been rebuilt as part of these documentation updates.
+built place includes the 0.5.0 library; the demo queue does not configure
+[dynamic regions](../README.md#dynamic-regions).
 
 ## What to do in it
 

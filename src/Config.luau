@@ -14,6 +14,7 @@
 local Defaults = require(script.Parent.Defaults)
 local Hash = require(script.Parent.Hash)
 local Rules = require(script.Parent.internal.Rules)
+local Regions = require(script.Parent.internal.Regions)
 local Runtime = require(script.Parent.internal.Runtime)
 local Types = require(script.Parent.Types)
 
@@ -270,12 +271,23 @@ function Config.resolve(raw: any): (any, string?)
 		return nil, ratingProblem
 	end
 
-	local rules, rulesProblem = Rules.resolve(raw.rules)
+	local regions, regionProblem = Regions.resolve(raw.regions)
+	if regionProblem then
+		return nil, regionProblem
+	end
+	local ruleConfig, regionRuleProblem = Regions.rules(raw.rules, regions)
+	if regionRuleProblem then
+		return nil, regionRuleProblem
+	end
+	local rules, rulesProblem = Rules.resolve(ruleConfig)
 	if rulesProblem then
 		return nil, rulesProblem
 	end
 	if rules and (raw.matcher ~= nil or raw.layout ~= nil) then
 		return nil, "Muster: rules cannot be combined with custom matcher or layout"
+	end
+	if regions and raw.lanes ~= nil and raw.lanes ~= "auto" then
+		return nil, "Muster: built-in regions manage lanes; omit lanes or use auto"
 	end
 	if rules and raw.lanes ~= nil and raw.lanes ~= "auto" and raw.lanes ~= 1 then
 		return nil, "Muster: rules currently require lanes = 1 (or auto, resolved to one lane)"
@@ -324,7 +336,7 @@ function Config.resolve(raw: any): (any, string?)
 	end
 
 	if rules then
-		laneMode, lanes = "fixed", 1
+		laneMode, lanes = "fixed", if regions then #regions.names else 1
 	end
 
 	-- How a partition's pool is divided. A scaling rated queue splits by rating
@@ -332,7 +344,7 @@ function Config.resolve(raw: any): (any, string?)
 	-- else has no ordering to split on and spreads tickets by hash. A pinned
 	-- count is deliberately included in "anything else": bands are placed from
 	-- what the scaler observes, and a pinned queue never runs it.
-	local laneSplit = if laneMode == "auto" and rating ~= nil then "band" else "hash"
+	local laneSplit = if regions then "region" elseif laneMode == "auto" and rating ~= nil then "band" else "hash"
 
 	local fallbackAfter = raw.fallbackAfter or Defaults.FALLBACK_AFTER
 	if not (type(fallbackAfter) == "number" and fallbackAfter >= 0) then
@@ -380,6 +392,7 @@ function Config.resolve(raw: any): (any, string?)
 		rating = if rating then table.freeze(rating) else nil,
 		rated = rating ~= nil,
 		rules = rules,
+		regions = regions,
 		ruleKey = ruleKey,
 		indexInfix = if ruleKey then `idx-{ruleKey}` else nil,
 		fallbackAfter = fallbackAfter,

@@ -53,7 +53,8 @@ Defaults.MAX_PARTY_MEMBERS = 8
 Defaults.MAX_PARTY_INVITES = 20
 
 -- Standard auto queues start on one lane and grow when saturated.
--- Attribute-rule queues currently remain on one fixed lane per partition.
+-- Attribute-rule queues use one fixed lane per partition unless built-in
+-- regions assign one fixed lane per region.
 -- Starting high is the classic way to break a small queue: with 64 lanes, two
 -- players almost never land in the same one and nobody ever matches.
 Defaults.LANES = 1

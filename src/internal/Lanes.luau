@@ -9,14 +9,15 @@
 	by default, and each partition into lanes. A ticket lands in exactly one lane
 	and is searched with that lane's candidates. Standard queues may also read
 	adjacent rating bands or draining generations. Attribute-rule queues
-	currently use one fixed lane per partition, with no cross-lane rule search.
+	use one fixed lane per partition unless built-in regions assign one lane
+	per region. Regional workers widen discovery after the configured wait.
 
 	### What shares a lane
 
 	Lanes buy parallelism by splitting the pool, so *which* tickets share one
-	decides whether the split costs anything. There are two schemes, and the
-	standard queue's configuration picks between them (queues with `rules` stay
-	on one hashed lane):
+	decides whether the split costs anything. Standard queues choose between
+	bands and hashes. Built-in regions add a third routing scheme; ordinary
+	queues with `rules` stay on one hashed lane:
 
 	- **Bands**, on a rated queue left on `lanes = "auto"`. A lane is a
 	  contiguous rating range: lane 0 holds everyone below the first boundary,
@@ -28,7 +29,11 @@
 	  by and every ticket may match every other, so an even spread is the best
 	  split available.
 
-	Both are deterministic: two servers holding the same layout agree on a
+	- **Regions**, with built-in `regions`. Sorted region names map to fixed
+	  lane indexes. The engine routes the whole ticket by its supplied region
+	  and widens candidate discovery without moving that ticket.
+
+	These are deterministic: two servers holding the same layout agree on a
 	ticket's lane without coordinating.
 
 	### Generations

@@ -26,7 +26,8 @@
 	viable group from `maxSize` down to `minSize`. Fallback never disables rules.
 
 	This module only sees the candidates discovery supplies. In particular,
-	rule queues currently use one lane per partition and a 100-ticket scan budget.
+	ordinary rule queues use one lane per partition and a 100-ticket scan budget.
+	Built-in regions share that budget across regional lanes on fallback scans.
 	Discovery alternates oldest-first scans with overlapping forward pages when
 	needed. Selection cannot compare players in different windows unless they
 	are brought into the same scan.

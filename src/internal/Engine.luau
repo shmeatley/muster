@@ -38,6 +38,7 @@ local LaneScaler = require(script.Parent.LaneScaler)
 local Lanes = require(script.Parent.Lanes)
 local LeaseManager = require(script.Parent.LeaseManager)
 local Matcher = require(script.Parent.Matcher)
+local Regions = require(script.Parent.Regions)
 local Rules = require(script.Parent.Rules)
 local Result = require(script.Parent.Parent.Result)
 local Serialize = require(script.Parent.Serialize)
@@ -263,11 +264,30 @@ function Engine.enqueue(self: any, request: any): any
 	-- Copy the matching snapshot before reserving users or writing any records.
 	-- Attributes never change on heartbeat; relaxation is derived from queuedAt.
 	local snapshots = {}
+	local region = request.region
+	if settings.regions then
+		if type(region) ~= "string" or settings.regions.lanes[region] == nil then
+			return err("InvalidRegion", "region must name a configured region")
+		end
+	elseif region ~= nil then
+		return err("InvalidRegion", "region requires a regions configuration")
+	end
 	local copiedMembers = table.create(#members)
 	for index, member in members do
 		local copied = table.clone(member)
 		if settings.rules then
-			local attributes, why = Rules.attributes(settings.rules, member.attributes, request.quickPlay == true)
+			local rawAttributes = member.attributes
+			if settings.regions then
+				if rawAttributes ~= nil and type(rawAttributes) ~= "table" then
+					return err("InvalidAttributes", "attributes must be a table")
+				end
+				rawAttributes = table.clone(rawAttributes or {})
+				if rawAttributes[Regions.ATTRIBUTE] ~= nil then
+					return err("InvalidAttributes", "reserved regional attribute")
+				end
+				rawAttributes[Regions.ATTRIBUTE] = region
+			end
+			local attributes, why = Rules.attributes(settings.rules, rawAttributes, request.quickPlay == true)
 			if why then
 				return err("InvalidAttributes", `User {member.userId}: {why}`)
 			end
@@ -321,7 +341,12 @@ function Engine.enqueue(self: any, request: any): any
 		self._scaler:draining(laneState)
 	)
 
+	if settings.regions then
+		lane = Lanes.descriptor(settings, partition, laneState.layout, settings.regions.lanes[region], nil)
+	end
+
 	local ticket = {
+		region = region,
 		v = settings.version,
 		ruleKey = settings.ruleKey,
 		id = ticketId,
@@ -746,7 +771,8 @@ end
 	@within Engine
 	@private
 ]=]
--- Rules currently use one fixed lane. Normal scans prioritize its oldest
+-- Reads one rule index (one per partition, or per built-in region).
+-- Normal scans prioritize its oldest
 -- tickets; exploration scans combine an old head with one advancing page.
 -- Cursor state belongs to the lease holder, never to a ticket's queue age.
 function Engine._readRuleCandidates(self: any, owned: any): ({ Candidate }, number, number)
@@ -813,7 +839,72 @@ function Engine._readRuleCandidates(self: any, owned: any): ({ Candidate }, numb
 	return candidates, #candidates, #candidates
 end
 
+-- Keep local-only passes between fallback passes so widening cannot starve
+-- full local groups. Each map has an independent forward cursor. No ticket is
+-- moved or rewritten, and the normal claim CAS arbitrates overlapping workers.
+function Engine._readRegionalCandidates(self: any, owned: any, now: number): ({ Candidate }, number, number)
+	local regions = self._settings.regions
+	local descriptor = owned.descriptor
+	owned.regionReaders = owned.regionReaders or {}
+	local widening = #regions.names > 1
+		and (regions.fallbackAfter == 0 or (owned.oldest ~= nil and (owned.ownCount or 0) > 0 and now - owned.oldest >= regions.fallbackAfter))
+		and not owned.regionWidened
+	owned.regionWidened = widening
+	local budget = if widening then Defaults.MAX_BATCH_SIZE else owned.batchSize
+	local localBudget = if widening
+		then math.max(1, math.min(math.floor(budget / 2), owned.ownCount or math.floor(budget / 2)))
+		else budget
+	local function read(map: string, count: number): { Candidate }
+		local reader = owned.regionReaders[map]
+		if reader == nil then
+			reader = { descriptor = { map = map } }
+			owned.regionReaders[map] = reader
+		end
+		reader.batchSize = count
+		local candidates = self:_readRuleCandidates(reader)
+		if not reader.ruleReadFailed then
+			reader.ruleExploreNext = #candidates == count and not reader.ruleExploring
+		end
+		return candidates
+	end
+	local candidates = read(descriptor.map, localBudget)
+	local ownCount = #candidates
+	if widening then
+		local remaining = budget - localBudget
+		local peers = #regions.names - 1
+		owned.regionFallbacks = (owned.regionFallbacks or 0) + 1
+		-- Wide passes discover groups spread across several regions. Focused
+		-- passes let one busy peer supply most of a group to a sparse region.
+		local focused = owned.regionFallbacks % 2 == 0
+		if focused then
+			owned.regionPeer = ((owned.regionPeer or 0) % peers) + 1
+		end
+		-- Rotate the larger shares so rounding never permanently favors a region.
+		owned.regionRound = ((owned.regionRound or 0) + 1) % peers
+		for offset = 1, peers do
+			local lane = (descriptor.lane + offset) % #regions.names
+			local count = if focused
+				then (if offset == owned.regionPeer then remaining else 0)
+				else math.floor(remaining / peers)
+			if not focused and (offset + owned.regionRound) % peers < remaining % peers then
+				count += 1
+			end
+			if count == 0 then
+				continue
+			end
+			local map = Lanes.name(self._settings, descriptor.partition, descriptor.count, descriptor.generation, lane)
+			for _, candidate in read(map, count) do
+				table.insert(candidates, candidate)
+			end
+		end
+	end
+	return candidates, ownCount, ownCount
+end
+
 function Engine._readCandidates(self: any, owned: any, now: number): ({ Candidate }, number, number)
+	if self._settings.regions then
+		return self:_readRegionalCandidates(owned, now)
+	end
 	if self._settings.rules then
 		return self:_readRuleCandidates(owned)
 	end
@@ -979,7 +1070,7 @@ function Engine._claimTicket(self: any, candidate: Candidate, matchId: string, o
 		settings.ticketExpiration,
 		function(current: any): any
 			claimed = false
-			if current == nil then
+			if current == nil or current.partition ~= owned.descriptor.partition or current.queue ~= settings.name then
 				return nil
 			elseif current.state == "Queued" or (current.state == "Claimed" and current.claim.expiresAt <= now) then
 				current.state = "Claimed"
@@ -1376,7 +1467,7 @@ function Engine._scan(self: any, key: string, owned: any, now: number, mono: num
 			committed += 1
 		end
 	end
-	if self._settings.rules then
+	if self._settings.rules and not self._settings.regions then
 		if owned.ruleExploring then
 			owned.ruleHeadScans = 0
 			owned.ruleExploreNext = false -- always return to an oldest-first scan

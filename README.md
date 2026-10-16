@@ -8,24 +8,26 @@
 
 Cross-server matchmaking for Roblox
 
-For regional matching, use **attributes rather than partitions**. Attributes let
-you prefer nearby regions and widen that choice over time. A partition is only
-appropriate when those players must never share a match.
+For regional matching, use [built-in regions](#dynamic-regions): each region gets
+its own lane, with automatic cross-region fallback after a configurable wait.
+Keep partitions for pools that must never mix.
 
 Muster forms matches across Roblox servers using your game's ratings, attributes,
 server reservation and teleportation systems. It is a library you run in your own
-servers. Standard queues can scale through lanes; attribute-rule queues currently
-use one lane per partition with bounded candidate discovery. Capacity depends on
+servers. Standard queues can scale through lanes; attribute-rule queues use one
+lane per partition unless built-in regions assign a lane to each region.
+Candidate discovery is bounded. Capacity depends on
 match size, rules, party composition and backend latency; the benchmarks below
 are measurements of the local implementation, not a guaranteed player limit.
 
-Version 0.4.0 adds attribute rules and forward-page discovery for rule queues.
+Version 0.5.0 adds built-in regional lanes with automatic fallback, preserving
+queue age and whole parties.
 
 ## Installation
 
 ```toml
 [dependencies]
-Muster = "shmeatley/muster@0.4.0"
+Muster = "shmeatley/muster@0.5.0"
 ```
 
 Then run:
@@ -368,10 +370,11 @@ queued costs nothing at all.
 
 ## Lanes scale themselves
 
-This section describes queues without `rules`. Attribute-rule queues currently
-resolve `lanes = "auto"` to one fixed lane per partition and reject explicit
-counts above one, including when `rating` is also configured. Their optimized
-search does not add cross-lane discovery; see [attribute performance](#attribute-matching-performance).
+This section describes queues without `rules` or built-in `regions`. Ordinary
+attribute-rule queues resolve `lanes = "auto"` to one fixed lane per partition
+and reject explicit counts above one, including when `rating` is also configured.
+Built-in regions instead manage one lane per region with cross-region discovery;
+see [dynamic regions](#dynamic-regions).
 
 A standard queue is split into lanes. Workers search their own lane, relevant
 draining generations and, when warranted, adjacent rating bands. **Lanes buy parallelism by splitting the pool**, so how many you want
@@ -434,9 +437,9 @@ apart, which guarantees an abandoned layout has drained before another lands.
 ## Partitions
 
 `partitionKey` splits a queue into pools that never mix, such as separate mode
-variants. **Use attributes for regions** so nearby regions can match as their
-limits widen. Only partition by region when cross-region matching must remain
-impossible, including for Quick Play backfill.
+variants. Use built-in regions for regional lanes with automatic fallback.
+Partition by region only when cross-region matching must remain impossible,
+including for Quick Play backfill.
 
 ```lua
 partitionKey = function(request)
@@ -444,27 +447,108 @@ partitionKey = function(request)
 end
 ```
 
-Muster does not measure latency for you. Use numeric region coordinates when
-their gaps reflect proximity, or a string-region cost matrix in `rules`. A
-partition never merges with another; splitting a thin pool can leave it with
-nobody to match. See [attribute rules](#multiple-matching-attributes) for region
-examples. Quick Play backfill bypasses attribute rules.
+A partition never merges with another; splitting a thin pool can leave it with
+nobody to match. Use [dynamic regions](#dynamic-regions) for regional routing and
+automatic fallback. Muster does not measure latency for you. Quick Play backfill
+bypasses both regional and attribute matching rules.
 
 Skill brackets are the one split worth _not_ doing here. Give the queue a
 `rating` instead and its lanes become rating ranges on their own, with the
 difference that a lane rejoins its neighbour when it empties out and a partition
 never does.
 
+## Dynamic regions
+
+Configure the regions your game supports and pass a routing region on every
+`enqueue`, `enqueueGroup` or `enqueueParty` call:
+
+```lua
+local queue = Muster.new({
+	name = "squads",
+	size = 8,
+	regions = {
+		names = { "NA", "EU", "ASIA" },
+		fallbackAfter = 30,
+	},
+	-- Optional ratings and other attribute rules still apply.
+})
+
+queue:enqueue(player.UserId, { region = "NA" })
+queue:enqueueGroup({ leaderId, friendId }, { region = "EU" })
+queue:enqueueParty(partyId, leaderId, { region = "NA" })
+```
+
+Each region has an independently leased lane inside each permanent partition.
+Muster searches the local lane first. Once an observed local ticket has waited
+`regions.fallbackAfter`, the worker alternates local scans with scans that also
+read the other configured regions. Busy regions can form local matches while
+sparse regions find each other automatically. The lane count stays fixed at the
+number of configured regions; this does not add population-based lane merging
+or further sharding within a region.
+
+Cross-region acceptance is mutual: **both tickets must have waited the configured
+time**. An old ticket cannot pull a fresh ticket out of its region. Same-region
+combinations receive a lower regional preference cost. Other attribute constraints
+and rating eligibility still apply; widening discovery does not disable them.
+The fallback time defaults to 30 seconds; zero permits cross-region matching
+immediately. It is separate from the top-level `fallbackAfter` for smaller matches.
+This is an eligibility time, not a guaranteed match deadline.
+
+Tickets stay in their original lane with the same ID, `queuedAt`, reservations
+and party lock. There is no cancellation/requeue or queue-age reset. The existing
+claim protocol arbitrates workers reading overlapping regions and rechecks
+regional acceptance against the claimed authoritative tickets before finalizing.
+Groups and distributed parties always stay whole. A group or party supplies one
+routing region for the entire ticket; the game chooses it, for example based on
+its leader or the region its members agree to use. Muster does not infer member
+locations, measure ping, or choose the destination server's geographic region.
+Your finalizer and teleport integration still control the destination.
+
+`names` accepts one to eight unique names, each 1-32 letters, digits, underscores
+or hyphens. Names are sorted internally, so configuration order does not change
+lane assignment. All workers must use the same names, fallback time and rules.
+Changing them creates a separate new-match pool; keep old workers until their
+tickets drain. Omit `lanes` or leave it on `"auto"`; regions manage the count.
+Custom `matcher` and `layout` overrides are unsupported with regions.
+Missing or unknown enqueue regions return `InvalidRegion` before reserving users.
+Supplying `region` without a regions config also returns `InvalidRegion`.
+
+Regional acceptance uses a generated rule named `__musterRegion`. This name is
+reserved: do not supply it as a rule or enqueue attribute. It appears in returned
+member attribute snapshots and counts toward the normal attribute byte budget
+and 16-rule limit, leaving room for 15 user rules. User attributes are copied;
+you do not need an `attributes` table when no user rules are configured.
+
+Discovery remains bounded. Local scans request at most 100 ticket entries from
+one regional map. Fallback scans share 100 entries across all configured regions:
+up to half for the local region, reduced when recent scans found fewer local
+tickets. The remaining budget alternates between all other regions and one
+rotating peer, so a busy peer can fill most of a sparse region's match. Each map
+has its own overlapping forward-page cursor, reset on worker takeover. A scan performs at
+most two range reads per region (16 with eight regions). Failed reads preserve
+that map's cursor for retry. Full local scans continue between fallback scans.
+Scattered compatible tickets may still never share a window; neither this search
+nor the matcher's eight-alternative search is exhaustive. Existing benchmark
+numbers below measure ordinary attribute queues, not regional fallback.
+
+**Quick Play backfill keeps its existing behavior:** it bypasses regional,
+attribute and rating constraints and searches listings in the ticket's permanent
+partition. Built-in regional lanes apply to new-match formation only. Do not use
+Quick Play when a regional restriction must also apply to backfill; use permanent
+partitions for pools that must never mix.
+
 ## Multiple matching attributes
 
 Use `rules` to compare independent numeric, string and boolean attributes when
-forming **new matches**. Keep permanently separate pools in `partition`; put a
-region in attributes if it may become eligible later.
+forming **new matches**. Use `regions` for regional routing and fallback;
+keep permanently separate pools in `partition`. The example combines built-in
+regions with independent attribute rules.
 
 ```lua
 local queue = Muster.new({
 	name = "social",
 	size = 8,
+	regions = { names = { "NA", "EU" }, fallbackAfter = 30 },
 	rules = {
 		Age = {
 			type = "number", compare = "distance", prefer = "closer",
@@ -474,15 +558,16 @@ local queue = Muster.new({
 				{ after = 90, value = 10 },
 			},
 		},
-		Region = { type = "string", compare = "equal", relaxAfter = 45 },
+		Input = { type = "string", compare = "equal", relaxAfter = 45 },
 		IsVerified = { type = "boolean", compare = "equal" },
 		IsFlaggedCheater = { type = "boolean", compare = "required", value = false },
 	},
 })
 
 queue:enqueue(player.UserId, {
+	region = "NA",
 	attributes = {
-		Age = 21, Region = "US_EAST",
+		Age = 21, Input = "GAMEPAD",
 		IsVerified = true, IsFlaggedCheater = false,
 	},
 })
@@ -497,8 +582,8 @@ Each rule declares `type` and `compare`:
 | `required` | Every member must have `value`. It is checked at enqueue for ordinary tickets and cannot relax. For example, `value = false` excludes flagged players; equality instead separates flagged and unflagged players. |
 
 Distance schedules have increasing times and nondecreasing finite limits, with
-at most 32 steps. The final limit stays enforced indefinitely. Age and region
-schedules are evaluated independently from the original queue timestamp, without
+at most 32 steps. The final limit stays enforced indefinitely. Each attribute
+schedule is evaluated independently from the original queue timestamp, without
 requeueing. Acceptance is always mutual: a distance must fit the **smaller** of
 the two current limits. An older ticket cannot override a new ticket's limit.
 
@@ -510,9 +595,10 @@ Both `enqueueGroup` and `enqueueParty` take `attributes` keyed by userId:
 
 ```lua
 queue:enqueueGroup({ aliceId, bobId }, {
+	region = "NA",
 	attributes = {
-		[aliceId] = { Age = 21, Region = "US_EAST", IsVerified = true, IsFlaggedCheater = false },
-		[bobId] = { Age = 23, Region = "US_EAST", IsVerified = true, IsFlaggedCheater = false },
+		[aliceId] = { Age = 21, Input = "GAMEPAD", IsVerified = true, IsFlaggedCheater = false },
+		[bobId] = { Age = 23, Input = "GAMEPAD", IsVerified = true, IsFlaggedCheater = false },
 	},
 })
 ```
@@ -520,22 +606,22 @@ queue:enqueueGroup({ aliceId, bobId }, {
 For string distance, supply a symmetric matrix. Identical categories cost zero;
 missing edges remain forbidden. Every category must have a row, including empty
 rows for categories that can only match themselves. These are game-defined
-costs, not measured ping:
+costs:
 
 ```lua
-Region = {
+Input = {
 	type = "string", compare = "distance", prefer = "closer",
 	distances = {
-		US_EAST = { US_WEST = 60, EU = 90 },
-		US_WEST = { US_EAST = 60, EU = 150 },
-		EU = { US_EAST = 90, US_WEST = 150 },
+		KEYBOARD = { GAMEPAD = 1, TOUCH = 2 },
+		GAMEPAD = { KEYBOARD = 1, TOUCH = 2 },
+		TOUCH = { KEYBOARD = 2, GAMEPAD = 2 },
 	},
-	limit = { { after = 0, value = 0 }, { after = 30, value = 80 }, { after = 60, value = 150 } },
+	limit = { { after = 0, value = 0 }, { after = 30, value = 1 }, { after = 60, value = 2 } },
 }
 ```
 
-Numeric region coordinates also work with `type = "number"` and numeric distance,
-if numeric gaps represent useful proximity. Arbitrary IDs do not imply latency.
+Use numeric distance for values whose gaps have meaning, such as age or a skill
+measure. Arbitrary category IDs do not imply proximity.
 
 Constraints reject candidates; preferences rank eligible groups. Add
 `prefer = "closer"` to distance rules or `prefer = "equal"` to equality rules to
@@ -551,10 +637,11 @@ If `rating` is also configured, its existing anchor-based window remains an
 additional eligibility check; rule preferences supply the group score. Without
 `rules`, the existing rating matching and scoring behavior is unchanged.
 
-**Current bounds:** rule queues resolve `lanes = "auto"` to one fixed lane;
-explicit lane counts above one and custom `matcher`/`layout` overrides are
-rejected. A scan requests at most 100 candidates. Most scans start with the
-oldest tickets; forward pages also give newer tickets a chance when a head is
+**Current bounds:** without built-in regions, rule queues resolve
+`lanes = "auto"` to one fixed lane and reject explicit lane counts above one.
+Built-in regions manage one lane per configured region. Both paths reject custom
+`matcher`/`layout` overrides. A scan requests at most 100 candidate entries. Most
+scans start with the oldest tickets; forward pages also give newer tickets a chance when a head is
 stalled or stays busy. Selection visits visible anchors oldest first and keeps
 eight alternatives per reachable group size. This is still bounded search:
 compatible tickets spread across separate windows may never be compared. It is
@@ -613,7 +700,7 @@ capacity limit or adding lanes.
 
 An earlier discovery test found a real problem: 100 incompatible old tickets
 hid eight compatible players behind them. The worker now pages beyond that head.
-Rule queues still use one lane per partition, and a party counts as one ticket.
+These ordinary rule queues use one lane per partition, and a party counts as one ticket.
 
 After a full scan makes no matches, the next scan reads an oldest prefix and a
 forward page. A busy head also gets a forward scan after four normal scans,
@@ -632,7 +719,7 @@ adapters implement it. Quick Play discovery is unchanged.
 The hidden group now matches after 3.25 simulated seconds in that test, instead
 of staying stuck for the full 100-second run. This does not guarantee every
 compatible combination will share a window, particularly with scattered groups,
-ongoing arrivals or frequent worker changes. There is no cross-lane rule search.
+ongoing arrivals or frequent worker changes. Ordinary rule queues do not search across lanes; built-in regions add the bounded cross-region search described above.
 
 A compatible 5,000-player burst drained in 15.5 simulated seconds. That clock
 excludes CPU time and network latency, and the in-memory store does not enforce
@@ -682,10 +769,12 @@ store:failNext("update", 2)   -- and now with the store falling over
 store:conflictNext("update")  -- and now losing a compare-and-set race
 ```
 
-The latest recorded full suite passed 590 checks with zero failures or crashes
+The latest recorded full suite passed 654 checks with zero failures or crashes
 (October 16, 2026); run it again for your checkout. It covers three servers
 contending for one lane, a worker crashing mid-commit, and a finalizer that
-loses its lease while yielding.
+loses its lease while yielding. Regional tests also cover mutual fallback, queue-age
+preservation, whole distributed parties, uneven regional populations, paging,
+failed reads and overlapping regional workers.
 
 ## How it works
 
