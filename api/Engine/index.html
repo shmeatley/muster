@@ -54,8 +54,8 @@ State is recovered by expiry rather than cleanup:
 | Worker dies holding a lease | The lease expires after 15 s and the next holder takes it at a higher epoch, which rejects any late write from the dead one |
 | Worker dies mid-commit | Claims expire; the next worker adopts the match if it committed, and aborts it if it did not |
 | Producer dies with tickets queued | Heartbeats stop and the tickets expire within `ticketExpiration` |"><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Engine"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Engine" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Engine" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
-<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.86bf730b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.7ea8c129.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -109,12 +109,12 @@ State is recovered by expiry rather than cleanup:
     </tr>
   </tbody>
 </table>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step"><code style="text-decoration:none">step</code><a href="#step" class="hash-link" aria-label="Direct link to step" title="Direct link to step" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1418"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">step</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step"><code style="text-decoration:none">step</code><a href="#step" class="hash-link" aria-label="Direct link to step" title="Direct link to step" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1509"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">step</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   One pass: upkeep on local tickets, lane acquisition, then a scan of each held
   lane.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="start"><code style="text-decoration:none">start</code><a href="#start" class="hash-link" aria-label="Direct link to start" title="Direct link to start" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1453"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">start</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stop"><code style="text-decoration:none">stop</code><a href="#stop" class="hash-link" aria-label="Direct link to stop" title="Direct link to stop" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1480"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">stop</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="start"><code style="text-decoration:none">start</code><a href="#start" class="hash-link" aria-label="Direct link to start" title="Direct link to start" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1544"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">start</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stop"><code style="text-decoration:none">stop</code><a href="#stop" class="hash-link" aria-label="Direct link to stop" title="Direct link to stop" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Engine.luau#L1571"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Engine<!-- -->.</code><code class="green_DgR4">stop</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   Stops the loop and releases every lease this server holds, so another server
   can take the lanes immediately rather than after the 15-second timeout.
@@ -140,7 +140,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 89,
+                &quot;line&quot;: 90,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -168,7 +168,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 244,
+                &quot;line&quot;: 245,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -201,7 +201,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 533,
+                &quot;line&quot;: 558,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -229,7 +229,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 596,
+                &quot;line&quot;: 621,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -262,7 +262,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 725,
+                &quot;line&quot;: 750,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -298,7 +298,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 749,
+                &quot;line&quot;: 774,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -336,7 +336,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 930,
+                &quot;line&quot;: 1021,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -369,7 +369,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 1044,
+                &quot;line&quot;: 1135,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -402,7 +402,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 1274,
+                &quot;line&quot;: 1365,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -419,7 +419,7 @@ State is recovered by expiry rather than cleanup:
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 1418,
+                &quot;line&quot;: 1509,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -442,7 +442,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 1440,
+                &quot;line&quot;: 1531,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -459,7 +459,7 @@ State is recovered by expiry rather than cleanup:
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 1453,
+                &quot;line&quot;: 1544,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -476,7 +476,7 @@ State is recovered by expiry rather than cleanup:
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 1480,
+                &quot;line&quot;: 1571,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         },
@@ -523,7 +523,7 @@ State is recovered by expiry rather than cleanup:
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 1531,
+                &quot;line&quot;: 1622,
                 &quot;path&quot;: &quot;src/internal/Engine.luau&quot;
             }
         }

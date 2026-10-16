@@ -9,14 +9,15 @@ A queue is divided into partitions, whatever `partitionKey` returns or `&quot;al
 by default, and each partition into lanes. A ticket lands in exactly one lane
 and is searched with that lane&#x27;s candidates. Standard queues may also read
 adjacent rating bands or draining generations. Attribute-rule queues
-currently use one fixed lane per partition, with no cross-lane rule search.
+use one fixed lane per partition unless built-in regions assign one lane
+per region. Regional workers widen discovery after the configured wait.
 
 ### What shares a lane
 
 Lanes buy parallelism by splitting the pool, so *which* tickets share one
-decides whether the split costs anything. There are two schemes, and the
-standard queue&#x27;s configuration picks between them (queues with `rules` stay
-on one hashed lane):
+decides whether the split costs anything. Standard queues choose between
+bands and hashes. Built-in regions add a third routing scheme; ordinary
+queues with `rules` stay on one hashed lane:
 
 - **Bands**, on a rated queue left on `lanes = &quot;auto&quot;`. A lane is a
   contiguous rating range: lane 0 holds everyone below the first boundary,
@@ -28,7 +29,11 @@ on one hashed lane):
   by and every ticket may match every other, so an even spread is the best
   split available.
 
-Both are deterministic: two servers holding the same layout agree on a
+- **Regions**, with built-in `regions`. Sorted region names map to fixed
+  lane indexes. The engine routes the whole ticket by its supplied region
+  and widens candidate discovery without moving that ticket.
+
+These are deterministic: two servers holding the same layout agree on a
 ticket&#x27;s lane without coordinating.
 
 ### Generations
@@ -55,14 +60,15 @@ A queue is divided into partitions, whatever `partitionKey` returns or `&quot;al
 by default, and each partition into lanes. A ticket lands in exactly one lane
 and is searched with that lane&#x27;s candidates. Standard queues may also read
 adjacent rating bands or draining generations. Attribute-rule queues
-currently use one fixed lane per partition, with no cross-lane rule search.
+use one fixed lane per partition unless built-in regions assign one lane
+per region. Regional workers widen discovery after the configured wait.
 
 ### What shares a lane
 
 Lanes buy parallelism by splitting the pool, so *which* tickets share one
-decides whether the split costs anything. There are two schemes, and the
-standard queue&#x27;s configuration picks between them (queues with `rules` stay
-on one hashed lane):
+decides whether the split costs anything. Standard queues choose between
+bands and hashes. Built-in regions add a third routing scheme; ordinary
+queues with `rules` stay on one hashed lane:
 
 - **Bands**, on a rated queue left on `lanes = &quot;auto&quot;`. A lane is a
   contiguous rating range: lane 0 holds everyone below the first boundary,
@@ -74,7 +80,11 @@ on one hashed lane):
   by and every ticket may match every other, so an even spread is the best
   split available.
 
-Both are deterministic: two servers holding the same layout agree on a
+- **Regions**, with built-in `regions`. Sorted region names map to fixed
+  lane indexes. The engine routes the whole ticket by its supplied region
+  and widens candidate discovery without moving that ticket.
+
+These are deterministic: two servers holding the same layout agree on a
 ticket&#x27;s lane without coordinating.
 
 ### Generations
@@ -96,8 +106,8 @@ covers the window where both generations hold live tickets.
 
 Sort keys are queue timestamps, so an ascending range read returns the oldest
 tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Lanes"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Lanes" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Lanes" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
-<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.86bf730b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.7ea8c129.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -110,32 +120,44 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
   by default, and each partition into lanes. A ticket lands in exactly one lane
   and is searched with that lane's candidates. Standard queues may also read
   adjacent rating bands or draining generations. Attribute-rule queues
-  currently use one fixed lane per partition, with no cross-lane rule search.
+  use one fixed lane per partition unless built-in regions assign one lane
+  per region. Regional workers widen discovery after the configured wait.
 </p>
 <h3>What shares a lane</h3>
 <p>
   Lanes buy parallelism by splitting the pool, so <em>which</em> tickets share one
-  decides whether the split costs anything. There are two schemes, and the
-  standard queue's configuration picks between them (queues with <code>rules</code> stay
-  on one hashed lane):
+  decides whether the split costs anything. Standard queues choose between
+  bands and hashes. Built-in regions add a third routing scheme; ordinary
+  queues with <code>rules</code> stay on one hashed lane:
 </p>
 <ul>
   <li>
-    <strong>Bands</strong>, on a rated queue left on <code>lanes = "auto"</code>. A lane is a
-    contiguous rating range: lane 0 holds everyone below the first boundary,
-    the last lane everyone above the last. Splitting a rated queue by rating
-    separates players who would not have matched anyway, so four high-rated
-    players queueing at once always land together.
+    <p>
+      <strong>Bands</strong>, on a rated queue left on <code>lanes = "auto"</code>. A lane is a
+      contiguous rating range: lane 0 holds everyone below the first boundary,
+      the last lane everyone above the last. Splitting a rated queue by rating
+      separates players who would not have matched anyway, so four high-rated
+      players queueing at once always land together.
+    </p>
   </li>
   <li>
-    <strong>Hashes</strong>, on an unrated queue or a pinned count. A ticket's lane is
-    <code>hash(ticketId) % count</code>. With no rating there is nothing to order players
-    by and every ticket may match every other, so an even spread is the best
-    split available.
+    <p>
+      <strong>Hashes</strong>, on an unrated queue or a pinned count. A ticket's lane is
+      <code>hash(ticketId) % count</code>. With no rating there is nothing to order players
+      by and every ticket may match every other, so an even spread is the best
+      split available.
+    </p>
+  </li>
+  <li>
+    <p>
+      <strong>Regions</strong>, with built-in <code>regions</code>. Sorted region names map to fixed
+      lane indexes. The engine routes the whole ticket by its supplied region
+      and widens candidate discovery without moving that ticket.
+    </p>
   </li>
 </ul>
 <p>
-  Both are deterministic: two servers holding the same layout agree on a
+  These are deterministic: two servers holding the same layout agree on a
   ticket's lane without coordinating.
 </p>
 <h3>Generations</h3>
@@ -158,25 +180,25 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
   Sort keys are queue timestamps, so an ascending range read returns the oldest
   tickets first.
 </p>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="types">Types<a href="#types" class="hash-link" aria-label="Direct link to Types" title="Direct link to Types" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Layout"><code style="text-decoration:none">Layout</code><a href="#Layout" class="hash-link" aria-label="Direct link to Layout" title="Direct link to Layout" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L67"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code class="purple_ieR2">interface</code> <code>Layout<!-- --> <!-- -->{</code><div class="inset_uKQm"><div><code>generation<!-- -->: </code><code class="blue_P4bS">number</code><span class="inlineDescription_G7Er">-- <span>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="types">Types<a href="#types" class="hash-link" aria-label="Direct link to Types" title="Direct link to Types" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Layout"><code style="text-decoration:none">Layout</code><a href="#Layout" class="hash-link" aria-label="Direct link to Layout" title="Direct link to Layout" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L72"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code class="purple_ieR2">interface</code> <code>Layout<!-- --> <!-- -->{</code><div class="inset_uKQm"><div><code>generation<!-- -->: </code><code class="blue_P4bS">number</code><span class="inlineDescription_G7Er">-- <span>
 <p>Monotonic per partition. Stamped into every key.</p>
 </span></span></div><div><code>count<!-- -->: </code><code class="blue_P4bS">number</code></div><div><code>mode<!-- -->: </code><code class="blue_P4bS">&quot;band&quot;</code><code class="op_lSLc"> | </code><code class="blue_P4bS">&quot;hash&quot;</code></div><div><code>bounds<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code><span class="inlineDescription_G7Er">-- <span>
 <p>Band mode: <code>count - 1</code> ascending interior boundaries. Empty in hash mode.</p>
 </span></span></div></div><code>}</code></div><div>
 <p>One partition's division into lanes, at one point in time.</p>
-</div><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="hashed"><code style="text-decoration:none">hashed</code><a href="#hashed" class="hash-link" aria-label="Direct link to hashed" title="Direct link to hashed" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L101"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">hashed</code><code>(</code><div class="inset_uKQm"><div><code>count<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>generation<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code></div><div>
+</div><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="hashed"><code style="text-decoration:none">hashed</code><a href="#hashed" class="hash-link" aria-label="Direct link to hashed" title="Direct link to hashed" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L106"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">hashed</code><code>(</code><div class="inset_uKQm"><div><code>count<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>generation<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code></div><div>
 <p>A hash layout of <code>count</code> lanes.</p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="banded"><code style="text-decoration:none">banded</code><a href="#banded" class="hash-link" aria-label="Direct link to banded" title="Direct link to banded" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L111"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">banded</code><code>(</code><div class="inset_uKQm"><div><code>bounds<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code><code>,</code></div><div><code>generation<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="banded"><code style="text-decoration:none">banded</code><a href="#banded" class="hash-link" aria-label="Direct link to banded" title="Direct link to banded" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L116"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">banded</code><code>(</code><div class="inset_uKQm"><div><code>bounds<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code><code>,</code></div><div><code>generation<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code></div><div>
 <p>
   A band layout with the given interior boundaries, which must be ascending.
   <code>{}</code> is the single lane covering every rating.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="starting"><code style="text-decoration:none">starting</code><a href="#starting" class="hash-link" aria-label="Direct link to starting" title="Direct link to starting" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L121"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">starting</code><code>(</code><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="starting"><code style="text-decoration:none">starting</code><a href="#starting" class="hash-link" aria-label="Direct link to starting" title="Direct link to starting" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L126"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">starting</code><code>(</code><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code></div><div>
 <p>
   The layout a partition starts on, before anything has been observed: one
   lane, generation zero, in whichever mode this queue uses.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="name"><code style="text-decoration:none">name</code><a href="#name" class="hash-link" aria-label="Direct link to name" title="Direct link to name" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L138"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">name</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>count<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>generation<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">string</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="name"><code style="text-decoration:none">name</code><a href="#name" class="hash-link" aria-label="Direct link to name" title="Direct link to name" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L143"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">name</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>count<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>generation<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">string</code></div><div>
 <p>The map name for one lane.</p>
 <p>
   <code>settings.indexInfix</code> picks the key space, defaulting to <code>"idx"</code> for the
@@ -184,12 +206,12 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
   which is what lets listings reuse this whole module without their keys ever
   colliding with a ticket lane's.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="band"><code style="text-decoration:none">band</code><a href="#band" class="hash-link" aria-label="Direct link to band" title="Direct link to band" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L151"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">band</code><code>(</code><div class="inset_uKQm"><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">number</code><code>,</code></div><div><code class="blue_P4bS">number</code></div></div><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="band"><code style="text-decoration:none">band</code><a href="#band" class="hash-link" aria-label="Direct link to band" title="Direct link to band" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L156"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">band</code><code>(</code><div class="inset_uKQm"><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">number</code><code>,</code></div><div><code class="blue_P4bS">number</code></div></div><code>)</code></div><div>
 <p>
   The rating range <code>lane</code> covers, as a half-open <code>[low, high)</code>. Infinite on the
   open ends, and infinite on both in hash mode.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="laneFor"><code style="text-decoration:none">laneFor</code><a href="#laneFor" class="hash-link" aria-label="Direct link to laneFor" title="Direct link to laneFor" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L171"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">laneFor</code><code>(</code><div class="inset_uKQm"><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>rating<!-- -->: </code><code class="blue_P4bS">number?</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="laneFor"><code style="text-decoration:none">laneFor</code><a href="#laneFor" class="hash-link" aria-label="Direct link to laneFor" title="Direct link to laneFor" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L176"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">laneFor</code><code>(</code><div class="inset_uKQm"><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>rating<!-- -->: </code><code class="blue_P4bS">number?</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
 <p>
   Which lane a ticket belongs to under <code>layout</code>. Deterministic, so two servers
   using the same layout agree without coordinating.
@@ -200,7 +222,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
   practice, since a rated queue rejects a ticket without one; a missing rating
   falls into the lowest band.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="legacyLanes"><code style="text-decoration:none">legacyLanes</code><a href="#legacyLanes" class="hash-link" aria-label="Direct link to legacyLanes" title="Direct link to legacyLanes" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L218"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">legacyLanes</code><code>(</code><div class="inset_uKQm"><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>previous<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div></div><code>) → </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="legacyLanes"><code style="text-decoration:none">legacyLanes</code><a href="#legacyLanes" class="hash-link" aria-label="Direct link to legacyLanes" title="Direct link to legacyLanes" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L223"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">legacyLanes</code><code>(</code><div class="inset_uKQm"><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>previous<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div></div><code>) → </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code></div><div>
 <p>
   The lanes of <code>previous</code> that may hold tickets belonging to <code>lane</code> under
   <code>layout</code>. A worker reads their maps alongside its own while the old
@@ -223,41 +245,41 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
   </li>
 </ul>
 <p>Either way the result holds at most <code>previous.count / count</code> entries.</p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="legacyMaps"><code style="text-decoration:none">legacyMaps</code><a href="#legacyMaps" class="hash-link" aria-label="Direct link to legacyMaps" title="Direct link to legacyMaps" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L252"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">legacyMaps</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>previous<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div></div><code>) → </code><code class="purple_ieR2">{</code><code class="blue_P4bS">string</code><code class="purple_ieR2">}</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="legacyMaps"><code style="text-decoration:none">legacyMaps</code><a href="#legacyMaps" class="hash-link" aria-label="Direct link to legacyMaps" title="Direct link to legacyMaps" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L257"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">legacyMaps</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>previous<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div></div><code>) → </code><code class="purple_ieR2">{</code><code class="blue_P4bS">string</code><code class="purple_ieR2">}</code></div><div>
 <p><code>legacyLanes</code> as map names.</p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="neighbours"><code style="text-decoration:none">neighbours</code><a href="#neighbours" class="hash-link" aria-label="Direct link to neighbours" title="Direct link to neighbours" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L270"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">neighbours</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="purple_ieR2">{</code><code class="blue_P4bS">string</code><code class="purple_ieR2">}</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="neighbours"><code style="text-decoration:none">neighbours</code><a href="#neighbours" class="hash-link" aria-label="Direct link to neighbours" title="Direct link to neighbours" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L275"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">neighbours</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="purple_ieR2">{</code><code class="blue_P4bS">string</code><code class="purple_ieR2">}</code></div><div>
 <p>
   The maps of the lanes immediately either side of <code>lane</code>, which in band mode
   are the two holding the ratings closest to it. Empty in hash mode, where a
   neighbouring lane holds nothing more relevant than any other lane does.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="descriptor"><code style="text-decoration:none">descriptor</code><a href="#descriptor" class="hash-link" aria-label="Direct link to descriptor" title="Direct link to descriptor" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L288"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">descriptor</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>previous<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code><span class="inlineDescription_G7Er">-- <span>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="descriptor"><code style="text-decoration:none">descriptor</code><a href="#descriptor" class="hash-link" aria-label="Direct link to descriptor" title="Direct link to descriptor" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L293"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">descriptor</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>previous<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code><span class="inlineDescription_G7Er">-- <span>
 <p>The generation being drained, if one still is.</p>
-</span></span></div></div><code>) → </code><code class="blue_P4bS">Descriptor</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="forTicket"><code style="text-decoration:none">forTicket</code><a href="#forTicket" class="hash-link" aria-label="Direct link to forTicket" title="Direct link to forTicket" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L313"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">forTicket</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>rating<!-- -->: </code><code class="blue_P4bS">number?</code><code>,</code></div><div><code>previous<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div></div><code>) → </code><code class="blue_P4bS">Descriptor</code></div><div>
+</span></span></div></div><code>) → </code><code class="blue_P4bS">Descriptor</code></div><div></div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="forTicket"><code style="text-decoration:none">forTicket</code><a href="#forTicket" class="hash-link" aria-label="Direct link to forTicket" title="Direct link to forTicket" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L318"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">forTicket</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>rating<!-- -->: </code><code class="blue_P4bS">number?</code><code>,</code></div><div><code>previous<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div></div><code>) → </code><code class="blue_P4bS">Descriptor</code></div><div>
 <p>The lane descriptor a given ticket lands in under <code>layout</code>.</p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="allFor"><code style="text-decoration:none">allFor</code><a href="#allFor" class="hash-link" aria-label="Direct link to allFor" title="Direct link to allFor" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L329"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">allFor</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>previous<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div></div><code>) → </code><code class="purple_ieR2">{</code><code class="blue_P4bS">Descriptor</code><code class="purple_ieR2">}</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="allFor"><code style="text-decoration:none">allFor</code><a href="#allFor" class="hash-link" aria-label="Direct link to allFor" title="Direct link to allFor" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L334"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">allFor</code><code>(</code><div class="inset_uKQm"><div><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partition<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>previous<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div></div><code>) → </code><code class="purple_ieR2">{</code><code class="blue_P4bS">Descriptor</code><code class="purple_ieR2">}</code></div><div>
 <p>Every lane in a partition under <code>layout</code>.</p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="split"><code style="text-decoration:none">split</code><a href="#split" class="hash-link" aria-label="Direct link to split" title="Direct link to split" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L344"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">split</code><code>(</code><div class="inset_uKQm"><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>value<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="split"><code style="text-decoration:none">split</code><a href="#split" class="hash-link" aria-label="Direct link to split" title="Direct link to split" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L349"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">split</code><code>(</code><div class="inset_uKQm"><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>value<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div><div>
 <p>
   Splits <code>lane</code> in two at <code>value</code>, which becomes the lower bound of the upper
   half. Returns <code>nil</code> when the cut falls outside the lane, which would leave an
   empty band, or when the layout is not banded.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="merge"><code style="text-decoration:none">merge</code><a href="#merge" class="hash-link" aria-label="Direct link to merge" title="Direct link to merge" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L364"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">merge</code><code>(</code><div class="inset_uKQm"><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="merge"><code style="text-decoration:none">merge</code><a href="#merge" class="hash-link" aria-label="Direct link to merge" title="Direct link to merge" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L369"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">merge</code><code>(</code><div class="inset_uKQm"><div><code>layout<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout</a></code><code>,</code></div><div><code>lane<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div><div>
 <p>
   Merges <code>lane</code> into a neighbour by dropping the boundary between them: the one
   below it where there is one, so a merge folds a lane into the pool of
   slightly weaker players rather than jumping upward.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="validate"><code style="text-decoration:none">validate</code><a href="#validate" class="hash-link" aria-label="Direct link to validate" title="Direct link to validate" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L380"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">validate</code><code>(</code><div class="inset_uKQm"><div><code>raw<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>mode<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>maxCount<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="validate"><code style="text-decoration:none">validate</code><a href="#validate" class="hash-link" aria-label="Direct link to validate" title="Direct link to validate" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L385"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">validate</code><code>(</code><div class="inset_uKQm"><div><code>raw<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>mode<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>maxCount<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Lanes#Layout">Layout?</a></code></div><div>
 <p>
   Reads a stored layout back, or <code>nil</code> if it is absent, malformed, or not the
   mode this queue uses. Takes <code>any</code> on purpose: it is the validator for values
   read out of MemoryStore.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="clamp"><code style="text-decoration:none">clamp</code><a href="#clamp" class="hash-link" aria-label="Direct link to clamp" title="Direct link to clamp" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L421"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">clamp</code><code>(</code><div class="inset_uKQm"><div><code>count<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>min<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>max<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="clamp"><code style="text-decoration:none">clamp</code><a href="#clamp" class="hash-link" aria-label="Direct link to clamp" title="Direct link to clamp" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L426"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">clamp</code><code>(</code><div class="inset_uKQm"><div><code>count<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>min<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>max<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
 <p>Rounds <code>count</code> down to a power of two, clamped to <code>[min, max]</code>.</p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="isPowerOfTwo"><code style="text-decoration:none">isPowerOfTwo</code><a href="#isPowerOfTwo" class="hash-link" aria-label="Direct link to isPowerOfTwo" title="Direct link to isPowerOfTwo" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L435"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">isPowerOfTwo</code><code>(</code><code>count<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS">boolean</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="isPowerOfTwo"><code style="text-decoration:none">isPowerOfTwo</code><a href="#isPowerOfTwo" class="hash-link" aria-label="Direct link to isPowerOfTwo" title="Direct link to isPowerOfTwo" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Lanes.luau#L440"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Lanes<!-- -->.</code><code class="green_DgR4">isPowerOfTwo</code><code>(</code><code>count<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS">boolean</code></div><div>
 <p>
   Whether <code>count</code> is a power of two. Accepts any type, since it validates
   values read back from the store.
@@ -287,7 +309,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 101,
+                &quot;line&quot;: 106,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -314,7 +336,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 111,
+                &quot;line&quot;: 116,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -336,7 +358,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 121,
+                &quot;line&quot;: 126,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -378,7 +400,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 138,
+                &quot;line&quot;: 143,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -409,7 +431,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 151,
+                &quot;line&quot;: 156,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -441,7 +463,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 171,
+                &quot;line&quot;: 176,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -473,7 +495,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 218,
+                &quot;line&quot;: 223,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -515,7 +537,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 252,
+                &quot;line&quot;: 257,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -552,7 +574,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 270,
+                &quot;line&quot;: 275,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -594,7 +616,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 288,
+                &quot;line&quot;: 293,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -641,7 +663,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 313,
+                &quot;line&quot;: 318,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -678,7 +700,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 329,
+                &quot;line&quot;: 334,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -710,7 +732,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 344,
+                &quot;line&quot;: 349,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -737,7 +759,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 364,
+                &quot;line&quot;: 369,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -769,7 +791,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 380,
+                &quot;line&quot;: 385,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -801,7 +823,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 421,
+                &quot;line&quot;: 426,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         },
@@ -823,7 +845,7 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 435,
+                &quot;line&quot;: 440,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         }
@@ -856,15 +878,15 @@ tickets first."><link data-rh="true" rel="canonical" href="https://shmeatley.git
                 }
             ],
             &quot;source&quot;: {
-                &quot;line&quot;: 67,
+                &quot;line&quot;: 72,
                 &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
             }
         }
     ],
     &quot;name&quot;: &quot;Lanes&quot;,
-    &quot;desc&quot;: &quot;Key layout for the queue index.\n\nA queue is divided into partitions, whatever `partitionKey` returns or `\&quot;all\&quot;`\nby default, and each partition into lanes. A ticket lands in exactly one lane\nand is searched with that lane&#x27;s candidates. Standard queues may also read\nadjacent rating bands or draining generations. Attribute-rule queues\ncurrently use one fixed lane per partition, with no cross-lane rule search.\n\n### What shares a lane\n\nLanes buy parallelism by splitting the pool, so *which* tickets share one\ndecides whether the split costs anything. There are two schemes, and the\nstandard queue&#x27;s configuration picks between them (queues with `rules` stay\non one hashed lane):\n\n- **Bands**, on a rated queue left on `lanes = \&quot;auto\&quot;`. A lane is a\n  contiguous rating range: lane 0 holds everyone below the first boundary,\n  the last lane everyone above the last. Splitting a rated queue by rating\n  separates players who would not have matched anyway, so four high-rated\n  players queueing at once always land together.\n- **Hashes**, on an unrated queue or a pinned count. A ticket&#x27;s lane is\n  `hash(ticketId) % count`. With no rating there is nothing to order players\n  by and every ticket may match every other, so an even spread is the best\n  split available.\n\nBoth are deterministic: two servers holding the same layout agree on a\nticket&#x27;s lane without coordinating.\n\n### Generations\n\n[LaneScaler] changes the layout at runtime. A band layout can change without\nthe count changing, so a monotonic generation number, alongside the count, is\nstamped into every key:\n\n```\nmu1:ranked:idx:EMEA:n04g7:02\n                    ^^^^^ ^^\n                   layout lane\n```\n\nThe stamp is what makes changing the layout safe: servers that disagree about\nit read and write separate key spaces rather than one shared space, and a\nticket always stays in the lane its writer chose. A descriptor&#x27;s `legacy`\ncovers the window where both generations hold live tickets.\n\nSort keys are queue timestamps, so an ascending range read returns the oldest\ntickets first.&quot;,
+    &quot;desc&quot;: &quot;Key layout for the queue index.\n\nA queue is divided into partitions, whatever `partitionKey` returns or `\&quot;all\&quot;`\nby default, and each partition into lanes. A ticket lands in exactly one lane\nand is searched with that lane&#x27;s candidates. Standard queues may also read\nadjacent rating bands or draining generations. Attribute-rule queues\nuse one fixed lane per partition unless built-in regions assign one lane\nper region. Regional workers widen discovery after the configured wait.\n\n### What shares a lane\n\nLanes buy parallelism by splitting the pool, so *which* tickets share one\ndecides whether the split costs anything. Standard queues choose between\nbands and hashes. Built-in regions add a third routing scheme; ordinary\nqueues with `rules` stay on one hashed lane:\n\n- **Bands**, on a rated queue left on `lanes = \&quot;auto\&quot;`. A lane is a\n  contiguous rating range: lane 0 holds everyone below the first boundary,\n  the last lane everyone above the last. Splitting a rated queue by rating\n  separates players who would not have matched anyway, so four high-rated\n  players queueing at once always land together.\n- **Hashes**, on an unrated queue or a pinned count. A ticket&#x27;s lane is\n  `hash(ticketId) % count`. With no rating there is nothing to order players\n  by and every ticket may match every other, so an even spread is the best\n  split available.\n\n- **Regions**, with built-in `regions`. Sorted region names map to fixed\n  lane indexes. The engine routes the whole ticket by its supplied region\n  and widens candidate discovery without moving that ticket.\n\nThese are deterministic: two servers holding the same layout agree on a\nticket&#x27;s lane without coordinating.\n\n### Generations\n\n[LaneScaler] changes the layout at runtime. A band layout can change without\nthe count changing, so a monotonic generation number, alongside the count, is\nstamped into every key:\n\n```\nmu1:ranked:idx:EMEA:n04g7:02\n                    ^^^^^ ^^\n                   layout lane\n```\n\nThe stamp is what makes changing the layout safe: servers that disagree about\nit read and write separate key spaces rather than one shared space, and a\nticket always stays in the lane its writer chose. A descriptor&#x27;s `legacy`\ncovers the window where both generations hold live tickets.\n\nSort keys are queue timestamps, so an ascending range read returns the oldest\ntickets first.&quot;,
     &quot;source&quot;: {
-        &quot;line&quot;: 54,
+        &quot;line&quot;: 59,
         &quot;path&quot;: &quot;src/internal/Lanes.luau&quot;
     }
 }</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#types" class="table-of-contents__link toc-highlight">Types</a><ul><li><a href="#Layout" class="table-of-contents__link toc-highlight">Layout</a></li></ul></li><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#allFor" class="table-of-contents__link toc-highlight">.allFor</a></li><li><a href="#band" class="table-of-contents__link toc-highlight">.band</a></li><li><a href="#banded" class="table-of-contents__link toc-highlight">.banded</a></li><li><a href="#clamp" class="table-of-contents__link toc-highlight">.clamp</a></li><li><a href="#descriptor" class="table-of-contents__link toc-highlight">.descriptor</a></li><li><a href="#forTicket" class="table-of-contents__link toc-highlight">.forTicket</a></li><li><a href="#hashed" class="table-of-contents__link toc-highlight">.hashed</a></li><li><a href="#isPowerOfTwo" class="table-of-contents__link toc-highlight">.isPowerOfTwo</a></li><li><a href="#laneFor" class="table-of-contents__link toc-highlight">.laneFor</a></li><li><a href="#legacyLanes" class="table-of-contents__link toc-highlight">.legacyLanes</a></li><li><a href="#legacyMaps" class="table-of-contents__link toc-highlight">.legacyMaps</a></li><li><a href="#merge" class="table-of-contents__link toc-highlight">.merge</a></li><li><a href="#name" class="table-of-contents__link toc-highlight">.name</a></li><li><a href="#neighbours" class="table-of-contents__link toc-highlight">.neighbours</a></li><li><a href="#split" class="table-of-contents__link toc-highlight">.split</a></li><li><a href="#starting" class="table-of-contents__link toc-highlight">.starting</a></li><li><a href="#validate" class="table-of-contents__link toc-highlight">.validate</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 shmeatley. Built with Moonwave and Docusaurus.</div></div></div></footer></div>

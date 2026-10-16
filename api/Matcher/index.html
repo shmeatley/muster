@@ -26,7 +26,8 @@ Once the anchor reaches `fallbackAfter`, selection can accept the largest
 viable group from `maxSize` down to `minSize`. Fallback never disables rules.
 
 This module only sees the candidates discovery supplies. In particular,
-rule queues currently use one lane per partition and a 100-ticket scan budget.
+ordinary rule queues use one lane per partition and a 100-ticket scan budget.
+Built-in regions share that budget across regional lanes on fallback scans.
 Discovery alternates oldest-first scans with overlapping forward pages when
 needed. Selection cannot compare players in different windows unless they
 are brought into the same scan."><meta data-rh="true" property="og:description" content="The grouping algorithm. It takes candidates, a policy and the current time;
@@ -52,12 +53,13 @@ Once the anchor reaches `fallbackAfter`, selection can accept the largest
 viable group from `maxSize` down to `minSize`. Fallback never disables rules.
 
 This module only sees the candidates discovery supplies. In particular,
-rule queues currently use one lane per partition and a 100-ticket scan budget.
+ordinary rule queues use one lane per partition and a 100-ticket scan budget.
+Built-in regions share that budget across regional lanes on fallback scans.
 Discovery alternates oldest-first scans with overlapping forward pages when
 needed. Selection cannot compare players in different windows unless they
 are brought into the same scan."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Matcher"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matcher" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matcher" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
-<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.86bf730b.js" defer="defer"></script>
+<script src="/muster/assets/js/main.7ea8c129.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -93,12 +95,13 @@ are brought into the same scan."><link data-rh="true" rel="canonical" href="http
 </p>
 <p>
   This module only sees the candidates discovery supplies. In particular,
-  rule queues currently use one lane per partition and a 100-ticket scan budget.
+  ordinary rule queues use one lane per partition and a 100-ticket scan budget.
+  Built-in regions share that budget across regional lanes on fallback scans.
   Discovery alternates oldest-first scans with overlapping forward pages when
   needed. Selection cannot compare players in different windows unless they
   are brought into the same scan.
 </p>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="spreadScore"><code style="text-decoration:none">spreadScore</code><a href="#spreadScore" class="hash-link" aria-label="Direct link to spreadScore" title="Direct link to spreadScore" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L60"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">spreadScore</code><code>(</code><div class="inset_uKQm"><div><code>candidates<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Candidate">Candidate</a></code><code class="purple_ieR2">}</code><code>,</code></div><div><code>indexes<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">number</code><code>,</code></div><div><code class="blue_P4bS">number</code></div></div><code>)</code></div><div>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="spreadScore"><code style="text-decoration:none">spreadScore</code><a href="#spreadScore" class="hash-link" aria-label="Direct link to spreadScore" title="Direct link to spreadScore" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L61"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">spreadScore</code><code>(</code><div class="inset_uKQm"><div><code>candidates<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Candidate">Candidate</a></code><code class="purple_ieR2">}</code><code>,</code></div><div><code>indexes<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">number</code><code>,</code></div><div><code class="blue_P4bS">number</code></div></div><code>)</code></div><div>
 <p>
   The default scoring function: rating spread across individual members, then
   total queue time. Both are minimised, compared in that order.
@@ -111,13 +114,13 @@ are brought into the same scan."><link data-rh="true" rel="canonical" href="http
   Returns a spread of 0 when no candidate carries a rating, leaving queue time
   as the whole ordering, which is the behaviour an unrated queue wants.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="policy"><code style="text-decoration:none">policy</code><a href="#policy" class="hash-link" aria-label="Direct link to policy" title="Direct link to policy" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L86"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">policy</code><code>(</code><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatcherPolicy">MatcherPolicy</a></code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="policy"><code style="text-decoration:none">policy</code><a href="#policy" class="hash-link" aria-label="Direct link to policy" title="Direct link to policy" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L87"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">policy</code><code>(</code><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatcherPolicy">MatcherPolicy</a></code></div><div>
 <p>
   Builds the <a href="/muster/api/Types#MatcherPolicy">MatcherPolicy</a> a resolved config implies: a widening rating
   window for ratings, plus all-member attribute checks and preference scoring
   when <code>rules</code> is configured. Without either, compatibility is unconditional.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="select"><code style="text-decoration:none">select</code><a href="#select" class="hash-link" aria-label="Direct link to select" title="Direct link to select" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L384"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">select</code><code>(</code><div class="inset_uKQm"><div><code>candidates<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Candidate">Candidate</a></code><code class="purple_ieR2">}</code><code>,</code></div><div><code>now<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="select"><code style="text-decoration:none">select</code><a href="#select" class="hash-link" aria-label="Direct link to select" title="Direct link to select" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L385"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">select</code><code>(</code><div class="inset_uKQm"><div><code>candidates<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Candidate">Candidate</a></code><code class="purple_ieR2">}</code><code>,</code></div><div><code>now<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
 <p>Wall-clock seconds, compared against each candidate's <code>queuedAt</code>.</p>
 </span></span></div><div><code>policy<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatcherPolicy">MatcherPolicy</a></code></div></div><code>) → </code><code class="purple_ieR2">{</code><code class="green_DgR4">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Candidate">Candidate</a></code><code class="green_DgR4">}</code><code class="purple_ieR2">}</code></div><div>
 <p>Groups candidates into matches.</p>
@@ -154,7 +157,7 @@ are brought into the same scan."><link data-rh="true" rel="canonical" href="http
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 60,
+                &quot;line&quot;: 61,
                 &quot;path&quot;: &quot;src/internal/Matcher.luau&quot;
             }
         },
@@ -176,7 +179,7 @@ are brought into the same scan."><link data-rh="true" rel="canonical" href="http
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 86,
+                &quot;line&quot;: 87,
                 &quot;path&quot;: &quot;src/internal/Matcher.luau&quot;
             }
         },
@@ -208,7 +211,7 @@ are brought into the same scan."><link data-rh="true" rel="canonical" href="http
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 384,
+                &quot;line&quot;: 385,
                 &quot;path&quot;: &quot;src/internal/Matcher.luau&quot;
             }
         }
@@ -216,9 +219,9 @@ are brought into the same scan."><link data-rh="true" rel="canonical" href="http
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;Matcher&quot;,
-    &quot;desc&quot;: &quot;The grouping algorithm. It takes candidates, a policy and the current time;\nit does not read the store or clock itself. Tickets are never split.\n\nCandidates are visited oldest first, with ticket ID breaking ties. Without\nattribute rules, the subset-sum walk accepts the first target-sized group.\nIt compares ratings against the anchor using the anchor&#x27;s queue time.\n\nWith attribute rules, the search keeps up to eight alternatives per size\nand considers all visible candidates for preferences. Every ticket must\naccept every other ticket, using each one&#x27;s own wait, and a party&#x27;s members\nmust also be compatible internally. The search is bounded, so it can miss\nvalid combinations; it does not find a global optimum.\n\nThe rules path prepares compatibility summaries once per scan and updates\nnumeric/equality preference scores incrementally. It skips infeasible anchors\nand proposals that cannot improve a full bucket. A scan-wide compatibility\ncheck can avoid repeated pair checks. Custom scorers and matrix preferences\nuse general fallback paths where those shortcuts do not apply.\n\nOnce the anchor reaches `fallbackAfter`, selection can accept the largest\nviable group from `maxSize` down to `minSize`. Fallback never disables rules.\n\nThis module only sees the candidates discovery supplies. In particular,\nrule queues currently use one lane per partition and a 100-ticket scan budget.\nDiscovery alternates oldest-first scans with overlapping forward pages when\nneeded. Selection cannot compare players in different windows unless they\nare brought into the same scan.&quot;,
+    &quot;desc&quot;: &quot;The grouping algorithm. It takes candidates, a policy and the current time;\nit does not read the store or clock itself. Tickets are never split.\n\nCandidates are visited oldest first, with ticket ID breaking ties. Without\nattribute rules, the subset-sum walk accepts the first target-sized group.\nIt compares ratings against the anchor using the anchor&#x27;s queue time.\n\nWith attribute rules, the search keeps up to eight alternatives per size\nand considers all visible candidates for preferences. Every ticket must\naccept every other ticket, using each one&#x27;s own wait, and a party&#x27;s members\nmust also be compatible internally. The search is bounded, so it can miss\nvalid combinations; it does not find a global optimum.\n\nThe rules path prepares compatibility summaries once per scan and updates\nnumeric/equality preference scores incrementally. It skips infeasible anchors\nand proposals that cannot improve a full bucket. A scan-wide compatibility\ncheck can avoid repeated pair checks. Custom scorers and matrix preferences\nuse general fallback paths where those shortcuts do not apply.\n\nOnce the anchor reaches `fallbackAfter`, selection can accept the largest\nviable group from `maxSize` down to `minSize`. Fallback never disables rules.\n\nThis module only sees the candidates discovery supplies. In particular,\nordinary rule queues use one lane per partition and a 100-ticket scan budget.\nBuilt-in regions share that budget across regional lanes on fallback scans.\nDiscovery alternates oldest-first scans with overlapping forward pages when\nneeded. Selection cannot compare players in different windows unless they\nare brought into the same scan.&quot;,
     &quot;source&quot;: {
-        &quot;line&quot;: 34,
+        &quot;line&quot;: 35,
         &quot;path&quot;: &quot;src/internal/Matcher.luau&quot;
     }
 }</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#policy" class="table-of-contents__link toc-highlight">.policy</a></li><li><a href="#select" class="table-of-contents__link toc-highlight">.select</a></li><li><a href="#spreadScore" class="table-of-contents__link toc-highlight">.spreadScore</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 shmeatley. Built with Moonwave and Docusaurus.</div></div></div></footer></div>
