@@ -15,7 +15,7 @@
 	local casual = Muster.new({ name = "casual", size = 8, quickPlay = true })
 	```
 
-	Quick Play **ignores rating entirely**. There is no window, no relaxation and
+	Quick Play **ignores rating and attribute matching rules**. There is no window, no relaxation and
 	no banding; a listing with a free seat takes the next player who wants it. Do
 	not turn it on for a ranked queue.
 

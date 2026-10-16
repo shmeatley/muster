@@ -13,6 +13,7 @@
 
 local Defaults = require(script.Parent.Defaults)
 local Hash = require(script.Parent.Hash)
+local Rules = require(script.Parent.internal.Rules)
 local Runtime = require(script.Parent.internal.Runtime)
 local Types = require(script.Parent.Types)
 
@@ -269,6 +270,17 @@ function Config.resolve(raw: any): (any, string?)
 		return nil, ratingProblem
 	end
 
+	local rules, rulesProblem = Rules.resolve(raw.rules)
+	if rulesProblem then
+		return nil, rulesProblem
+	end
+	if rules and (raw.matcher ~= nil or raw.layout ~= nil) then
+		return nil, "Muster: rules cannot be combined with custom matcher or layout"
+	end
+	if rules and raw.lanes ~= nil and raw.lanes ~= "auto" and raw.lanes ~= 1 then
+		return nil, "Muster: rules currently require lanes = 1 (or auto, resolved to one lane)"
+	end
+
 	local quickPlay, quickPlayProblem = resolveQuickPlay(raw.quickPlay, size)
 	if quickPlayProblem then
 		return nil, quickPlayProblem
@@ -309,6 +321,10 @@ function Config.resolve(raw: any): (any, string?)
 			return nil,
 				`Muster: \`lanes\` must be "auto" or an integer from 1 to {Defaults.LANE_MAX} (got {tostring(raw.lanes)})`
 		end
+	end
+
+	if rules then
+		laneMode, lanes = "fixed", 1
 	end
 
 	-- How a partition's pool is divided. A scaling rated queue splits by rating
@@ -354,6 +370,7 @@ function Config.resolve(raw: any): (any, string?)
 		serverId = `local-{Runtime.guid()}`
 	end
 
+	local ruleKey = if rules then Rules.key(rules) else nil
 	local settings = {
 		name = raw.name,
 		namespace = namespace,
@@ -362,6 +379,9 @@ function Config.resolve(raw: any): (any, string?)
 		size = table.freeze(size),
 		rating = if rating then table.freeze(rating) else nil,
 		rated = rating ~= nil,
+		rules = rules,
+		ruleKey = ruleKey,
+		indexInfix = if ruleKey then `idx-{ruleKey}` else nil,
 		fallbackAfter = fallbackAfter,
 		lanes = lanes,
 		laneMode = laneMode,
@@ -424,12 +444,13 @@ function Config.resolve(raw: any): (any, string?)
 	}
 
 	local prefix = `{namespace}{Defaults.SCHEMA_VERSION}`
+	local ruleSuffix = if ruleKey then `:{ruleKey}` else ""
 	settings.keys = table.freeze({
 		tickets = `{prefix}:{raw.name}:tickets`,
 		matches = `{prefix}:{raw.name}:matches`,
-		leases = `{prefix}:{raw.name}:leases`,
+		leases = `{prefix}:{raw.name}:leases{ruleSuffix}`,
 		-- Keyed by partition: each one scales on its own depth.
-		lanes = `{prefix}:{raw.name}:lanes`,
+		lanes = `{prefix}:{raw.name}:lanes{ruleSuffix}`,
 		-- Quick Play keeps its own ledger and its own lane layout, so a listing
 		-- never shares a key space with a ticket.
 		quickplay = `{prefix}:{raw.name}:qp`,

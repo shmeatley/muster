@@ -29,13 +29,14 @@
 	| --- | --- | --- | --- |
 	| `name` | `string` | required | Namespaces this queue's keys. Max 16 characters, alphanumeric plus `_` and `-`. |
 	| `size` | `number \| SizeConfig` | required | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
+	| `rules` | `{ [string]: AttributeRule }?` | `nil` | Independent attribute constraints and preferences for new matches. Rule queues use one lane; Quick Play bypasses these rules. |
 	| `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |
 	| `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |
 	| `finalize` | `Finalizer<T>?` | `nil` | Runs once per match; its return value becomes `match.data`. |
 	| `finalizeTimeout` | `number` | `5` | Seconds. Must not exceed 15. |
 	| `onAbort` | `AbortHandler?` | `nil` | Called when a match fails after its hook ran. Requires `finalize`. |
-	| `partitionKey` | `function?` | `nil` | Returns a partition name per ticket. Partitions never match each other. |
-	| `lanes` | `"auto" \| number` | `"auto"` | Left on `"auto"`, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. See [LaneScaler]. |
+	| `partitionKey` | `function?` | `nil` | Returns a permanent pool name per ticket. Prefer attributes for regional preferences; partitions never match each other. |
+	| `lanes` | `"auto" \| number` | `"auto"` | Left on `"auto"`, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. With `rules`, auto resolves to one fixed lane and counts above one are rejected. See [LaneScaler]. |
 	| `broadcast` | `boolean` | `true` | Publish match notifications over MessagingService. |
 	| `autoStart` | `boolean` | `true` | Start the worker thread on construction. |
 	| `autoCancelOnLeave` | `boolean` | `true` | Cancel a player's ticket when they leave. |
@@ -57,8 +58,9 @@
 	assume it has someone to act on.
 
 	Matches are written to MemoryStore before being announced, so delivery does
-	not depend on MessagingService. Typical latency is under 200 ms; if a message
-	is dropped, a poll finds the match within `pollIntervalMax` (30 s). If
+	not depend on MessagingService. Notification time after commit depends on the
+	backend and is separate from time spent matching. If a message is dropped, a
+	poll finds the match within `pollIntervalMax` (30 s). If
 	MessagingService is unavailable the poll cap tightens to 5 s automatically.
 ]=]
 
@@ -358,6 +360,7 @@ function Matchmaker.enqueue(self: any, userId: number, options: any?): any
 		userId = userId,
 		serverId = opts.serverId or settings.serverId,
 		rating = rating,
+		attributes = opts.attributes,
 		provisional = if settings.rated and opts.rating == nil then true else nil,
 	}
 
@@ -400,6 +403,7 @@ function Matchmaker.enqueueGroup(self: any, userIds: { number }, options: any?):
 			userId = userId,
 			serverId = serverIds[userId] or opts.serverId or settings.serverId,
 			rating = self:_resolveRating(userId, ratings[userId]),
+			attributes = if opts.attributes then opts.attributes[userId] else nil,
 			provisional = if settings.rated and ratings[userId] == nil then true else nil,
 		}
 	end
@@ -446,6 +450,7 @@ function Matchmaker.enqueueParty(self: any, partyId: string, requesterUserId: nu
 			userId = partyMember.userId,
 			serverId = partyMember.serverId or settings.serverId,
 			rating = self:_resolveRating(partyMember.userId, ratings[partyMember.userId]),
+			attributes = if opts.attributes then opts.attributes[partyMember.userId] else nil,
 			provisional = if settings.rated and ratings[partyMember.userId] == nil then true else nil,
 		}
 	end

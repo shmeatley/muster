@@ -3,42 +3,47 @@
 --[=[
 	@class Matcher
 
-	The grouping algorithm.
+	The grouping algorithm. It takes candidates, a policy and the current time;
+	it does not read the store or clock itself. Tickets are never split.
 
-	Pure: no store, no clock, no Roblox globals. It takes candidates and a policy
-	and returns groups, so match quality can be tested without a queue.
+	Candidates are visited oldest first, with ticket ID breaking ties. Without
+	attribute rules, the subset-sum walk accepts the first target-sized group.
+	It compares ratings against the anchor using the anchor's queue time.
 
-	Candidates are sorted oldest first, ties broken by ticket id. Each unused
-	candidate in turn becomes an *anchor*, and a subset-sum walk over ticket
-	sizes looks for a combination that fills the match. Tickets are indivisible,
-	so a group is never split across matches.
+	With attribute rules, the search keeps up to eight alternatives per size
+	and considers all visible candidates for preferences. Every ticket must
+	accept every other ticket, using each one's own wait, and a party's members
+	must also be compatible internally. The search is bounded, so it can miss
+	valid combinations; it does not find a global optimum.
 
-	A combination reaching `targetSize` is taken immediately. A smaller one is
-	accepted only once the anchor has waited `fallbackAfter` seconds, and then
-	the largest viable size down to `minSize` wins. Five players waiting for a
-	six-player match therefore end up playing five-a-side.
+	The rules path prepares compatibility summaries once per scan and updates
+	numeric/equality preference scores incrementally. It skips infeasible anchors
+	and proposals that cannot improve a full bucket. A scan-wide compatibility
+	check can avoid repeated pair checks. Custom scorers and matrix preferences
+	use general fallback paths where those shortcuts do not apply.
 
-	The rating window widens with the **anchor's** wait rather than each
-	candidate's. Because anchors are visited oldest first, the longest-waiting
-	player searches the widest, and an unmatched outlier does not block the
-	compatible players behind it.
+	Once the anchor reaches `fallbackAfter`, selection can accept the largest
+	viable group from `maxSize` down to `minSize`. Fallback never disables rules.
 
-	:::note Which full match wins
-	The walk stops at the first combination reaching `targetSize` rather than
-	continuing to find a tighter one. Candidates are visited oldest first, so
-	this favours the longest wait, and rating spread is already bounded by the
-	window each candidate had to pass. Scanning the rest would cost a full pass
-	per anchor on every scan of every lane.
-	:::
+	This module only sees the candidates discovery supplies. In particular,
+	rule queues currently use one lane per partition and a 100-ticket scan budget.
+	Discovery alternates oldest-first scans with overlapping forward pages when
+	needed. Selection cannot compare players in different windows unless they
+	are brought into the same scan.
 ]=]
 
 local Defaults = require(script.Parent.Parent.Defaults)
+local Rules = require(script.Parent.Rules)
 local Types = require(script.Parent.Parent.Types)
 
 type Candidate = Types.Candidate
 type MatcherPolicy = Types.MatcherPolicy
 
 local Matcher = {}
+-- Only scorers created here have the nondecreasing rule-penalty guarantee.
+-- Weak keys avoid retaining policies after their queues are destroyed.
+local preparedPairs: { [any]: any } = setmetatable({}, { __mode = "k" }) :: any
+local monotoneScores: { [any]: any } = setmetatable({}, { __mode = "k" }) :: any
 
 --[=[
 	The default scoring function: rating spread across individual members, then
@@ -73,7 +78,8 @@ end
 
 --[=[
 	Builds the [MatcherPolicy] a resolved config implies: a widening rating
-	window on a rated queue, or unconditional compatibility on an unrated one.
+	window for ratings, plus all-member attribute checks and preference scoring
+	when `rules` is configured. Without either, compatibility is unconditional.
 
 	@within Matcher
 ]=]
@@ -95,20 +101,56 @@ function Matcher.policy(settings: any): MatcherPolicy
 		end
 	end
 
+	local score = if settings.rules then Rules.scorer(settings.rules) else Matcher.spreadScore
+	if settings.rules then
+		monotoneScores[score] = settings.rules
+	end
+	local pairCompatible = nil
+	if settings.rules then
+		pairCompatible = function(a: Candidate, b: Candidate, now: number): boolean
+			return a.ruleKey == settings.ruleKey
+				and b.ruleKey == settings.ruleKey
+				and Rules.compatible(settings.rules, a, b, now)
+		end
+		preparedPairs[pairCompatible] = { rules = settings.rules, ruleKey = settings.ruleKey }
+	end
 	return table.freeze({
 		minSize = settings.size.min,
 		targetSize = settings.size.target,
 		maxSize = settings.size.max,
 		fallbackAfter = settings.fallbackAfter,
 		compatible = compatible,
-		score = Matcher.spreadScore,
+		pairCompatible = pairCompatible,
+		score = score,
 	})
 end
 
 -- Each reachable total size keeps its best combination alongside that
--- combination's already-computed score. Scoring on insert rather than on every
--- comparison is what keeps the walk linear in candidates instead of quadratic.
-type State = { indexes: { number }, spread: number, queued: number }
+-- combination's already-computed score. Comparisons reuse that score instead
+-- of rescoring the retained combination.
+type State = { indexes: { number }, spread: number, queued: number, summary: any? }
+
+-- Compare an optimistic extension against the worst retained state without
+-- copying indexes or scoring it. Rule penalties can only increase as a group
+-- grows. Queue totals and lexicographic indexes have their exact final values.
+local function canImprove(state: State, index: number, queued: number, worst: State, primary: number?): boolean
+	local spread = primary or state.spread
+	if spread ~= worst.spread then
+		return spread < worst.spread
+	end
+	if queued ~= worst.queued then
+		return queued < worst.queued
+	end
+	local indexes, other = state.indexes, worst.indexes
+	local length = #indexes + 1
+	for i = 1, math.min(length, #other) do
+		local value = if i == length then index else indexes[i]
+		if value ~= other[i] then
+			return value < other[i]
+		end
+	end
+	return length < #other
+end
 
 local function extend(state: State, index: number): { number }
 	local result = table.create(#state.indexes + 1)
@@ -176,6 +218,160 @@ local function chooseForAnchor(
 	return nil
 end
 
+-- Pairwise constraints invalidate the legacy subset-sum dominance assumption:
+-- two equally sized groups can admit different future candidates. Retain a
+-- bounded set of alternatives per size, ordered deterministically. This is a
+-- beam search, not an exhaustive solver; it prioritizes oldest anchors and
+-- evaluates all visible candidates to make soft preferences useful.
+local function chooseWithRules(
+	candidates: { Candidate },
+	anchorIndex: number,
+	used: { [number]: boolean },
+	now: number,
+	policy: MatcherPolicy,
+	pair: (number, number) -> boolean,
+	plan: any,
+	universal: boolean
+): { number }?
+	local monotone = monotoneScores[policy.score]
+	local anchor = candidates[anchorIndex]
+	if not pair(anchorIndex, anchorIndex) then
+		return nil
+	end
+	local waitSeconds = math.max(0, now - anchor.queuedAt)
+	local eligible = {}
+	local available = anchor.size
+	for index, candidate in candidates do
+		if
+			index ~= anchorIndex
+			and not used[index]
+			and candidate.size + anchor.size <= policy.maxSize
+			and pair(index, index)
+			and policy.compatible(anchor, candidate, waitSeconds)
+			and pair(anchorIndex, index)
+		then
+			eligible[#eligible + 1] = index
+			available += candidate.size
+		end
+	end
+	-- An upper bound, not a packing heuristic: rejecting here cannot discard
+	-- a feasible match. Incompatible old anchors otherwise build whole beams
+	-- even when their entire compatible neighborhood cannot fill a match.
+	local required = if waitSeconds >= policy.fallbackAfter then policy.minSize else policy.targetSize
+	if available < required then
+		return nil
+	end
+	local indexes = { anchorIndex }
+	local primary, secondary = policy.score(candidates, indexes)
+	local states: { [number]: { State } } = {
+		[anchor.size] = {
+			{
+				indexes = indexes,
+				spread = primary,
+				queued = secondary,
+				summary = if plan then plan.seed(anchorIndex) else nil,
+			},
+		},
+	}
+	local scratch = {}
+	local function better(a: State, b: State): boolean
+		if a.spread ~= b.spread then
+			return a.spread < b.spread
+		end
+		if a.queued ~= b.queued then
+			return a.queued < b.queued
+		end
+		for i = 1, math.min(#a.indexes, #b.indexes) do
+			if a.indexes[i] ~= b.indexes[i] then
+				return a.indexes[i] < b.indexes[i]
+			end
+		end
+		return #a.indexes < #b.indexes
+	end
+	for _, index in eligible do
+		local candidate = candidates[index]
+		-- Positive ticket sizes and descending traversal keep source buckets
+		-- untouched until visited. No snapshot or destination copy is needed.
+		for size = policy.maxSize - candidate.size, anchor.size, -1 do
+			local bucket = states[size]
+			if bucket == nil then
+				continue
+			end
+			local nextSize = size + candidate.size
+			local nextBucket = states[nextSize]
+			if nextBucket == nil then
+				nextBucket = {}
+				states[nextSize] = nextBucket
+			end
+			for _, state in bucket do
+				if
+					monotone
+					and #nextBucket == Rules.BEAM_WIDTH
+					and not canImprove(state, index, state.queued + candidate.queuedAt, nextBucket[Rules.BEAM_WIDTH])
+				then
+					continue
+				end
+				local accepts = true
+				if not universal then
+					for _, memberIndex in state.indexes do
+						if not pair(memberIndex, index) then
+							accepts = false
+							break
+						end
+					end
+				end
+				if accepts then
+					local proposed, spread, queued
+					if plan then
+						spread = plan.extend(state.summary, index, scratch)
+						queued = state.queued + candidate.queuedAt
+						if
+							#nextBucket == Rules.BEAM_WIDTH
+							and not canImprove(state, index, queued, nextBucket[Rules.BEAM_WIDTH], spread)
+						then
+							continue
+						end
+						proposed = extend(state, index)
+					else
+						proposed = extend(state, index)
+						spread, queued = policy.score(candidates, proposed)
+					end
+					local entry = {
+						indexes = proposed,
+						spread = spread,
+						queued = queued,
+						summary = if plan then table.clone(scratch) else nil,
+					}
+					local count = #nextBucket
+					-- Maintain the same best eight states directly. Sorting up to
+					-- sixteen entries after every extension repeats comparisons.
+					if count < Rules.BEAM_WIDTH or better(entry, nextBucket[count]) then
+						local position = math.min(count + 1, Rules.BEAM_WIDTH)
+						while position > 1 and better(entry, nextBucket[position - 1]) do
+							nextBucket[position] = nextBucket[position - 1]
+							position -= 1
+						end
+						nextBucket[position] = entry
+					end
+				end
+			end
+		end
+	end
+	local full = states[policy.targetSize]
+	if full and #full > 0 then
+		return full[1].indexes
+	end
+	if waitSeconds >= policy.fallbackAfter then
+		for size = policy.maxSize, policy.minSize, -1 do
+			local bucket = states[size]
+			if bucket and #bucket > 0 then
+				return bucket[1].indexes
+			end
+		end
+	end
+	return nil
+end
+
 --[=[
 	Groups candidates into matches.
 
@@ -196,12 +392,37 @@ function Matcher.select(candidates: { Candidate }, now: number, policy: MatcherP
 
 	local used: { [number]: boolean } = {}
 	local matches = {}
+	local preparation = if policy.pairCompatible then preparedPairs[policy.pairCompatible] else nil
+	local prepared, universal = nil, false
+	if preparation then
+		prepared, universal = Rules.preparePairs(preparation.rules, ordered, now, preparation.ruleKey)
+	end
+	local scoreRules = monotoneScores[policy.score]
+	local scorePlan = if scoreRules then Rules.prepareScore(scoreRules, ordered) else nil
+	local pairCache: { [number]: { [number]: boolean } } = {}
+	local function pair(a: number, b: number): boolean
+		local low, high = math.min(a, b), math.max(a, b)
+		local row = pairCache[low]
+		if row == nil then
+			row = {}
+			pairCache[low] = row
+		end
+		if row[high] == nil then
+			local check = policy.pairCompatible
+			row[high] = if prepared
+				then prepared(low, high)
+				else check ~= nil and check(ordered[low], ordered[high], now)
+		end
+		return row[high]
+	end
 
 	for anchorIndex = 1, #ordered do
 		if used[anchorIndex] then
 			continue
 		end
-		local selected = chooseForAnchor(ordered, anchorIndex, used, now, policy)
+		local selected: { number }? = if policy.pairCompatible
+			then chooseWithRules(ordered, anchorIndex, used, now, policy, pair, scorePlan, universal)
+			else chooseForAnchor(ordered, anchorIndex, used, now, policy)
 		if selected == nil then
 			continue
 		end

@@ -1,0 +1,1198 @@
+Function 0 (spreadScore):
+R0: table [argument]
+R1: table [argument]
+   61: 	local minimum = math.huge
+LOADK R2 K0 [inf]
+   62: 	local maximum = -math.huge
+LOADK R3 K1 [-inf]
+   63: 	local queuedTotal = 0
+LOADN R4 0
+   64: 	local seen = false
+LOADB R5 0
+   66: 	for _, index in indexes do
+MOVE R6 R1
+LOADNIL R7
+LOADNIL R8
+FORGPREP R6 L5
+   67: 		local candidate = candidates[index]
+L0: GETTABLE R11 R0 R10
+   68: 		for _, rating in candidate.ratings do
+GETTABLEKS R12 R11 K2 ['ratings']
+LOADNIL R13
+LOADNIL R14
+FORGPREP R12 L4
+REMARK builtin math.min/2
+   69: 			minimum = math.min(minimum, rating)
+L1: FASTCALL2 19 R2 R16 L2
+MOVE R18 R2
+MOVE R19 R16
+GETIMPORT R17 5 [math.min]
+CALL R17 2 1
+L2: MOVE R2 R17
+REMARK builtin math.max/2
+   70: 			maximum = math.max(maximum, rating)
+FASTCALL2 18 R3 R16 L3
+MOVE R18 R3
+MOVE R19 R16
+GETIMPORT R17 7 [math.max]
+CALL R17 2 1
+L3: MOVE R3 R17
+   71: 			seen = true
+LOADB R5 1
+   68: 		for _, rating in candidate.ratings do
+L4: FORGLOOP R12 L1 2
+   73: 		queuedTotal += candidate.queuedAt
+GETTABLEKS R12 R11 K8 ['queuedAt']
+ADD R4 R4 R12
+   66: 	for _, index in indexes do
+L5: FORGLOOP R6 L0 2
+   76: 	return (if seen then maximum - minimum else 0), queuedTotal
+JUMPIFNOT R5 L6
+SUB R6 R3 R2
+JUMP L7
+L6: LOADN R6 0
+L7: MOVE R7 R4
+RETURN R6 2
+
+Function 1 (??):
+R0: any [argument]
+R1: any [argument]
+R2: number [argument]
+   91: 			return true
+LOADB R3 1
+RETURN R3 1
+
+Function 2 (??):
+R0: any [argument]
+R1: any [argument]
+R2: number [argument]
+   95: 			local window = Defaults.ratingWindow(rating, waitSeconds)
+GETUPVAL R3 U0
+GETTABLEKS R3 R3 K0 ['ratingWindow']
+GETUPVAL R4 U1
+MOVE R5 R2
+CALLFB R3 2 1 [0]
+   96: 			if window == math.huge then
+JUMPXEQKN R3 K1 L0 NOT [inf]
+   97: 				return true
+LOADB R4 1
+RETURN R4 1
+REMARK builtin math.abs/1
+   99: 			return math.abs((candidate.rating or 0) - (anchor.rating or 0)) <= window
+L0: GETTABLEKS R8 R1 K3 ['rating']
+ORK R7 R8 K2 [0]
+GETTABLEKS R9 R0 K3 ['rating']
+ORK R8 R9 K2 [0]
+SUB R6 R7 R8
+FASTCALL1 2 R6 L1
+GETIMPORT R5 6 [math.abs]
+CALL R5 1 1
+L1: JUMPIFLE R5 R3 L2
+LOADB R4 0 +1
+L2: LOADB R4 1
+L3: RETURN R4 1
+
+Function 3 (??):
+R0: any [argument]
+R1: any [argument]
+R2: number [argument]
+  110: 			return a.ruleKey == settings.ruleKey
+LOADB R3 0
+GETTABLEKS R4 R0 K0 ['ruleKey']
+GETUPVAL R5 U0
+GETTABLEKS R5 R5 K0 ['ruleKey']
+JUMPIFNOTEQ R4 R5 L0
+LOADB R3 0
+  111: 				and b.ruleKey == settings.ruleKey
+GETTABLEKS R4 R1 K0 ['ruleKey']
+GETUPVAL R5 U0
+GETTABLEKS R5 R5 K0 ['ruleKey']
+JUMPIFNOTEQ R4 R5 L0
+  112: 				and Rules.compatible(settings.rules, a, b, now)
+GETUPVAL R3 U1
+GETTABLEKS R3 R3 K1 ['compatible']
+GETUPVAL R4 U0
+GETTABLEKS R4 R4 K2 ['rules']
+MOVE R5 R0
+MOVE R6 R1
+MOVE R7 R2
+CALLFB R3 4 1 [0]
+L0: RETURN R3 1
+
+Function 4 (policy):
+   86: 	local rating = settings.rating
+GETTABLEKS R1 R0 K0 ['rating']
+   88: 	local compatible: (Candidate, Candidate, number) -> boolean
+LOADNIL R2
+   89: 	if rating == nil then
+JUMPXEQKNIL R1 L0 NOT
+   90: 		compatible = function(_anchor: Candidate, _candidate: Candidate, _waitSeconds: number): boolean
+DUPCLOSURE R2 K1 []
+JUMP L1
+REMARK allocation: closure with 2 upvalues
+   94: 		compatible = function(anchor: Candidate, candidate: Candidate, waitSeconds: number): boolean
+L0: NEWCLOSURE R2 P1
+CAPTURE UPVAL U0
+CAPTURE VAL R1
+  103: 	local score = if settings.rules then Rules.scorer(settings.rules) else Matcher.spreadScore
+L1: GETTABLEKS R4 R0 K2 ['rules']
+JUMPIFNOT R4 L2
+GETUPVAL R3 U1
+GETTABLEKS R3 R3 K3 ['scorer']
+GETTABLEKS R4 R0 K2 ['rules']
+CALLFB R3 1 1 [0]
+JUMP L3
+L2: GETUPVAL R3 U2
+GETTABLEKS R3 R3 K4 ['spreadScore']
+  104: 	if settings.rules then
+L3: GETTABLEKS R4 R0 K2 ['rules']
+JUMPIFNOT R4 L4
+  105: 		monotoneScores[score] = settings.rules
+GETUPVAL R4 U3
+GETTABLEKS R5 R0 K2 ['rules']
+SETTABLE R5 R4 R3
+  107: 	local pairCompatible = nil
+L4: LOADNIL R4
+  108: 	if settings.rules then
+GETTABLEKS R5 R0 K2 ['rules']
+JUMPIFNOT R5 L5
+REMARK allocation: closure with 2 upvalues
+  109: 		pairCompatible = function(a: Candidate, b: Candidate, now: number): boolean
+NEWCLOSURE R4 P2
+CAPTURE VAL R0
+CAPTURE UPVAL U1
+  114: 		preparedPairs[pairCompatible] = { rules = settings.rules, ruleKey = settings.ruleKey }
+GETUPVAL R5 U4
+REMARK allocation: table template 2
+DUPTABLE R6 6
+GETTABLEKS R7 R0 K2 ['rules']
+SETTABLEKS R7 R6 K2 ['rules']
+GETTABLEKS R7 R0 K5 ['ruleKey']
+SETTABLEKS R7 R6 K5 ['ruleKey']
+SETTABLE R6 R5 R4
+  116: 	return table.freeze({
+L5: GETIMPORT R5 9 [table.freeze]
+REMARK allocation: table template 7
+DUPTABLE R6 17
+  117: 		minSize = settings.size.min,
+GETTABLEKS R7 R0 K18 ['size']
+GETTABLEKS R7 R7 K19 ['min']
+SETTABLEKS R7 R6 K10 ['minSize']
+  118: 		targetSize = settings.size.target,
+GETTABLEKS R7 R0 K18 ['size']
+GETTABLEKS R7 R7 K20 ['target']
+SETTABLEKS R7 R6 K11 ['targetSize']
+  119: 		maxSize = settings.size.max,
+GETTABLEKS R7 R0 K18 ['size']
+GETTABLEKS R7 R7 K21 ['max']
+SETTABLEKS R7 R6 K12 ['maxSize']
+  120: 		fallbackAfter = settings.fallbackAfter,
+GETTABLEKS R7 R0 K13 ['fallbackAfter']
+SETTABLEKS R7 R6 K13 ['fallbackAfter']
+  121: 		compatible = compatible,
+SETTABLEKS R2 R6 K14 ['compatible']
+  122: 		pairCompatible = pairCompatible,
+SETTABLEKS R4 R6 K15 ['pairCompatible']
+  123: 		score = score,
+SETTABLEKS R3 R6 K16 ['score']
+  116: 	return table.freeze({
+CALL R5 1 -1
+RETURN R5 -1
+
+Function 5 (canImprove):
+R0: table [argument]
+R1: number [argument]
+R2: number [argument]
+R3: table [argument]
+R4: number? [argument]
+  136: 	local spread = primary or state.spread
+MOVE R5 R4
+JUMPIF R5 L0
+GETTABLEKS R5 R0 K0 ['spread']
+  137: 	if spread ~= worst.spread then
+L0: GETTABLEKS R6 R3 K0 ['spread']
+JUMPIFEQ R5 R6 L3
+  138: 		return spread < worst.spread
+GETTABLEKS R7 R3 K0 ['spread']
+JUMPIFLT R5 R7 L1
+LOADB R6 0 +1
+L1: LOADB R6 1
+L2: RETURN R6 1
+  140: 	if queued ~= worst.queued then
+L3: GETTABLEKS R6 R3 K1 ['queued']
+JUMPIFEQ R2 R6 L6
+  141: 		return queued < worst.queued
+GETTABLEKS R7 R3 K1 ['queued']
+JUMPIFLT R2 R7 L4
+LOADB R6 0 +1
+L4: LOADB R6 1
+L5: RETURN R6 1
+  143: 	local indexes, other = state.indexes, worst.indexes
+L6: GETTABLEKS R6 R0 K2 ['indexes']
+GETTABLEKS R7 R3 K2 ['indexes']
+  144: 	local length = #indexes + 1
+LENGTH R8 R6
+ADDK R5 R8 K3 [1]
+  145: 	for i = 1, math.min(length, #other) do
+LOADN R10 1
+REMARK builtin math.min/2
+LENGTH R13 R7
+FASTCALL2 19 R5 R13 L7
+MOVE R12 R5
+GETIMPORT R11 6 [math.min]
+CALL R11 2 1
+L7: MOVE R8 R11
+LOADN R9 1
+FORNPREP R8 L14
+  146: 		local value = if i == length then index else indexes[i]
+L8: JUMPIFNOTEQ R10 R5 L9
+MOVE R11 R1
+JUMP L10
+L9: GETTABLE R11 R6 R10
+  147: 		if value ~= other[i] then
+L10: GETTABLE R12 R7 R10
+JUMPIFEQ R11 R12 L13
+  148: 			return value < other[i]
+GETTABLE R13 R7 R10
+JUMPIFLT R11 R13 L11
+LOADB R12 0 +1
+L11: LOADB R12 1
+L12: RETURN R12 1
+  145: 	for i = 1, math.min(length, #other) do
+L13: FORNLOOP R8 L8
+  151: 	return length < #other
+L14: LENGTH R9 R7
+JUMPIFLT R5 R9 L15
+LOADB R8 0 +1
+L15: LOADB R8 1
+L16: RETURN R8 1
+
+Function 6 (extend):
+R0: table [argument]
+R1: number [argument]
+  155: 	local result = table.create(#state.indexes + 1)
+GETIMPORT R2 2 [table.create]
+GETTABLEKS R5 R0 K4 ['indexes']
+LENGTH R4 R5
+ADDK R3 R4 K3 [1]
+CALLFB R2 1 1 [0]
+  156: 	table.move(state.indexes, 1, #state.indexes, 1, result)
+GETIMPORT R3 6 [table.move]
+GETTABLEKS R4 R0 K4 ['indexes']
+LOADN R5 1
+GETTABLEKS R7 R0 K4 ['indexes']
+LENGTH R6 R7
+LOADN R7 1
+MOVE R8 R2
+CALLFB R3 5 0 [1]
+  157: 	result[#state.indexes + 1] = index
+GETTABLEKS R5 R0 K4 ['indexes']
+LENGTH R4 R5
+ADDK R3 R4 K3 [1]
+SETTABLE R1 R2 R3
+  158: 	return result
+RETURN R2 1
+
+Function 7 (chooseForAnchor):
+R0: table [argument]
+R1: number [argument]
+R2: table [argument]
+R3: number [argument]
+R4: any [argument]
+  168: 	local anchor = candidates[anchorIndex]
+GETTABLE R5 R0 R1
+REMARK builtin math.max/2
+  169: 	local waitSeconds = math.max(0, now - anchor.queuedAt)
+LOADN R7 0
+GETTABLEKS R9 R5 K0 ['queuedAt']
+SUB R8 R3 R9
+FASTCALL2 18 R7 R8 L0
+GETIMPORT R6 3 [math.max]
+CALL R6 2 1
+REMARK allocation: table array 1
+  171: 	local anchorIndexes = { anchorIndex }
+L0: NEWTABLE R7 0 1
+MOVE R8 R1
+SETLIST R7 R8 1 [1]
+  172: 	local anchorSpread, anchorQueued = policy.score(candidates, anchorIndexes)
+GETTABLEKS R8 R4 K4 ['score']
+MOVE R9 R0
+MOVE R10 R7
+CALLFB R8 2 2 [0]
+REMARK allocation: table hash 1
+  173: 	local states: { [number]: State } = {
+NEWTABLE R10 1 0
+  174: 		[anchor.size] = { indexes = anchorIndexes, spread = anchorSpread, queued = anchorQueued },
+GETTABLEKS R11 R5 K5 ['size']
+REMARK allocation: table template 3
+DUPTABLE R12 9
+SETTABLEKS R7 R12 K6 ['indexes']
+SETTABLEKS R8 R12 K7 ['spread']
+SETTABLEKS R9 R12 K8 ['queued']
+SETTABLE R12 R10 R11
+  177: 	for index, candidate in candidates do
+MOVE R11 R0
+LOADNIL R12
+LOADNIL R13
+FORGPREP R11 L5
+  178: 		if index == anchorIndex or used[index] or not policy.compatible(anchor, candidate, waitSeconds) then
+L1: JUMPIFEQ R14 R1 L5
+GETTABLE R16 R2 R14
+JUMPIF R16 L5
+GETTABLEKS R16 R4 K10 ['compatible']
+MOVE R17 R5
+MOVE R18 R15
+MOVE R19 R6
+CALLFB R16 3 1 [1]
+JUMPIFNOT R16 L5
+  182: 		local snapshot = table.clone(states)
+GETIMPORT R16 13 [table.clone]
+MOVE R17 R10
+CALLFB R16 1 1 [2]
+MOVE R9 R16
+  183: 		for size, state in snapshot do
+MOVE R16 R9
+LOADNIL R17
+LOADNIL R18
+FORGPREP R16 L4
+  184: 			local nextSize = size + candidate.size
+L2: GETTABLEKS R21 R15 K5 ['size']
+ADD R8 R19 R21
+  185: 			if nextSize > policy.maxSize then
+GETTABLEKS R21 R4 K14 ['maxSize']
+JUMPIFLT R21 R8 L4
+REMARK inlining succeeded (cost 23, profit 1.13x, depth 0)
+  155: 	local result = table.create(#state.indexes + 1)
+GETIMPORT R21 16 [table.create]
+GETTABLEKS R24 R20 K6 ['indexes']
+LENGTH R23 R24
+ADDK R22 R23 K17 [1]
+CALLFB R21 1 1 [3]
+MOVE R7 R21
+  156: 	table.move(state.indexes, 1, #state.indexes, 1, result)
+GETIMPORT R21 19 [table.move]
+GETTABLEKS R22 R20 K6 ['indexes']
+LOADN R23 1
+GETTABLEKS R25 R20 K6 ['indexes']
+LENGTH R24 R25
+LOADN R25 1
+MOVE R26 R7
+CALLFB R21 5 0 [4]
+  157: 	result[#state.indexes + 1] = index
+GETTABLEKS R23 R20 K6 ['indexes']
+LENGTH R22 R23
+ADDK R21 R22 K17 [1]
+SETTABLE R14 R7 R21
+  189: 			local spread, queued = policy.score(candidates, proposed)
+GETTABLEKS R21 R4 K4 ['score']
+MOVE R22 R0
+MOVE R23 R7
+CALLFB R21 2 2 [5]
+  190: 			local current = states[nextSize]
+GETTABLE R23 R10 R8
+  191: 			if current == nil or spread < current.spread or (spread == current.spread and queued < current.queued) then
+JUMPXEQKNIL R23 L3
+GETTABLEKS R24 R23 K7 ['spread']
+JUMPIFLT R21 R24 L3
+GETTABLEKS R24 R23 K7 ['spread']
+JUMPIFNOTEQ R21 R24 L4
+GETTABLEKS R24 R23 K8 ['queued']
+JUMPIFNOTLT R22 R24 L4
+REMARK allocation: table template 3
+  192: 				states[nextSize] = { indexes = proposed, spread = spread, queued = queued }
+L3: DUPTABLE R24 9
+SETTABLEKS R7 R24 K6 ['indexes']
+SETTABLEKS R21 R24 K7 ['spread']
+SETTABLEKS R22 R24 K8 ['queued']
+SETTABLE R24 R10 R8
+  183: 		for size, state in snapshot do
+L4: FORGLOOP R16 L2 2
+  199: 		if states[policy.targetSize] then
+GETTABLEKS R17 R4 K20 ['targetSize']
+GETTABLE R16 R10 R17
+JUMPIF R16 L6
+  177: 	for index, candidate in candidates do
+L5: FORGLOOP R11 L1 2
+  204: 	local full = states[policy.targetSize]
+L6: GETTABLEKS R11 R4 K20 ['targetSize']
+GETTABLE R5 R10 R11
+  205: 	if full then
+JUMPIFNOT R5 L7
+  206: 		return full.indexes
+GETTABLEKS R11 R5 K6 ['indexes']
+RETURN R11 1
+  208: 	if waitSeconds < policy.fallbackAfter then
+L7: GETTABLEKS R11 R4 K21 ['fallbackAfter']
+JUMPIFNOTLT R6 R11 L8
+  209: 		return nil
+LOADNIL R11
+RETURN R11 1
+  211: 	for size = policy.maxSize, policy.minSize, -1 do
+L8: GETTABLEKS R13 R4 K14 ['maxSize']
+GETTABLEKS R11 R4 K22 ['minSize']
+LOADN R12 -1
+FORNPREP R11 L11
+  212: 		local state = states[size]
+L9: GETTABLE R6 R10 R13
+  213: 		if state then
+JUMPIFNOT R6 L10
+  214: 			return state.indexes
+GETTABLEKS R14 R6 K6 ['indexes']
+RETURN R14 1
+  211: 	for size = policy.maxSize, policy.minSize, -1 do
+L10: FORNLOOP R11 L9
+  217: 	return nil
+L11: LOADNIL R11
+RETURN R11 1
+
+Function 8 (better):
+R0: table [argument]
+R1: table [argument]
+  277: 		if a.spread ~= b.spread then
+GETTABLEKS R2 R0 K0 ['spread']
+GETTABLEKS R3 R1 K0 ['spread']
+JUMPIFEQ R2 R3 L2
+  278: 			return a.spread < b.spread
+GETTABLEKS R3 R0 K0 ['spread']
+GETTABLEKS R4 R1 K0 ['spread']
+JUMPIFLT R3 R4 L0
+LOADB R2 0 +1
+L0: LOADB R2 1
+L1: RETURN R2 1
+  280: 		if a.queued ~= b.queued then
+L2: GETTABLEKS R2 R0 K1 ['queued']
+GETTABLEKS R3 R1 K1 ['queued']
+JUMPIFEQ R2 R3 L5
+  281: 			return a.queued < b.queued
+GETTABLEKS R3 R0 K1 ['queued']
+GETTABLEKS R4 R1 K1 ['queued']
+JUMPIFLT R3 R4 L3
+LOADB R2 0 +1
+L3: LOADB R2 1
+L4: RETURN R2 1
+  283: 		for i = 1, math.min(#a.indexes, #b.indexes) do
+L5: LOADN R4 1
+REMARK builtin math.min/2
+GETTABLEKS R7 R0 K2 ['indexes']
+LENGTH R6 R7
+GETTABLEKS R8 R1 K2 ['indexes']
+LENGTH R7 R8
+FASTCALL2 19 R6 R7 L6
+GETIMPORT R5 5 [math.min]
+CALL R5 2 1
+L6: MOVE R2 R5
+LOADN R3 1
+FORNPREP R2 L11
+  284: 			if a.indexes[i] ~= b.indexes[i] then
+L7: GETTABLEKS R6 R0 K2 ['indexes']
+GETTABLE R5 R6 R4
+GETTABLEKS R7 R1 K2 ['indexes']
+GETTABLE R6 R7 R4
+JUMPIFEQ R5 R6 L10
+  285: 				return a.indexes[i] < b.indexes[i]
+GETTABLEKS R7 R0 K2 ['indexes']
+GETTABLE R6 R7 R4
+GETTABLEKS R8 R1 K2 ['indexes']
+GETTABLE R7 R8 R4
+JUMPIFLT R6 R7 L8
+LOADB R5 0 +1
+L8: LOADB R5 1
+L9: RETURN R5 1
+  283: 		for i = 1, math.min(#a.indexes, #b.indexes) do
+L10: FORNLOOP R2 L7
+  288: 		return #a.indexes < #b.indexes
+L11: GETTABLEKS R4 R0 K2 ['indexes']
+LENGTH R3 R4
+GETTABLEKS R5 R1 K2 ['indexes']
+LENGTH R4 R5
+JUMPIFLT R3 R4 L12
+LOADB R2 0 +1
+L12: LOADB R2 1
+L13: RETURN R2 1
+
+Function 9 (chooseWithRules):
+R0: table [argument]
+R1: number [argument]
+R2: table [argument]
+R3: number [argument]
+R4: any [argument]
+R5: function [argument]
+R6: any [argument]
+R7: boolean [argument]
+  235: 	local monotone = monotoneScores[policy.score]
+GETUPVAL R9 U0
+GETTABLEKS R10 R4 K0 ['score']
+GETTABLE R8 R9 R10
+  236: 	local anchor = candidates[anchorIndex]
+GETTABLE R9 R0 R1
+  237: 	if not pair(anchorIndex, anchorIndex) then
+MOVE R10 R5
+MOVE R11 R1
+MOVE R12 R1
+CALLFB R10 2 1 [0]
+JUMPIF R10 L0
+  238: 		return nil
+LOADNIL R10
+RETURN R10 1
+REMARK builtin math.max/2
+  240: 	local waitSeconds = math.max(0, now - anchor.queuedAt)
+L0: LOADN R11 0
+GETTABLEKS R13 R9 K1 ['queuedAt']
+SUB R12 R3 R13
+FASTCALL2 18 R11 R12 L1
+GETIMPORT R10 4 [math.max]
+CALL R10 2 1
+REMARK allocation: table hash 0
+  241: 	local eligible = {}
+L1: NEWTABLE R11 0 0
+  242: 	local available = anchor.size
+GETTABLEKS R12 R9 K5 ['size']
+  243: 	for index, candidate in candidates do
+MOVE R13 R0
+LOADNIL R14
+LOADNIL R15
+FORGPREP R13 L3
+  244: 		if
+L2: JUMPIFEQ R16 R1 L3
+  246: 			and not used[index]
+GETTABLE R18 R2 R16
+JUMPIF R18 L3
+  247: 			and candidate.size + anchor.size <= policy.maxSize
+GETTABLEKS R19 R17 K5 ['size']
+GETTABLEKS R20 R9 K5 ['size']
+ADD R18 R19 R20
+GETTABLEKS R19 R4 K6 ['maxSize']
+JUMPIFNOTLE R18 R19 L3
+  248: 			and pair(index, index)
+MOVE R18 R5
+MOVE R19 R16
+MOVE R20 R16
+CALLFB R18 2 1 [1]
+JUMPIFNOT R18 L3
+  249: 			and policy.compatible(anchor, candidate, waitSeconds)
+GETTABLEKS R18 R4 K7 ['compatible']
+MOVE R19 R9
+MOVE R20 R17
+MOVE R21 R10
+CALLFB R18 3 1 [2]
+JUMPIFNOT R18 L3
+  250: 			and pair(anchorIndex, index)
+MOVE R18 R5
+MOVE R19 R1
+MOVE R20 R16
+CALLFB R18 2 1 [3]
+JUMPIFNOT R18 L3
+  252: 			eligible[#eligible + 1] = index
+LENGTH R19 R11
+ADDK R18 R19 K8 [1]
+SETTABLE R16 R11 R18
+  253: 			available += candidate.size
+GETTABLEKS R18 R17 K5 ['size']
+ADD R12 R12 R18
+  243: 	for index, candidate in candidates do
+L3: FORGLOOP R13 L2 2
+  259: 	local required = if waitSeconds >= policy.fallbackAfter then policy.minSize else policy.targetSize
+GETTABLEKS R14 R4 K9 ['fallbackAfter']
+JUMPIFNOTLE R14 R10 L4
+GETTABLEKS R13 R4 K10 ['minSize']
+JUMP L5
+L4: GETTABLEKS R13 R4 K11 ['targetSize']
+  260: 	if available < required then
+L5: JUMPIFNOTLT R12 R13 L6
+  261: 		return nil
+LOADNIL R14
+RETURN R14 1
+REMARK allocation: table array 1
+  263: 	local indexes = { anchorIndex }
+L6: NEWTABLE R13 0 1
+MOVE R14 R1
+SETLIST R13 R14 1 [1]
+  264: 	local primary, secondary = policy.score(candidates, indexes)
+GETTABLEKS R14 R4 K0 ['score']
+MOVE R15 R0
+MOVE R16 R13
+CALLFB R14 2 2 [4]
+REMARK allocation: table hash 1
+  265: 	local states: { [number]: { State } } = {
+NEWTABLE R12 1 0
+  266: 		[anchor.size] = {
+GETTABLEKS R16 R9 K5 ['size']
+REMARK allocation: table array 1
+NEWTABLE R17 0 1
+REMARK allocation: table template 4
+  267: 			{
+DUPTABLE R18 16
+  268: 				indexes = indexes,
+SETTABLEKS R13 R18 K12 ['indexes']
+  269: 				spread = primary,
+SETTABLEKS R14 R18 K13 ['spread']
+  270: 				queued = secondary,
+SETTABLEKS R15 R18 K14 ['queued']
+  271: 				summary = if plan then plan.seed(anchorIndex) else nil,
+JUMPIFNOT R6 L7
+GETTABLEKS R19 R6 K17 ['seed']
+MOVE R20 R1
+CALLFB R19 1 1 [5]
+JUMP L8
+L7: LOADNIL R19
+L8: SETTABLEKS R19 R18 K15 ['summary']
+SETLIST R17 R18 1 [1]
+  266: 		[anchor.size] = {
+SETTABLE R17 R12 R16
+REMARK allocation: table hash 0
+  275: 	local scratch = {}
+NEWTABLE R15 0 0
+  276: 	local function better(a: State, b: State): boolean
+DUPCLOSURE R14 K18 ['better']
+  290: 	for _, index in eligible do
+MOVE R16 R11
+LOADNIL R17
+LOADNIL R18
+FORGPREP R16 L28
+  291: 		local candidate = candidates[index]
+L9: GETTABLE R13 R0 R20
+  294: 		for size = policy.maxSize - candidate.size, anchor.size, -1 do
+GETTABLEKS R24 R4 K6 ['maxSize']
+GETTABLEKS R25 R13 K5 ['size']
+SUB R23 R24 R25
+GETTABLEKS R21 R9 K5 ['size']
+LOADN R22 -1
+FORNPREP R21 L28
+  295: 			local bucket = states[size]
+L10: GETTABLE R24 R12 R23
+  296: 			if bucket == nil then
+JUMPXEQKNIL R24 L27
+  299: 			local nextSize = size + candidate.size
+GETTABLEKS R26 R13 K5 ['size']
+ADD R25 R23 R26
+  300: 			local nextBucket = states[nextSize]
+GETTABLE R26 R12 R25
+  301: 			if nextBucket == nil then
+JUMPXEQKNIL R26 L11 NOT
+REMARK allocation: table hash 0
+  302: 				nextBucket = {}
+NEWTABLE R26 0 0
+  303: 				states[nextSize] = nextBucket
+SETTABLE R26 R12 R25
+  305: 			for _, state in bucket do
+L11: MOVE R27 R24
+LOADNIL R28
+LOADNIL R29
+FORGPREP R27 L26
+  306: 				if
+L12: JUMPIFNOT R8 L13
+  308: 					and #nextBucket == Rules.BEAM_WIDTH
+LENGTH R32 R26
+GETUPVAL R33 U1
+GETTABLEKS R33 R33 K19 ['BEAM_WIDTH']
+JUMPIFNOTEQ R32 R33 L13
+REMARK inlining failed: too expensive (cost 51, profit 1.05x)
+  309: 					and not canImprove(state, index, state.queued + candidate.queuedAt, nextBucket[Rules.BEAM_WIDTH])
+GETUPVAL R32 U2
+MOVE R33 R31
+MOVE R34 R20
+GETTABLEKS R36 R31 K14 ['queued']
+GETTABLEKS R37 R13 K1 ['queuedAt']
+ADD R35 R36 R37
+GETUPVAL R37 U1
+GETTABLEKS R37 R37 K19 ['BEAM_WIDTH']
+GETTABLE R36 R26 R37
+CALLFB R32 4 1 [6]
+JUMPIFNOT R32 L26
+  313: 				local accepts = true
+L13: LOADB R25 1
+  314: 				if not universal then
+JUMPIF R7 L16
+  315: 					for _, memberIndex in state.indexes do
+GETTABLEKS R32 R31 K12 ['indexes']
+LOADNIL R33
+LOADNIL R34
+FORGPREP R32 L15
+  316: 						if not pair(memberIndex, index) then
+L14: MOVE R37 R5
+MOVE R38 R36
+MOVE R39 R20
+CALLFB R37 2 1 [7]
+JUMPIF R37 L15
+  317: 							accepts = false
+LOADB R25 0
+  318: 							break
+JUMP L16
+  315: 					for _, memberIndex in state.indexes do
+L15: FORGLOOP R32 L14 2
+  322: 				if accepts then
+L16: JUMPIFNOT R25 L26
+  323: 					local proposed, spread, queued
+LOADNIL R32
+LOADNIL R33
+LOADNIL R34
+  324: 					if plan then
+JUMPIFNOT R6 L18
+  325: 						spread = plan.extend(state.summary, index, scratch)
+GETTABLEKS R35 R6 K20 ['extend']
+GETTABLEKS R36 R31 K15 ['summary']
+MOVE R37 R20
+MOVE R38 R15
+CALLFB R35 3 1 [8]
+MOVE R33 R35
+  326: 						queued = state.queued + candidate.queuedAt
+GETTABLEKS R35 R31 K14 ['queued']
+GETTABLEKS R36 R13 K1 ['queuedAt']
+ADD R34 R35 R36
+  328: 							#nextBucket == Rules.BEAM_WIDTH
+LENGTH R35 R26
+GETUPVAL R36 U1
+GETTABLEKS R36 R36 K19 ['BEAM_WIDTH']
+JUMPIFNOTEQ R35 R36 L17
+REMARK inlining failed: too expensive (cost 51, profit 1.05x)
+  329: 							and not canImprove(state, index, queued, nextBucket[Rules.BEAM_WIDTH], spread)
+GETUPVAL R35 U2
+MOVE R36 R31
+MOVE R37 R20
+MOVE R38 R34
+GETUPVAL R40 U1
+GETTABLEKS R40 R40 K19 ['BEAM_WIDTH']
+GETTABLE R39 R26 R40
+MOVE R40 R33
+CALLFB R35 5 1 [9]
+JUMPIFNOT R35 L26
+REMARK inlining succeeded (cost 23, profit 1.13x, depth 0)
+  155: 	local result = table.create(#state.indexes + 1)
+L17: GETIMPORT R35 23 [table.create]
+GETTABLEKS R38 R31 K12 ['indexes']
+LENGTH R37 R38
+ADDK R36 R37 K8 [1]
+CALLFB R35 1 1 [10]
+MOVE R32 R35
+  156: 	table.move(state.indexes, 1, #state.indexes, 1, result)
+GETIMPORT R35 25 [table.move]
+GETTABLEKS R36 R31 K12 ['indexes']
+LOADN R37 1
+GETTABLEKS R39 R31 K12 ['indexes']
+LENGTH R38 R39
+LOADN R39 1
+MOVE R40 R32
+CALLFB R35 5 0 [11]
+  157: 	result[#state.indexes + 1] = index
+GETTABLEKS R37 R31 K12 ['indexes']
+LENGTH R36 R37
+ADDK R35 R36 K8 [1]
+SETTABLE R20 R32 R35
+  158: 	return result
+JUMP L19
+REMARK inlining succeeded (cost 23, profit 1.13x, depth 0)
+  155: 	local result = table.create(#state.indexes + 1)
+L18: GETIMPORT R35 23 [table.create]
+GETTABLEKS R38 R31 K12 ['indexes']
+LENGTH R37 R38
+ADDK R36 R37 K8 [1]
+CALLFB R35 1 1 [12]
+MOVE R32 R35
+  156: 	table.move(state.indexes, 1, #state.indexes, 1, result)
+GETIMPORT R35 25 [table.move]
+GETTABLEKS R36 R31 K12 ['indexes']
+LOADN R37 1
+GETTABLEKS R39 R31 K12 ['indexes']
+LENGTH R38 R39
+LOADN R39 1
+MOVE R40 R32
+CALLFB R35 5 0 [13]
+  157: 	result[#state.indexes + 1] = index
+GETTABLEKS R37 R31 K12 ['indexes']
+LENGTH R36 R37
+ADDK R35 R36 K8 [1]
+SETTABLE R20 R32 R35
+  336: 						spread, queued = policy.score(candidates, proposed)
+GETTABLEKS R35 R4 K0 ['score']
+MOVE R36 R0
+MOVE R37 R32
+CALLFB R35 2 2 [14]
+MOVE R33 R35
+MOVE R34 R36
+REMARK allocation: table template 4
+  338: 					local entry = {
+L19: DUPTABLE R35 16
+  339: 						indexes = proposed,
+SETTABLEKS R32 R35 K12 ['indexes']
+  340: 						spread = spread,
+SETTABLEKS R33 R35 K13 ['spread']
+  341: 						queued = queued,
+SETTABLEKS R34 R35 K14 ['queued']
+  342: 						summary = if plan then table.clone(scratch) else nil,
+JUMPIFNOT R6 L20
+GETIMPORT R36 27 [table.clone]
+MOVE R37 R15
+CALLFB R36 1 1 [15]
+JUMP L21
+L20: LOADNIL R36
+L21: SETTABLEKS R36 R35 K15 ['summary']
+  344: 					local count = #nextBucket
+LENGTH R34 R26
+  347: 					if count < Rules.BEAM_WIDTH or better(entry, nextBucket[count]) then
+GETUPVAL R36 U1
+GETTABLEKS R36 R36 K19 ['BEAM_WIDTH']
+JUMPIFLT R34 R36 L22
+REMARK inlining failed: too expensive (cost 61, profit 1.04x)
+MOVE R36 R14
+MOVE R37 R35
+GETTABLE R38 R26 R34
+CALLFB R36 2 1 [16]
+JUMPIFNOT R36 L26
+REMARK builtin math.min/2
+  348: 						local position = math.min(count + 1, Rules.BEAM_WIDTH)
+L22: ADDK R37 R34 K8 [1]
+GETUPVAL R38 U1
+GETTABLEKS R38 R38 K19 ['BEAM_WIDTH']
+FASTCALL2 19 R37 R38 L23
+GETIMPORT R36 29 [math.min]
+CALL R36 2 1
+L23: MOVE R33 R36
+  349: 						while position > 1 and better(entry, nextBucket[position - 1]) do
+L24: LOADN R36 1
+JUMPIFNOTLT R36 R33 L25
+REMARK inlining failed: too expensive (cost 61, profit 1.04x)
+MOVE R36 R14
+MOVE R37 R35
+SUBK R39 R33 K8 [1]
+GETTABLE R38 R26 R39
+CALLFB R36 2 1 [17]
+JUMPIFNOT R36 L25
+  350: 							nextBucket[position] = nextBucket[position - 1]
+SUBK R37 R33 K8 [1]
+GETTABLE R36 R26 R37
+SETTABLE R36 R26 R33
+  351: 							position -= 1
+SUBK R33 R33 K8 [1]
+  349: 						while position > 1 and better(entry, nextBucket[position - 1]) do
+JUMPBACK L24
+  353: 						nextBucket[position] = entry
+L25: SETTABLE R35 R26 R33
+  305: 			for _, state in bucket do
+L26: FORGLOOP R27 L12 2
+  294: 		for size = policy.maxSize - candidate.size, anchor.size, -1 do
+L27: FORNLOOP R21 L10
+  290: 	for _, index in eligible do
+L28: FORGLOOP R16 L9 2
+  359: 	local full = states[policy.targetSize]
+GETTABLEKS R16 R4 K11 ['targetSize']
+GETTABLE R15 R12 R16
+  360: 	if full and #full > 0 then
+JUMPIFNOT R15 L29
+LENGTH R16 R15
+LOADN R17 0
+JUMPIFNOTLT R17 R16 L29
+  361: 		return full[1].indexes
+GETTABLEN R16 R15 1
+GETTABLEKS R16 R16 K12 ['indexes']
+RETURN R16 1
+  363: 	if waitSeconds >= policy.fallbackAfter then
+L29: GETTABLEKS R16 R4 K9 ['fallbackAfter']
+JUMPIFNOTLE R16 R10 L32
+  364: 		for size = policy.maxSize, policy.minSize, -1 do
+GETTABLEKS R18 R4 K6 ['maxSize']
+GETTABLEKS R16 R4 K10 ['minSize']
+LOADN R17 -1
+FORNPREP R16 L32
+  365: 			local bucket = states[size]
+L30: GETTABLE R15 R12 R18
+  366: 			if bucket and #bucket > 0 then
+JUMPIFNOT R15 L31
+LENGTH R19 R15
+LOADN R20 0
+JUMPIFNOTLT R20 R19 L31
+  367: 				return bucket[1].indexes
+GETTABLEN R19 R15 1
+GETTABLEKS R19 R19 K12 ['indexes']
+RETURN R19 1
+  364: 		for size = policy.maxSize, policy.minSize, -1 do
+L31: FORNLOOP R16 L30
+  371: 	return nil
+L32: LOADNIL R16
+RETURN R16 1
+
+Function 10 (??):
+  386: 		if left.queuedAt == right.queuedAt then
+GETTABLEKS R2 R0 K0 ['queuedAt']
+GETTABLEKS R3 R1 K0 ['queuedAt']
+JUMPIFNOTEQ R2 R3 L2
+  387: 			return left.ticketId < right.ticketId
+GETTABLEKS R3 R0 K1 ['ticketId']
+GETTABLEKS R4 R1 K1 ['ticketId']
+JUMPIFLT R3 R4 L0
+LOADB R2 0 +1
+L0: LOADB R2 1
+L1: RETURN R2 1
+  389: 		return left.queuedAt < right.queuedAt
+L2: GETTABLEKS R3 R0 K0 ['queuedAt']
+GETTABLEKS R4 R1 K0 ['queuedAt']
+JUMPIFLT R3 R4 L3
+LOADB R2 0 +1
+L3: LOADB R2 1
+L4: RETURN R2 1
+
+Function 11 (pair):
+R0: number [argument]
+R1: number [argument]
+REMARK builtin math.min/2
+  403: 		local low, high = math.min(a, b), math.max(a, b)
+FASTCALL2 19 R0 R1 L0
+MOVE R5 R0
+MOVE R6 R1
+GETIMPORT R4 2 [math.min]
+CALL R4 2 1
+L0: MOVE R2 R4
+REMARK builtin math.max/2
+FASTCALL2 18 R0 R1 L1
+MOVE R4 R0
+MOVE R5 R1
+GETIMPORT R3 4 [math.max]
+CALL R3 2 1
+  404: 		local row = pairCache[low]
+L1: GETUPVAL R5 U0
+GETTABLE R4 R5 R2
+  405: 		if row == nil then
+JUMPXEQKNIL R4 L2 NOT
+REMARK allocation: table hash 0
+  406: 			row = {}
+NEWTABLE R4 0 0
+  407: 			pairCache[low] = row
+GETUPVAL R5 U0
+SETTABLE R4 R5 R2
+  409: 		if row[high] == nil then
+L2: GETTABLE R5 R4 R3
+JUMPXEQKNIL R5 L5 NOT
+  410: 			local check = policy.pairCompatible
+GETUPVAL R5 U1
+GETTABLEKS R5 R5 K5 ['pairCompatible']
+  411: 			row[high] = if prepared
+GETUPVAL R7 U2
+JUMPIFNOT R7 L3
+  412: 				then prepared(low, high)
+GETUPVAL R6 U2
+MOVE R7 R2
+MOVE R8 R3
+CALLFB R6 2 1 [0]
+JUMP L4
+  413: 				else check ~= nil and check(ordered[low], ordered[high], now)
+L3: LOADB R6 0
+JUMPXEQKNIL R5 L4
+MOVE R6 R5
+GETUPVAL R8 U3
+GETTABLE R7 R8 R2
+GETUPVAL R9 U3
+GETTABLE R8 R9 R3
+GETUPVAL R9 U4
+CALLFB R6 3 1 [1]
+  411: 			row[high] = if prepared
+L4: SETTABLE R6 R4 R3
+  415: 		return row[high]
+L5: GETTABLE R5 R4 R3
+RETURN R5 1
+
+Function 12 (select):
+R0: table [argument]
+R1: number [argument]
+R2: any [argument]
+  384: 	local ordered = table.clone(candidates)
+GETIMPORT R3 2 [table.clone]
+MOVE R4 R0
+CALLFB R3 1 1 [0]
+  385: 	table.sort(ordered, function(left, right)
+GETIMPORT R4 4 [table.sort]
+MOVE R5 R3
+DUPCLOSURE R6 K5 []
+CALLFB R4 2 0 [1]
+REMARK allocation: table hash 0
+  392: 	local used: { [number]: boolean } = {}
+NEWTABLE R4 0 0
+REMARK allocation: table hash 0
+  393: 	local matches = {}
+NEWTABLE R5 0 0
+  394: 	local preparation = if policy.pairCompatible then preparedPairs[policy.pairCompatible] else nil
+GETTABLEKS R7 R2 K6 ['pairCompatible']
+JUMPIFNOT R7 L0
+GETUPVAL R7 U0
+GETTABLEKS R8 R2 K6 ['pairCompatible']
+GETTABLE R6 R7 R8
+JUMP L1
+L0: LOADNIL R6
+  395: 	local prepared, universal = nil, false
+L1: LOADNIL R7
+LOADB R8 0
+  396: 	if preparation then
+JUMPIFNOT R6 L2
+  397: 		prepared, universal = Rules.preparePairs(preparation.rules, ordered, now, preparation.ruleKey)
+GETUPVAL R9 U1
+GETTABLEKS R9 R9 K7 ['preparePairs']
+GETTABLEKS R10 R6 K8 ['rules']
+MOVE R11 R3
+MOVE R12 R1
+GETTABLEKS R13 R6 K9 ['ruleKey']
+CALLFB R9 4 2 [2]
+MOVE R7 R9
+MOVE R8 R10
+  399: 	local scoreRules = monotoneScores[policy.score]
+L2: GETUPVAL R9 U2
+GETTABLEKS R10 R2 K10 ['score']
+GETTABLE R6 R9 R10
+  400: 	local scorePlan = if scoreRules then Rules.prepareScore(scoreRules, ordered) else nil
+JUMPIFNOT R6 L3
+GETUPVAL R9 U1
+GETTABLEKS R9 R9 K11 ['prepareScore']
+MOVE R10 R6
+MOVE R11 R3
+CALLFB R9 2 1 [3]
+JUMP L4
+L3: LOADNIL R9
+REMARK allocation: table hash 0
+  401: 	local pairCache: { [number]: { [number]: boolean } } = {}
+L4: NEWTABLE R6 0 0
+REMARK allocation: closure with 5 upvalues
+  402: 	local function pair(a: number, b: number): boolean
+NEWCLOSURE R10 P1
+CAPTURE VAL R6
+CAPTURE VAL R2
+CAPTURE REF R7
+CAPTURE VAL R3
+CAPTURE VAL R1
+  418: 	for anchorIndex = 1, #ordered do
+LOADN R13 1
+LENGTH R11 R3
+LOADN R12 1
+FORNPREP R11 L11
+  419: 		if used[anchorIndex] then
+L5: GETTABLE R14 R4 R13
+JUMPIF R14 L10
+  422: 		local selected: { number }? = if policy.pairCompatible
+GETTABLEKS R15 R2 K6 ['pairCompatible']
+JUMPIFNOT R15 L6
+REMARK inlining failed: high register pressure
+  423: 			then chooseWithRules(ordered, anchorIndex, used, now, policy, pair, scorePlan, universal)
+GETUPVAL R14 U3
+MOVE R15 R3
+MOVE R16 R13
+MOVE R17 R4
+MOVE R18 R1
+MOVE R19 R2
+MOVE R20 R10
+MOVE R21 R9
+MOVE R22 R8
+CALLFB R14 8 1 [4]
+JUMP L7
+REMARK inlining failed: too expensive (cost 127, profit 1.02x)
+  424: 			else chooseForAnchor(ordered, anchorIndex, used, now, policy)
+L6: GETUPVAL R14 U4
+MOVE R15 R3
+MOVE R16 R13
+MOVE R17 R4
+MOVE R18 R1
+MOVE R19 R2
+CALLFB R14 5 1 [5]
+  425: 		if selected == nil then
+L7: JUMPXEQKNIL R14 L10
+  428: 		local group = table.create(#selected)
+GETIMPORT R15 13 [table.create]
+LENGTH R16 R14
+CALLFB R15 1 1 [6]
+  429: 		for _, index in selected do
+MOVE R16 R14
+LOADNIL R17
+LOADNIL R18
+FORGPREP R16 L9
+  430: 			used[index] = true
+L8: LOADB R21 1
+SETTABLE R21 R4 R20
+REMARK builtin table.insert/2
+  431: 			table.insert(group, ordered[index])
+GETTABLE R23 R3 R20
+FASTCALL2 52 R15 R23 L9
+MOVE R22 R15
+GETIMPORT R21 15 [table.insert]
+CALL R21 2 0
+  429: 		for _, index in selected do
+L9: FORGLOOP R16 L8 2
+REMARK builtin table.insert/2
+  433: 		table.insert(matches, group)
+FASTCALL2 52 R5 R15 L10
+MOVE R17 R5
+MOVE R18 R15
+GETIMPORT R16 15 [table.insert]
+CALL R16 2 0
+  418: 	for anchorIndex = 1, #ordered do
+L10: FORNLOOP R11 L5
+  436: 	return matches
+L11: CLOSEUPVALS R7
+RETURN R5 1
+
+Function 13 (??):
+   35: local Defaults = require(script.Parent.Parent.Defaults)
+GETIMPORT R0 1 [require]
+GETIMPORT R1 4 [script.Parent.Parent]
+GETTABLEKS R1 R1 K5 ['Defaults']
+CALL R0 1 1
+   36: local Rules = require(script.Parent.Rules)
+GETIMPORT R1 1 [require]
+GETIMPORT R2 7 [script.Parent.Rules]
+CALL R1 1 1
+   37: local Types = require(script.Parent.Parent.Types)
+GETIMPORT R2 1 [require]
+GETIMPORT R3 4 [script.Parent.Parent]
+GETTABLEKS R3 R3 K8 ['Types']
+CALL R2 1 1
+REMARK allocation: table hash 3
+   42: local Matcher = {}
+NEWTABLE R2 4 0
+REMARK builtin setmetatable/2
+REMARK allocation: table hash 0
+   45: local preparedPairs: { [any]: any } = setmetatable({}, { __mode = "k" }) :: any
+NEWTABLE R4 0 0
+REMARK allocation: table template 1
+DUPTABLE R5 11
+FASTCALL2 61 R4 R5 L0
+GETIMPORT R3 13 [setmetatable]
+CALL R3 2 1
+REMARK builtin setmetatable/2
+REMARK allocation: table hash 0
+   46: local monotoneScores: { [any]: any } = setmetatable({}, { __mode = "k" }) :: any
+L0: NEWTABLE R5 0 0
+REMARK allocation: table template 1
+DUPTABLE R6 11
+FASTCALL2 61 R5 R6 L1
+GETIMPORT R4 13 [setmetatable]
+CALL R4 2 1
+   60: function Matcher.spreadScore(candidates: { Candidate }, indexes: { number }): (number, number)
+L1: DUPCLOSURE R5 K14 ['spreadScore']
+SETTABLEKS R5 R2 K15 ['spreadScore']
+   85: function Matcher.policy(settings: any): MatcherPolicy
+DUPCLOSURE R5 K16 ['policy']
+CAPTURE VAL R0
+CAPTURE VAL R1
+CAPTURE VAL R2
+CAPTURE VAL R4
+CAPTURE VAL R3
+SETTABLEKS R5 R2 K17 ['policy']
+  135: local function canImprove(state: State, index: number, queued: number, worst: State, primary: number?): boolean
+DUPCLOSURE R5 K18 ['canImprove']
+  154: local function extend(state: State, index: number): { number }
+DUPCLOSURE R6 K19 ['extend']
+  161: local function chooseForAnchor(
+DUPCLOSURE R7 K20 ['chooseForAnchor']
+  225: local function chooseWithRules(
+DUPCLOSURE R8 K21 ['chooseWithRules']
+CAPTURE VAL R4
+CAPTURE VAL R1
+CAPTURE VAL R5
+  383: function Matcher.select(candidates: { Candidate }, now: number, policy: MatcherPolicy): { { Candidate } }
+DUPCLOSURE R9 K22 ['select']
+CAPTURE VAL R3
+CAPTURE VAL R1
+CAPTURE VAL R4
+CAPTURE VAL R8
+CAPTURE VAL R7
+SETTABLEKS R9 R2 K23 ['select']
+  439: return table.freeze(Matcher)
+GETIMPORT R9 26 [table.freeze]
+MOVE R10 R2
+CALL R9 1 -1
+RETURN R9 -1
+

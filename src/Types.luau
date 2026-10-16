@@ -12,6 +12,47 @@
 local Types = {}
 
 --[=[
+	@type Attributes { [string]: number | string | boolean }
+	@within Types
+
+	Matching fields configured by `rules`. Every field is required. Values are
+	copied at enqueue and carried per member through match delivery.
+]=]
+export type Attributes = { [string]: number | string | boolean }
+export type AttributeStep = { after: number, value: number }
+--[=[
+	@interface AttributeRule
+	@within Types
+	.type "number" | "string" | "boolean"
+	.compare "distance" | "equal" | "required"
+	.limit (number | { AttributeStep })? -- Distance cap, or timed steps starting at zero. Default zero.
+	.distances { [string]: { [string]: number } }? -- Symmetric costs for string distance; missing edges are forbidden.
+	.relaxAfter number? -- Seconds before equality may relax; both tickets must have waited this long.
+	.value (number | string | boolean)? -- Required value for a required rule.
+	.prefer "closer" | "equal"? -- Also rank eligible groups by this field.
+	.mode "constraint" | "preference"? -- Preference-only rules rank without rejecting; default constraint.
+	.weight number? -- Nonnegative preference weight; default one.
+
+	Fields are checked independently across all members. Required values never
+	relax, and distance/equality changes use mutual acceptance. Optional scope
+	and acceptance can only be allMembers and mutual, respectively. These rules
+	apply to new matches; Quick Play backfill bypasses them.
+]=]
+export type AttributeRule = {
+	type: "number" | "string" | "boolean",
+	compare: "distance" | "equal" | "required",
+	value: (number | string | boolean)?,
+	limit: (number | { AttributeStep })?,
+	distances: { [string]: { [string]: number } }?,
+	relaxAfter: number?,
+	prefer: ("closer" | "equal")?,
+	weight: number?,
+	mode: ("constraint" | "preference")?,
+	scope: "allMembers"?,
+	acceptance: "mutual"?,
+}
+
+--[=[
 	@type Metadata { [string]: any }
 	@within Types
 
@@ -32,6 +73,7 @@ export type Metadata = { [string]: any }
 	.rating number? -- Present if and only if the queue is rated.
 	.provisional boolean? -- True when `rating.default` was substituted for a missing rating.
 	.metadata Metadata?
+	.attributes Attributes? -- Validated matching snapshot on rule queues.
 
 	One player within a ticket or a match.
 
@@ -44,6 +86,7 @@ export type Member = {
 	rating: number?,
 	provisional: boolean?,
 	metadata: Metadata?,
+	attributes: Attributes?,
 }
 
 --[=[
@@ -72,6 +115,7 @@ export type Member = {
 	across matches.
 ]=]
 export type Ticket = {
+	ruleKey: string?,
 	id: string,
 	queue: string,
 	partition: string,
@@ -256,6 +300,7 @@ export type ErrorCode =
 	| "DuplicateMember"
 	| "MissingRating"
 	| "InvalidMetadata"
+	| "InvalidAttributes"
 	-- Party
 	| "PartyNotFound"
 	| "PartyUnavailable"
@@ -304,6 +349,14 @@ export type Result<T> = { ok: true, value: T } | { ok: false, error: ServiceErro
 	.sortKey number
 ]=]
 export type SortedItem = { key: string, value: any, sortKey: number }
+--[=[
+	@type SortedCursor { key: string, sortKey: number }
+	@within Types
+
+	Exclusive position in a sorted range, ordered by sortKey then key. The
+	cursor item need not still exist. Omit it to start at the oldest entry.
+]=]
+export type SortedCursor = { key: string, sortKey: number }
 
 --[=[
 	@interface Store
@@ -313,6 +366,8 @@ export type SortedItem = { key: string, value: any, sortKey: number }
 	Roblox MemoryStore and by `Muster.stores.InMemory` against tables.
 
 	Every method returns `(success, value)` and must not throw.
+	`sortedRange` accepts an optional exclusive `after` cursor (sortKey, then key).
+	Custom stores must honor it for attribute discovery to advance past old tickets.
 
 	`update` must be a compare-and-set: the transform may be invoked more than
 	once for a single call, and returning `nil` from it must abort the write.
@@ -339,7 +394,7 @@ export type Store = {
 		priority: number?
 	) -> (boolean, any),
 	sortedRemove: (self: any, name: string, key: string, priority: number?) -> (boolean, any),
-	sortedRange: (self: any, name: string, count: number, priority: number?) -> (boolean, any),
+	sortedRange: (self: any, name: string, count: number, priority: number?, after: SortedCursor?) -> (boolean, any),
 }
 
 --[=[
@@ -372,9 +427,12 @@ export type Messaging = {
 	.queuedAt number
 
 	The reduced view of a ticket held in the lane index and passed to [Matcher].
+	Rule queues also include per-member `attributes` and a matching `ruleKey`.
 	Kept small because it is read far more often than the ticket record itself.
 ]=]
 export type Candidate = {
+	ruleKey: string?,
+	attributes: { Attributes }?,
 	ticketId: string,
 	partyId: string?,
 	size: number,
@@ -391,6 +449,7 @@ export type Candidate = {
 	.maxSize number
 	.fallbackAfter number -- Seconds before a below-target group is accepted.
 	.compatible (anchor: Candidate, candidate: Candidate, waitSeconds: number) -> boolean
+	.pairCompatible ((a: Candidate, b: Candidate, now: number) -> boolean)? -- Optional symmetric all-ticket-pairs constraint, including self checks.
 	.score (candidates: { Candidate }, indexes: { number }) -> (number, number)
 
 	Everything [Matcher] knows about how to group candidates. Supply one through
@@ -400,13 +459,21 @@ export type Candidate = {
 	`compatible` decides whether a candidate may join an anchor's group.
 
 	`score` returns `(primary, secondary)`, both minimized and compared in that
-	order. The built-in policy uses rating spread, then total queue time.
+	order. The rating-only policy uses rating spread, then total queue time.
+	The attribute policy uses weighted worst-member-pair penalties, then queue
+	timestamps. Built-in policies can use prepared compatibility and incremental
+	scoring; wrapping/replacing those callbacks uses the general path.
+
+	A `pairCompatible` policy uses a bounded eight-state beam per size instead
+	of stopping at the first full match. It must be symmetric and handle self
+	checks. A custom `matcher` cannot be combined with the `rules` config.
 ]=]
 export type MatcherPolicy = {
 	minSize: number,
 	targetSize: number,
 	maxSize: number,
 	fallbackAfter: number,
+	pairCompatible: ((a: Candidate, b: Candidate, now: number) -> boolean)?,
 	compatible: (anchor: Candidate, candidate: Candidate, waitSeconds: number) -> boolean,
 	score: (candidates: { Candidate }, indexes: { number }) -> (number, number),
 }
@@ -455,6 +522,7 @@ export type SizeConfig = { min: number, target: number?, max: number? }
 --[=[
 	@interface EnqueueOptions
 	@within Types
+	.attributes Attributes? -- Required when rules are configured.
 	.rating number? -- Required on a rated queue unless `rating.default` is set. Throws on an unrated queue.
 	.metadata Metadata?
 	.partition string? -- Overrides `partitionKey` for this ticket. Partitions never match each other.
@@ -462,6 +530,7 @@ export type SizeConfig = { min: number, target: number?, max: number? }
 	.quickPlay boolean? -- Also let this ticket backfill into a live match. Requires the `quickPlay` config.
 ]=]
 export type EnqueueOptions = {
+	attributes: Attributes?,
 	rating: number?,
 	metadata: Metadata?,
 	partition: string?,
@@ -472,6 +541,7 @@ export type EnqueueOptions = {
 --[=[
 	@interface GroupOptions
 	@within Types
+	.attributes { [number]: Attributes }? -- Matching snapshots keyed by userId.
 	.ratings { [number]: number }? -- Per-userId ratings, required on a rated queue without a default.
 	.metadata Metadata?
 	.partition string? -- Overrides `partitionKey` for this ticket.
@@ -479,6 +549,7 @@ export type EnqueueOptions = {
 	.quickPlay boolean? -- Also let this ticket backfill into a live match. Requires the `quickPlay` config.
 ]=]
 export type GroupOptions = {
+	attributes: { [number]: Attributes }?,
 	ratings: { [number]: number }?,
 	metadata: Metadata?,
 	partition: string?,

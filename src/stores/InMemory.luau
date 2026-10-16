@@ -250,7 +250,8 @@ function InMemoryStore.sortedRange(
 	self: InMemoryStore,
 	name: string,
 	count: number,
-	_priority: number?
+	_priority: number?,
+	after: Types.SortedCursor?
 ): (boolean, { SortedItem } | string)
 	if not self:_record("sortedRange") then
 		return false, "injected failure"
@@ -261,7 +262,11 @@ function InMemoryStore.sortedRange(
 	for key, entry in map do
 		if entry.expiresAt <= now then
 			map[key] = nil
-		else
+		elseif
+			after == nil
+			or entry.sortKey > after.sortKey
+			or (entry.sortKey == after.sortKey and key > after.key)
+		then
 			table.insert(items, { key = key, value = entry.value, sortKey = entry.sortKey })
 		end
 	end

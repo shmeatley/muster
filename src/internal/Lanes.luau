@@ -7,13 +7,16 @@
 
 	A queue is divided into partitions, whatever `partitionKey` returns or `"all"`
 	by default, and each partition into lanes. A ticket lands in exactly one lane
-	and is matched only against the other tickets in it.
+	and is searched with that lane's candidates. Standard queues may also read
+	adjacent rating bands or draining generations. Attribute-rule queues
+	currently use one fixed lane per partition, with no cross-lane rule search.
 
 	### What shares a lane
 
 	Lanes buy parallelism by splitting the pool, so *which* tickets share one
 	decides whether the split costs anything. There are two schemes, and the
-	queue's own configuration picks between them:
+	standard queue's configuration picks between them (queues with `rules` stay
+	on one hashed lane):
 
 	- **Bands**, on a rated queue left on `lanes = "auto"`. A lane is a
 	  contiguous rating range: lane 0 holds everyone below the first boundary,

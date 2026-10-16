@@ -52,7 +52,8 @@ Defaults.INVITE_EXPIRATION = 60
 Defaults.MAX_PARTY_MEMBERS = 8
 Defaults.MAX_PARTY_INVITES = 20
 
--- Queues start on a single lane and grow only once one lane cannot keep up.
+-- Standard auto queues start on one lane and grow when saturated.
+-- Attribute-rule queues currently remain on one fixed lane per partition.
 -- Starting high is the classic way to break a small queue: with 64 lanes, two
 -- players almost never land in the same one and nobody ever matches.
 Defaults.LANES = 1
@@ -86,9 +87,12 @@ Defaults.LANE_SPLIT_SPREAD = 2
 Defaults.MIN_SCAN_DELAY = 0.25
 Defaults.MAX_SCAN_DELAY = 5
 Defaults.MIN_BATCH_SIZE = 10
--- MemoryStore caps GetRangeAsync at 200; staying under it keeps one scan to one
--- request.
+-- Worker candidate budget. Rule queues split it between an old prefix
+-- and a forward page on exploration scans.
+-- One range request can still cost multiple MemoryStore request units.
 Defaults.MAX_BATCH_SIZE = 100
+-- Occasionally explore beyond a busy head even when it is still making matches.
+Defaults.RULE_HEAD_SCANS = 4
 
 Defaults.RATING_WINDOW = 200
 Defaults.RATING_RELAX = 40

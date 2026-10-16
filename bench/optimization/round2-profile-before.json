@@ -1,0 +1,13 @@
+{
+  "accepts": 29364,
+  "comparisons": 35119,
+  "copies": 29364,
+  "elapsedSeconds": 0.0747703000670299,
+  "groups": 12,
+  "lexSteps": 64544,
+  "pairMisses": 5024,
+  "pairProbes": 130204,
+  "scoreSeconds": 0.03069359646178782,
+  "scores": 29364,
+  "states": 29364
+}

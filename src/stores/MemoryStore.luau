@@ -20,6 +20,7 @@
 ]=]
 
 local Runtime = require(script.Parent.Parent.internal.Runtime)
+local Types = require(script.Parent.Parent.Types)
 
 local MemoryStoreService: any = Runtime.service("MemoryStoreService")
 
@@ -109,21 +110,23 @@ function MemoryStore.sortedRemove(self: MemoryStore, name: string, key: string, 
 end
 
 --[=[
-	Reads the oldest `count` entries. Sort keys are queue timestamps, so
-	ascending order is first-come-first-served.
-
-	:::note
-	MemoryStore caps a range read at 200 items. A lane holding more is matched
-	only from its oldest 200, which biases the rating window. [LaneScaler] treats
-	a full batch as the signal to add lanes.
-	:::
+	Reads up to `count` entries in ascending queue order. An optional `after`
+	cursor excludes earlier (sortKey, key) pairs, including the cursor itself.
+	It still works if the referenced item has been removed. Without a cursor,
+	the read starts at the oldest entry. Rule discovery uses this to page ahead.
 
 	@within MemoryStore
 ]=]
-function MemoryStore.sortedRange(self: MemoryStore, name: string, count: number, priority: number?): (boolean, any)
+function MemoryStore.sortedRange(
+	self: MemoryStore,
+	name: string,
+	count: number,
+	priority: number?,
+	after: Types.SortedCursor?
+): (boolean, any)
 	local map = MemoryStoreService:GetSortedMap(name)
 	return self._executor:execute(priority or 5, name, function()
-		return map:GetRangeAsync(Enum.SortDirection.Ascending, count, nil, nil)
+		return map:GetRangeAsync(Enum.SortDirection.Ascending, count, after, nil)
 	end)
 end
 

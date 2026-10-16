@@ -38,6 +38,7 @@ local LaneScaler = require(script.Parent.LaneScaler)
 local Lanes = require(script.Parent.Lanes)
 local LeaseManager = require(script.Parent.LeaseManager)
 local Matcher = require(script.Parent.Matcher)
+local Rules = require(script.Parent.Rules)
 local Result = require(script.Parent.Parent.Result)
 local Serialize = require(script.Parent.Serialize)
 local Types = require(script.Parent.Parent.Types)
@@ -62,7 +63,16 @@ local function candidateFor(ticket: any): Candidate
 			table.insert(ratings, member.rating)
 		end
 	end
+	local attributes = nil
+	if ticket.ruleKey then
+		attributes = {}
+		for _, member in ticket.members do
+			table.insert(attributes, member.attributes)
+		end
+	end
 	return {
+		ruleKey = ticket.ruleKey,
+		attributes = attributes,
 		ticketId = ticket.id,
 		partyId = ticket.partyId,
 		size = ticket.size,
@@ -250,6 +260,37 @@ function Engine.enqueue(self: any, request: any): any
 		end
 	end
 
+	-- Copy the matching snapshot before reserving users or writing any records.
+	-- Attributes never change on heartbeat; relaxation is derived from queuedAt.
+	local snapshots = {}
+	local copiedMembers = table.create(#members)
+	for index, member in members do
+		local copied = table.clone(member)
+		if settings.rules then
+			local attributes, why = Rules.attributes(settings.rules, member.attributes, request.quickPlay == true)
+			if why then
+				return err("InvalidAttributes", `User {member.userId}: {why}`)
+			end
+			copied.attributes = attributes
+			table.insert(snapshots, attributes)
+		elseif member.attributes ~= nil then
+			return err("InvalidAttributes", "attributes require a rules configuration")
+		end
+		copiedMembers[index] = copied
+	end
+	if settings.rules then
+		-- Reserve attribute headroom for every seat, including several parties.
+		local budget = math.min(
+			Rules.MAX_ATTRIBUTE_BYTES,
+			math.floor(Rules.MAX_MATCH_ATTRIBUTE_BYTES * #members / settings.size.max)
+		)
+		local sane = Serialize.validate(snapshots, budget)
+		if not sane then
+			return err("InvalidAttributes", `ticket attributes exceed the {budget}-byte budget`)
+		end
+	end
+	members = copiedMembers
+
 	local reservation = self:_reserveUsers(ticketId, members)
 	if not reservation.ok then
 		return reservation
@@ -282,6 +323,7 @@ function Engine.enqueue(self: any, request: any): any
 
 	local ticket = {
 		v = settings.version,
+		ruleKey = settings.ruleKey,
 		id = ticketId,
 		queue = settings.name,
 		partition = partition,
@@ -692,7 +734,8 @@ function Engine._shouldWiden(self: any, owned: any, now: number): boolean
 end
 
 --[=[
-	Reads the lane's candidates, oldest first.
+	Reads the lane's candidates. Rule queues also use bounded forward pages;
+	standard queues read oldest-first with optional neighboring/draining maps.
 
 	Returns the count from the lane's own map alongside them, which is what the
 	scaler judges this lane's depth by, and the count from everything this lane
@@ -703,7 +746,77 @@ end
 	@within Engine
 	@private
 ]=]
+-- Rules currently use one fixed lane. Normal scans prioritize its oldest
+-- tickets; exploration scans combine an old head with one advancing page.
+-- Cursor state belongs to the lease holder, never to a ticket's queue age.
+function Engine._readRuleCandidates(self: any, owned: any): ({ Candidate }, number, number)
+	local batch = owned.batchSize
+	local exploring = owned.ruleExploreNext == true
+	owned.ruleExploring = exploring
+	local target = self._settings.size.target
+	local headCount = if exploring then math.min(math.floor(batch / 4), math.max(0, batch - target)) else batch
+	local items = {}
+	if headCount > 0 then
+		local success, head = self._store:sortedRange(owned.descriptor.map, headCount, 5)
+		if not success then
+			owned.ruleReadFailed = true
+			return {}, 0, 0
+		end
+		items = head
+	end
+	owned.ruleReadFailed = false
+	owned.ruleHeadFull = #items == headCount
+	if exploring then
+		local after = owned.ruleCursor
+		local last = items[#items]
+		if
+			last
+			and (
+				after == nil
+				or last.sortKey > after.sortKey
+				or (last.sortKey == after.sortKey and last.key > after.key)
+			)
+		then
+			after = { key = last.key, sortKey = last.sortKey }
+		end
+		local count = batch - headCount
+		local success, page = self._store:sortedRange(owned.descriptor.map, count, 5, after)
+		if success then
+			if #page == count then
+				-- Leave up to target-1 tickets in the next page, advancing at
+				-- least one item even when the target exceeds the page size.
+				local overlap = math.min(target - 1, count - 1)
+				local cursor = page[#page - overlap]
+				owned.ruleCursor = { key = cursor.key, sortKey = cursor.sortKey }
+			else
+				owned.ruleCursor = nil -- reached the tail; revisit it on a later sweep
+			end
+			for _, item in page do
+				table.insert(items, item)
+			end
+		else
+			owned.ruleReadFailed = true -- keep cursor; retry this page later
+		end
+	elseif owned.ruleCursor == nil and #items == batch then
+		local overlap = math.min(target - 1, batch - 1)
+		local cursor = items[#items - overlap]
+		owned.ruleCursor = { key = cursor.key, sortKey = cursor.sortKey }
+	end
+	local candidates, seen = {}, {}
+	for _, item in items do
+		local candidate = item.value
+		if candidate and not seen[candidate.ticketId] then
+			seen[candidate.ticketId] = true
+			table.insert(candidates, candidate)
+		end
+	end
+	return candidates, #candidates, #candidates
+end
+
 function Engine._readCandidates(self: any, owned: any, now: number): ({ Candidate }, number, number)
+	if self._settings.rules then
+		return self:_readRuleCandidates(owned)
+	end
 	local descriptor = owned.descriptor
 	local candidates = {}
 	local seen = {}
@@ -968,6 +1081,27 @@ function Engine._commit(self: any, group: { Candidate }, owned: any): boolean
 			return false
 		end
 		table.insert(claimed, ticket)
+	end
+
+	-- Indexes are discovery hints. Recheck the claimed authoritative snapshots
+	-- before running a finalizer or publishing a match.
+	if settings.rules then
+		local candidates = {}
+		for _, ticket in claimed do
+			if ticket.ruleKey ~= settings.ruleKey then
+				self:_abortMatch(matchId, claimed)
+				return false
+			end
+			table.insert(candidates, candidateFor(ticket))
+		end
+		for i, left in candidates do
+			for j = i, #candidates do
+				if not Rules.compatible(settings.rules, left, candidates[j], now) then
+					self:_abortMatch(matchId, claimed)
+					return false
+				end
+			end
+		end
 	end
 
 	local members = {}
@@ -1236,8 +1370,21 @@ function Engine._scan(self: any, key: string, owned: any, now: number, mono: num
 	end
 
 	local groups = Matcher.select(candidates, now, self._matcher)
+	local committed = 0
 	for _, group in groups do
-		self:_commit(group, owned)
+		if self:_commit(group, owned) then
+			committed += 1
+		end
+	end
+	if self._settings.rules then
+		if owned.ruleExploring then
+			owned.ruleHeadScans = 0
+			owned.ruleExploreNext = false -- always return to an oldest-first scan
+		else
+			owned.ruleHeadScans = (owned.ruleHeadScans or 0) + 1
+			owned.ruleExploreNext = owned.ruleReadFailed
+				or (owned.ruleHeadFull and (committed == 0 or owned.ruleHeadScans >= Defaults.RULE_HEAD_SCANS))
+		end
 	end
 
 	-- Judged on what this lane is responsible for, not on what it borrowed. A

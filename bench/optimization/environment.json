@@ -1,0 +1,16 @@
+{
+  "runtime": "Lune 0.10.5 (@lune/luau sandbox via test/lib/load.luau)",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "cpu": {
+    "Name": "AMD Ryzen 5 7600X 6-Core Processor             ",
+    "NumberOfCores": 6,
+    "NumberOfLogicalProcessors": 12
+  },
+  "sourceSha256": {
+    "src\\internal\\Matcher.luau": "b510a673d0cb030e1c56faa84164c490835a1d184de3dad41f39c8a776bd7731",
+    "src\\internal\\Rules.luau": "9230422c37e5ad1ce7b9e6ebf017a5b7e6700c8b0fac9693da50e0a27dfb4f1a",
+    "bench\\optimization\\Matcher.baseline.luau": "8fad0c140699f75e1ba4f94fede789f92e271bb8bbb8f0db2cd3bb34559adba2",
+    "bench\\optimization\\Rules.baseline.luau": "4f4a67f9f3db14eaffb9917dbd4bed701ad8ad29f3081d1e50d1549fc641f63d"
+  },
+  "compilerSha256": "74cf7ed3621b8966bac6fec7f1a0caf13616655fa06d346133cd31f6aac439d8"
+}

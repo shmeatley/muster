@@ -6,7 +6,8 @@
 	Package entry point.
 
 	Muster forms matches across servers: it shards a queue into lanes, elects a
-	worker per lane, groups tickets by size and rating, and delivers the result
+	worker per lane, groups tickets by size, ratings and optional attribute rules,
+	and delivers the result
 	to every server holding a matched player. It does not teleport players,
 	reserve servers, or compute ratings. Those attach through the `finalize` hook
 	and the rating you supply.
@@ -53,6 +54,9 @@ local InMemoryMessaging = require(script.messaging.InMemory)
 local MemoryStore = require(script.stores.MemoryStore)
 local RobloxMessaging = require(script.messaging.Roblox)
 
+export type Attributes = Types.Attributes
+export type AttributeStep = Types.AttributeStep
+export type AttributeRule = Types.AttributeRule
 export type Metadata = Types.Metadata
 export type Member = Types.Member
 export type Ticket = Types.Ticket
@@ -70,6 +74,7 @@ export type Store = Types.Store
 export type Messaging = Types.Messaging
 export type Subscription = Types.Subscription
 export type SortedItem = Types.SortedItem
+export type SortedCursor = Types.SortedCursor
 export type Candidate = Types.Candidate
 export type MatcherPolicy = Types.MatcherPolicy
 export type RatingConfig = Types.RatingConfig

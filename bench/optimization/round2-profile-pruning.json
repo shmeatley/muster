@@ -1,0 +1,11 @@
+{
+  "accepts": 4483,
+  "comparisons": 10238,
+  "copies": 4483,
+  "elapsedSeconds": 0.023980799946002662,
+  "groups": 12,
+  "lexSteps": 23975,
+  "scoreSeconds": 0.004918098566122353,
+  "scores": 4483,
+  "states": 29364
+}
