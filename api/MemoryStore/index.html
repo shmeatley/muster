@@ -30,8 +30,8 @@ local store = Muster.stores.MemoryStore.new(executor)
 local ranked = Muster.new({ name = &quot;ranked&quot;, size = 8, store = store })
 local casual = Muster.new({ name = &quot;casual&quot;, size = 8, store = store })
 ```"><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/MemoryStore"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/MemoryStore" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/MemoryStore" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.9518a441.js" defer="defer"></script>
-<script src="/muster/assets/js/main.fa7b4f58.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
+<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -53,34 +53,15 @@ local casual = Muster.new({ name = &quot;casual&quot;, size = 8, store = store }
 <span class="token keyword">local</span> ranked <span class="token operator">=</span> Muster<span class="token punctuation">.</span><span class="token function">new</span><span class="token punctuation">(</span><span class="token punctuation">{</span> name <span class="token operator">=</span> <span class="token string">"ranked"</span><span class="token punctuation">,</span> size <span class="token operator">=</span> <span class="token number">8</span><span class="token punctuation">,</span> store <span class="token operator">=</span> store <span class="token punctuation">}</span><span class="token punctuation">)</span>
 <span class="token keyword">local</span> casual <span class="token operator">=</span> Muster<span class="token punctuation">.</span><span class="token function">new</span><span class="token punctuation">(</span><span class="token punctuation">{</span> name <span class="token operator">=</span> <span class="token string">"casual"</span><span class="token punctuation">,</span> size <span class="token operator">=</span> <span class="token number">8</span><span class="token punctuation">,</span> store <span class="token operator">=</span> store <span class="token punctuation">}</span><span class="token punctuation">)</span>
 </code></pre>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/MemoryStore.luau#L40"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>MemoryStore<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><div class="inset_uKQm"><div><code>executor<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RequestExecutor">RequestExecutor</a></code><span class="inlineDescription_G7Er">-- <span>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/MemoryStore.luau#L41"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>MemoryStore<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><div class="inset_uKQm"><div><code>executor<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/RequestExecutor">RequestExecutor</a></code><span class="inlineDescription_G7Er">-- <span>
 <p>Supplies the retry, backoff and circuit-breaker policy.</p>
-</span></span></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/MemoryStore">MemoryStore</a></code></div><div></div><h3>Errors</h3><table class="errorTable_jfN8"><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>&quot;MemoryStore is unavailable&quot;</td><td>Raised outside Roblox; inject a store instead.</td></tr></tbody></table><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="sortedRange"><code style="text-decoration:none">sortedRange</code><a href="#sortedRange" class="hash-link" aria-label="Direct link to sortedRange" title="Direct link to sortedRange" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/MemoryStore.luau#L123"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>MemoryStore<!-- -->.</code><code class="green_DgR4">sortedRange</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/MemoryStore">MemoryStore</a></code><code>,</code></div><div><code>name<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>count<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>priority<!-- -->: </code><code class="blue_P4bS">number?</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">boolean</code><code>,</code></div><div><code class="blue_P4bS">any</code></div></div><code>)</code></div><div>
+</span></span></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/MemoryStore">MemoryStore</a></code></div><div></div><h3>Errors</h3><table class="errorTable_jfN8"><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>&quot;MemoryStore is unavailable&quot;</td><td>Raised outside Roblox; inject a store instead.</td></tr></tbody></table><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="sortedRange"><code style="text-decoration:none">sortedRange</code><a href="#sortedRange" class="hash-link" aria-label="Direct link to sortedRange" title="Direct link to sortedRange" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/MemoryStore.luau#L120"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>MemoryStore<!-- -->.</code><code class="green_DgR4">sortedRange</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/MemoryStore">MemoryStore</a></code><code>,</code></div><div><code>name<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>count<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>priority<!-- -->: </code><code class="blue_P4bS">number?</code><code>,</code></div><div><code>after<!-- -->: </code><code class="blue_P4bS">Types.SortedCursor?</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">boolean</code><code>,</code></div><div><code class="blue_P4bS">any</code></div></div><code>)</code></div><div>
 <p>
-  Reads the oldest <code>count</code> entries. Sort keys are queue timestamps, so
-  ascending order is first-come-first-served.
+  Reads up to <code>count</code> entries in ascending queue order. An optional <code>after</code>
+  cursor excludes earlier (sortKey, key) pairs, including the cursor itself.
+  It still works if the referenced item has been removed. Without a cursor,
+  the read starts at the oldest entry. Rule discovery uses this to page ahead.
 </p>
-
-  
-    
-    
-      <div class="admonition admonition-note alert alert--secondary">
-        <div class="admonition-heading">
-          <h5><span class="admonition-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 14 16">
-                <path d="M6.3 5.69a.942.942 0 0 1-.28-.7c0-.28.09-.52.28-.7.19-.18.42-.28.7-.28.28 0 .52.09.7.28.18.19.28.42.28.7 0 .28-.09.52-.28.7a1 1 0 0 1-.7.3c-.28 0-.52-.11-.7-.3zM8 7.99c-.02-.25-.11-.48-.31-.69-.2-.19-.42-.3-.69-.31H6c-.27.02-.48.13-.69.31-.2.2-.3.44-.31.69h1v3c.02.27.11.5.31.69.2.2.42.31.69.31h1c.27 0 .48-.11.69-.31.2-.19.3-.42.31-.69H8V7.98v.01zM7 2.3c-3.14 0-5.7 2.54-5.7 5.68 0 3.14 2.56 5.7 5.7 5.7s5.7-2.55 5.7-5.7c0-3.15-2.56-5.69-5.7-5.69v.01zM7 .98c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.12-7-7 3.14-7 7-7z"></path>
-              </svg></span><span class="admonition-title">NOTE</span></h5>
-        </div>
-        <div class="admonition-content">
-          <p>
-            MemoryStore caps a range read at 200 items. A lane holding more is matched
-            only from its oldest 200, which biases the rating window. <a href="/muster/api/LaneScaler">LaneScaler</a> treats
-            a full batch as the signal to add lanes.
-          </p>
-        </div>
-      </div>
-    
-  
-
 </div></div></article></div><details><summary>Show raw api</summary><pre style="max-width:100%;white-space:pre-wrap">{
     &quot;functions&quot;: [
         {
@@ -107,13 +88,13 @@ local casual = Muster.new({ name = &quot;casual&quot;, size = 8, store = store }
                 }
             ],
             &quot;source&quot;: {
-                &quot;line&quot;: 40,
+                &quot;line&quot;: 41,
                 &quot;path&quot;: &quot;src/stores/MemoryStore.luau&quot;
             }
         },
         {
             &quot;name&quot;: &quot;sortedRange&quot;,
-            &quot;desc&quot;: &quot;Reads the oldest `count` entries. Sort keys are queue timestamps, so\nascending order is first-come-first-served.\n\n:::note\nMemoryStore caps a range read at 200 items. A lane holding more is matched\nonly from its oldest 200, which biases the rating window. [LaneScaler] treats\na full batch as the signal to add lanes.\n:::&quot;,
+            &quot;desc&quot;: &quot;Reads up to `count` entries in ascending queue order. An optional `after`\ncursor excludes earlier (sortKey, key) pairs, including the cursor itself.\nIt still works if the referenced item has been removed. Without a cursor,\nthe read starts at the oldest entry. Rule discovery uses this to page ahead.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;self&quot;,
@@ -134,6 +115,11 @@ local casual = Muster.new({ name = &quot;casual&quot;, size = 8, store = store }
                     &quot;name&quot;: &quot;priority&quot;,
                     &quot;desc&quot;: &quot;&quot;,
                     &quot;lua_type&quot;: &quot;number?&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;after&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.SortedCursor?\n&quot;
                 }
             ],
             &quot;returns&quot;: [
@@ -148,7 +134,7 @@ local casual = Muster.new({ name = &quot;casual&quot;, size = 8, store = store }
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 123,
+                &quot;line&quot;: 120,
                 &quot;path&quot;: &quot;src/stores/MemoryStore.luau&quot;
             }
         }

@@ -6,7 +6,8 @@
 <title data-rh="true">Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/Muster"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="Muster"><meta data-rh="true" name="description" content="Package entry point.
 
 Muster forms matches across servers: it shards a queue into lanes, elects a
-worker per lane, groups tickets by size and rating, and delivers the result
+worker per lane, groups tickets by size, ratings and optional attribute rules,
+and delivers the result
 to every server holding a matched player. It does not teleport players,
 reserve servers, or compute ratings. Those attach through the `finalize` hook
 and the rating you supply.
@@ -27,7 +28,8 @@ Start at [Matchmaker]. [Party] covers cross-server parties, [Result] the
 error convention, and [Types] every exported type."><meta data-rh="true" property="og:description" content="Package entry point.
 
 Muster forms matches across servers: it shards a queue into lanes, elects a
-worker per lane, groups tickets by size and rating, and delivers the result
+worker per lane, groups tickets by size, ratings and optional attribute rules,
+and delivers the result
 to every server holding a matched player. It does not teleport players,
 reserve servers, or compute ratings. Those attach through the `finalize` hook
 and the rating you supply.
@@ -46,8 +48,8 @@ duels:enqueue(player.UserId)
 
 Start at [Matchmaker]. [Party] covers cross-server parties, [Result] the
 error convention, and [Types] every exported type."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Muster"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Muster" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Muster" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.9518a441.js" defer="defer"></script>
-<script src="/muster/assets/js/main.fa7b4f58.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
+<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -57,7 +59,8 @@ error convention, and [Types] every exported type."><link data-rh="true" rel="ca
 <p>Package entry point.</p>
 <p>
   Muster forms matches across servers: it shards a queue into lanes, elects a
-  worker per lane, groups tickets by size and rating, and delivers the result
+  worker per lane, groups tickets by size, ratings and optional attribute rules,
+  and delivers the result
   to every server holding a matched player. It does not teleport players,
   reserve servers, or compute ratings. Those attach through the <code>finalize</code> hook
   and the rating you supply.
@@ -76,7 +79,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
   Start at <a href="/muster/api/Matchmaker">Matchmaker</a>. <a href="/muster/api/Party">Party</a> covers cross-server parties, <a href="/muster/api/Types#Result">Result</a> the
   error convention, and <a href="/muster/api/Types">Types</a> every exported type.
 </p>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/init.luau#L210"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Muster<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><code>config<!-- -->: </code><code class="blue_P4bS">MatchmakerConfig</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Matchmaker">Matchmaker</a></code></div><div>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/init.luau#L215"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Muster<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><code>config<!-- -->: </code><code class="blue_P4bS">MatchmakerConfig</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Matchmaker">Matchmaker</a></code></div><div>
 <p>
   Builds a queue. Alias of <a href="/muster/api/Matchmaker#new">Matchmaker.new</a>, where the configuration is
   documented.
@@ -101,7 +104,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 210,
+                &quot;line&quot;: 215,
                 &quot;path&quot;: &quot;src/init.luau&quot;
             }
         }
@@ -109,9 +112,9 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;Muster&quot;,
-    &quot;desc&quot;: &quot;Package entry point.\n\nMuster forms matches across servers: it shards a queue into lanes, elects a\nworker per lane, groups tickets by size and rating, and delivers the result\nto every server holding a matched player. It does not teleport players,\nreserve servers, or compute ratings. Those attach through the `finalize` hook\nand the rating you supply.\n\n```lua\nlocal Muster = require(ReplicatedStorage.Packages.Muster)\n\nlocal duels = Muster.new({ name = \&quot;duels\&quot;, size = 2 })\n\nduels.matched:connect(function(match)\n\tprint(`{match.size} players matched as {match.matchId}`)\nend)\n\nduels:enqueue(player.UserId)\n```\n\nStart at [Matchmaker]. [Party] covers cross-server parties, [Result] the\nerror convention, and [Types] every exported type.&quot;,
+    &quot;desc&quot;: &quot;Package entry point.\n\nMuster forms matches across servers: it shards a queue into lanes, elects a\nworker per lane, groups tickets by size, ratings and optional attribute rules,\nand delivers the result\nto every server holding a matched player. It does not teleport players,\nreserve servers, or compute ratings. Those attach through the `finalize` hook\nand the rating you supply.\n\n```lua\nlocal Muster = require(ReplicatedStorage.Packages.Muster)\n\nlocal duels = Muster.new({ name = \&quot;duels\&quot;, size = 2 })\n\nduels.matched:connect(function(match)\n\tprint(`{match.size} players matched as {match.matchId}`)\nend)\n\nduels:enqueue(player.UserId)\n```\n\nStart at [Matchmaker]. [Party] covers cross-server parties, [Result] the\nerror convention, and [Types] every exported type.&quot;,
     &quot;source&quot;: {
-        &quot;line&quot;: 29,
+        &quot;line&quot;: 30,
         &quot;path&quot;: &quot;src/init.luau&quot;
     }
 }</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#new" class="table-of-contents__link toc-highlight">.new</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 shmeatley. Built with Moonwave and Docusaurus.</div></div></div></footer></div>

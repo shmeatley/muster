@@ -15,7 +15,7 @@ It is off unless a queue asks for it, since it is a casual-mode feature:
 local casual = Muster.new({ name = &quot;casual&quot;, size = 8, quickPlay = true })
 ```
 
-Quick Play **ignores rating entirely**. There is no window, no relaxation and
+Quick Play **ignores rating and attribute matching rules**. There is no window, no relaxation and
 no banding; a listing with a free seat takes the next player who wants it. Do
 not turn it on for a ranked queue.
 
@@ -78,7 +78,7 @@ It is off unless a queue asks for it, since it is a casual-mode feature:
 local casual = Muster.new({ name = &quot;casual&quot;, size = 8, quickPlay = true })
 ```
 
-Quick Play **ignores rating entirely**. There is no window, no relaxation and
+Quick Play **ignores rating and attribute matching rules**. There is no window, no relaxation and
 no banding; a listing with a free seat takes the next player who wants it. Do
 not turn it on for a ranked queue.
 
@@ -130,8 +130,8 @@ lanes exactly as tickets do, by hash, with the layout stamped into every key.
 The count starts at one and doubles once a lane is consistently too full to
 read in one go, so a game with six live matches pays for none of it. Pin it
 with `quickPlay.lanes` if you would rather."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/QuickPlay"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/QuickPlay" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/QuickPlay" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.9518a441.js" defer="defer"></script>
-<script src="/muster/assets/js/main.fa7b4f58.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
+<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -148,7 +148,7 @@ with `quickPlay.lanes` if you would rather."><link data-rh="true" rel="canonical
 <pre class="language-lua"><code class="language-lua"><span class="token keyword">local</span> casual <span class="token operator">=</span> Muster<span class="token punctuation">.</span><span class="token function">new</span><span class="token punctuation">(</span><span class="token punctuation">{</span> name <span class="token operator">=</span> <span class="token string">"casual"</span><span class="token punctuation">,</span> size <span class="token operator">=</span> <span class="token number">8</span><span class="token punctuation">,</span> quickPlay <span class="token operator">=</span> <span class="token keyword">true</span> <span class="token punctuation">}</span><span class="token punctuation">)</span>
 </code></pre>
 <p>
-  Quick Play <strong>ignores rating entirely</strong>. There is no window, no relaxation and
+  Quick Play <strong>ignores rating and attribute matching rules</strong>. There is no window, no relaxation and
   no banding; a listing with a free seat takes the next player who wants it. Do
   not turn it on for a ranked queue.
 </p>
@@ -596,7 +596,7 @@ stays in the normal queue</strong> and forms a fresh match the usual way, retryi
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;QuickPlay&quot;,
-    &quot;desc&quot;: &quot;Backfilling players into matches that are already running.\n\nMuster&#x27;s ordinary path only ever forms *new* matches. Quick Play adds the\nother one: a live match server advertises itself, and a queued player who\nfits drops straight into it instead of waiting for a fresh lobby to fill.\n\nIt is off unless a queue asks for it, since it is a casual-mode feature:\n\n```lua\nlocal casual = Muster.new({ name = \&quot;casual\&quot;, size = 8, quickPlay = true })\n```\n\nQuick Play **ignores rating entirely**. There is no window, no relaxation and\nno banding; a listing with a free seat takes the next player who wants it. Do\nnot turn it on for a ranked queue.\n\n### On the match server\n\n```lua\nlocal listing = Muster.Result.unwrap(casual.quickplay:host({\n\tdata = { accessCode = code, placeId = ARENA_PLACE },\n}))\n\nlisting:setOpen(false)  -- round underway; stop taking players\nlisting:close()         -- delist immediately\n```\n\nThe handle is kept up to date by the queue&#x27;s own worker pass, so a match\nserver needs one `Muster.new` and one `host` call. Its player count refreshes\nevery `heartbeatInterval` (30 s), and a server that dies is delisted by\n`listingExpiration` (90 s) without anybody cleaning up.\n\n### In the lobby\n\n```lua\ncasual.quickPlayMatched:connect(function(assignment)\n\tTeleportService:TeleportToPrivateServer(\n\t\tassignment.data.placeId, assignment.data.accessCode, players)\nend)\n\ncasual:quickPlay(player.UserId)\n```\n\n[Matchmaker:quickPlay] writes an ordinary ticket flagged for backfill and then\nlooks for a seat immediately. **If every listed match is full the player just\nstays in the normal queue** and forms a fresh match the usual way, retrying\nthe search every `searchInterval` while they wait. There is no separate queue\nand no dead end: the two paths race, and whichever resolves first wins.\n\n### Taking the last seat\n\nEvery claim is a compare-and-set on the listing record, so when fifty lobby\nservers see the same 7/8 match, exactly one of them gets the seat and the rest\nmove on to their next candidate. Claimed seats are held as reservations until\nthe players arrive, which is what stops two lobbies from both filling a slot\ninside one heartbeat window. See [Listings].\n\n### Lanes\n\nA MemoryStore range read returns at most 200 items, so listings shard into\nlanes exactly as tickets do, by hash, with the layout stamped into every key.\nThe count starts at one and doubles once a lane is consistently too full to\nread in one go, so a game with six live matches pays for none of it. Pin it\nwith `quickPlay.lanes` if you would rather.&quot;,
+    &quot;desc&quot;: &quot;Backfilling players into matches that are already running.\n\nMuster&#x27;s ordinary path only ever forms *new* matches. Quick Play adds the\nother one: a live match server advertises itself, and a queued player who\nfits drops straight into it instead of waiting for a fresh lobby to fill.\n\nIt is off unless a queue asks for it, since it is a casual-mode feature:\n\n```lua\nlocal casual = Muster.new({ name = \&quot;casual\&quot;, size = 8, quickPlay = true })\n```\n\nQuick Play **ignores rating and attribute matching rules**. There is no window, no relaxation and\nno banding; a listing with a free seat takes the next player who wants it. Do\nnot turn it on for a ranked queue.\n\n### On the match server\n\n```lua\nlocal listing = Muster.Result.unwrap(casual.quickplay:host({\n\tdata = { accessCode = code, placeId = ARENA_PLACE },\n}))\n\nlisting:setOpen(false)  -- round underway; stop taking players\nlisting:close()         -- delist immediately\n```\n\nThe handle is kept up to date by the queue&#x27;s own worker pass, so a match\nserver needs one `Muster.new` and one `host` call. Its player count refreshes\nevery `heartbeatInterval` (30 s), and a server that dies is delisted by\n`listingExpiration` (90 s) without anybody cleaning up.\n\n### In the lobby\n\n```lua\ncasual.quickPlayMatched:connect(function(assignment)\n\tTeleportService:TeleportToPrivateServer(\n\t\tassignment.data.placeId, assignment.data.accessCode, players)\nend)\n\ncasual:quickPlay(player.UserId)\n```\n\n[Matchmaker:quickPlay] writes an ordinary ticket flagged for backfill and then\nlooks for a seat immediately. **If every listed match is full the player just\nstays in the normal queue** and forms a fresh match the usual way, retrying\nthe search every `searchInterval` while they wait. There is no separate queue\nand no dead end: the two paths race, and whichever resolves first wins.\n\n### Taking the last seat\n\nEvery claim is a compare-and-set on the listing record, so when fifty lobby\nservers see the same 7/8 match, exactly one of them gets the seat and the rest\nmove on to their next candidate. Claimed seats are held as reservations until\nthe players arrive, which is what stops two lobbies from both filling a slot\ninside one heartbeat window. See [Listings].\n\n### Lanes\n\nA MemoryStore range read returns at most 200 items, so listings shard into\nlanes exactly as tickets do, by hash, with the layout stamped into every key.\nThe count starts at one and doubles once a lane is consistently too full to\nread in one go, so a game with six live matches pays for none of it. Pin it\nwith `quickPlay.lanes` if you would rather.&quot;,
     &quot;source&quot;: {
         &quot;line&quot;: 71,
         &quot;path&quot;: &quot;src/QuickPlay.luau&quot;

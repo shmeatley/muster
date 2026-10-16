@@ -29,13 +29,14 @@ those can be disabled with `autoStart`, `broadcast`, and `autoCancelOnLeave`.
 | --- | --- | --- | --- |
 | `name` | `string` | required | Namespaces this queue&#x27;s keys. Max 16 characters, alphanumeric plus `_` and `-`. |
 | `size` | `number \| SizeConfig` | required | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
+| `rules` | `{ [string]: AttributeRule }?` | `nil` | Independent attribute constraints and preferences for new matches. Rule queues use one lane; Quick Play bypasses these rules. |
 | `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |
 | `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |
 | `finalize` | `Finalizer&lt;T&gt;?` | `nil` | Runs once per match; its return value becomes `match.data`. |
 | `finalizeTimeout` | `number` | `5` | Seconds. Must not exceed 15. |
 | `onAbort` | `AbortHandler?` | `nil` | Called when a match fails after its hook ran. Requires `finalize`. |
-| `partitionKey` | `function?` | `nil` | Returns a partition name per ticket. Partitions never match each other. |
-| `lanes` | `&quot;auto&quot; \| number` | `&quot;auto&quot;` | Left on `&quot;auto&quot;`, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. See [LaneScaler]. |
+| `partitionKey` | `function?` | `nil` | Returns a permanent pool name per ticket. Prefer attributes for regional preferences; partitions never match each other. |
+| `lanes` | `&quot;auto&quot; \| number` | `&quot;auto&quot;` | Left on `&quot;auto&quot;`, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. With `rules`, auto resolves to one fixed lane and counts above one are rejected. See [LaneScaler]. |
 | `broadcast` | `boolean` | `true` | Publish match notifications over MessagingService. |
 | `autoStart` | `boolean` | `true` | Start the worker thread on construction. |
 | `autoCancelOnLeave` | `boolean` | `true` | Cancel a player&#x27;s ticket when they leave. |
@@ -57,8 +58,9 @@ A server holding none of them does not receive the event, so a handler can
 assume it has someone to act on.
 
 Matches are written to MemoryStore before being announced, so delivery does
-not depend on MessagingService. Typical latency is under 200 ms; if a message
-is dropped, a poll finds the match within `pollIntervalMax` (30 s). If
+not depend on MessagingService. Notification time after commit depends on the
+backend and is separate from time spent matching. If a message is dropped, a
+poll finds the match within `pollIntervalMax` (30 s). If
 MessagingService is unavailable the poll cap tightens to 5 s automatically."><meta data-rh="true" property="og:description" content="A single queue. Construct one per game mode.
 
 ```lua
@@ -85,13 +87,14 @@ those can be disabled with `autoStart`, `broadcast`, and `autoCancelOnLeave`.
 | --- | --- | --- | --- |
 | `name` | `string` | required | Namespaces this queue&#x27;s keys. Max 16 characters, alphanumeric plus `_` and `-`. |
 | `size` | `number \| SizeConfig` | required | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |
+| `rules` | `{ [string]: AttributeRule }?` | `nil` | Independent attribute constraints and preferences for new matches. Rule queues use one lane; Quick Play bypasses these rules. |
 | `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |
 | `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |
 | `finalize` | `Finalizer&lt;T&gt;?` | `nil` | Runs once per match; its return value becomes `match.data`. |
 | `finalizeTimeout` | `number` | `5` | Seconds. Must not exceed 15. |
 | `onAbort` | `AbortHandler?` | `nil` | Called when a match fails after its hook ran. Requires `finalize`. |
-| `partitionKey` | `function?` | `nil` | Returns a partition name per ticket. Partitions never match each other. |
-| `lanes` | `&quot;auto&quot; \| number` | `&quot;auto&quot;` | Left on `&quot;auto&quot;`, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. See [LaneScaler]. |
+| `partitionKey` | `function?` | `nil` | Returns a permanent pool name per ticket. Prefer attributes for regional preferences; partitions never match each other. |
+| `lanes` | `&quot;auto&quot; \| number` | `&quot;auto&quot;` | Left on `&quot;auto&quot;`, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. With `rules`, auto resolves to one fixed lane and counts above one are rejected. See [LaneScaler]. |
 | `broadcast` | `boolean` | `true` | Publish match notifications over MessagingService. |
 | `autoStart` | `boolean` | `true` | Start the worker thread on construction. |
 | `autoCancelOnLeave` | `boolean` | `true` | Cancel a player&#x27;s ticket when they leave. |
@@ -113,11 +116,12 @@ A server holding none of them does not receive the event, so a handler can
 assume it has someone to act on.
 
 Matches are written to MemoryStore before being announced, so delivery does
-not depend on MessagingService. Typical latency is under 200 ms; if a message
-is dropped, a poll finds the match within `pollIntervalMax` (30 s). If
+not depend on MessagingService. Notification time after commit depends on the
+backend and is separate from time spent matching. If a message is dropped, a
+poll finds the match within `pollIntervalMax` (30 s). If
 MessagingService is unavailable the poll cap tightens to 5 s automatically."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Matchmaker"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matchmaker" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matchmaker" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.9518a441.js" defer="defer"></script>
-<script src="/muster/assets/js/main.fa7b4f58.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
+<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -165,6 +169,12 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
       <td><code>6</code> is shorthand for <code>{ min = 6, target = 6, max = 6 }</code>.</td>
     </tr>
     <tr>
+      <td><code>rules</code></td>
+      <td><code>{ [string]: AttributeRule }?</code></td>
+      <td><code>nil</code></td>
+      <td>Independent attribute constraints and preferences for new matches. Rule queues use one lane; Quick Play bypasses these rules.</td>
+    </tr>
+    <tr>
       <td><code>rating</code></td>
       <td><code>RatingConfig?</code></td>
       <td><code>nil</code></td>
@@ -198,13 +208,13 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
       <td><code>partitionKey</code></td>
       <td><code>function?</code></td>
       <td><code>nil</code></td>
-      <td>Returns a partition name per ticket. Partitions never match each other.</td>
+      <td>Returns a permanent pool name per ticket. Prefer attributes for regional preferences; partitions never match each other.</td>
     </tr>
     <tr>
       <td><code>lanes</code></td>
       <td><code>"auto" | number</code></td>
       <td><code>"auto"</code></td>
-      <td>Left on <code>"auto"</code>, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. See <a href="/muster/api/LaneScaler">LaneScaler</a>.</td>
+      <td>Left on <code>"auto"</code>, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. With <code>rules</code>, auto resolves to one fixed lane and counts above one are rejected. See <a href="/muster/api/LaneScaler">LaneScaler</a>.</td>
     </tr>
     <tr>
       <td><code>broadcast</code></td>
@@ -275,30 +285,31 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
 </p>
 <p>
   Matches are written to MemoryStore before being announced, so delivery does
-  not depend on MessagingService. Typical latency is under 200 ms; if a message
-  is dropped, a poll finds the match within <code>pollIntervalMax</code> (30 s). If
+  not depend on MessagingService. Notification time after commit depends on the
+  backend and is separate from time spent matching. If a message is dropped, a
+  poll finds the match within <code>pollIntervalMax</code> (30 s). If
   MessagingService is unavailable the poll cap tightens to 5 s automatically.
 </p>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="properties">Properties<a href="#properties" class="hash-link" aria-label="Direct link to Properties" title="Direct link to Properties" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="matched"><code style="text-decoration:none">matched</code><a href="#matched" class="hash-link" aria-label="Direct link to matched" title="Direct link to matched" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L130"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->matched<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatchEnvelope">MatchEnvelope</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="properties">Properties<a href="#properties" class="hash-link" aria-label="Direct link to Properties" title="Direct link to Properties" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="matched"><code style="text-decoration:none">matched</code><a href="#matched" class="hash-link" aria-label="Direct link to matched" title="Direct link to matched" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L132"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->matched<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatchEnvelope">MatchEnvelope</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
 <p>
   Fires on every server holding at least one of the matched players. Does not
   fire on a server holding none of them.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="aborted"><code style="text-decoration:none">aborted</code><a href="#aborted" class="hash-link" aria-label="Direct link to aborted" title="Direct link to aborted" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L138"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->aborted<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#AbortContext">AbortContext</a></code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="aborted"><code style="text-decoration:none">aborted</code><a href="#aborted" class="hash-link" aria-label="Direct link to aborted" title="Direct link to aborted" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L140"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->aborted<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#AbortContext">AbortContext</a></code><code class="op_lSLc">&gt;</code></div><div>
 <p>
   Fires when a match that had already claimed its tickets failed to commit. Its
   players return to the queue. See <a href="/muster/api/Types#AbortReason">AbortReason</a>.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="queued"><code style="text-decoration:none">queued</code><a href="#queued" class="hash-link" aria-label="Direct link to queued" title="Direct link to queued" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L145"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->queued<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="queued"><code style="text-decoration:none">queued</code><a href="#queued" class="hash-link" aria-label="Direct link to queued" title="Direct link to queued" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L147"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->queued<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
 <p>Fires on this server when a ticket is successfully enqueued here.</p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cancelled"><code style="text-decoration:none">cancelled</code><a href="#cancelled" class="hash-link" aria-label="Direct link to cancelled" title="Direct link to cancelled" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L152"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->cancelled<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cancelled"><code style="text-decoration:none">cancelled</code><a href="#cancelled" class="hash-link" aria-label="Direct link to cancelled" title="Direct link to cancelled" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L154"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->cancelled<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
 <p>Fires on this server when a ticket it was tracking is cancelled.</p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="parties"><code style="text-decoration:none">parties</code><a href="#parties" class="hash-link" aria-label="Direct link to parties" title="Direct link to parties" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L160"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->parties<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="parties"><code style="text-decoration:none">parties</code><a href="#parties" class="hash-link" aria-label="Direct link to parties" title="Direct link to parties" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L162"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->parties<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Party">Party</a></code></div><div>
 <p>
   Cross-server parties sharing this queue's store. Built on first access and
   writes nothing until used; see <a href="/muster/api/Party">Party</a>.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="quickPlayMatched"><code style="text-decoration:none">quickPlayMatched</code><a href="#quickPlayMatched" class="hash-link" aria-label="Direct link to quickPlayMatched" title="Direct link to quickPlayMatched" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L172"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->quickPlayMatched<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#QuickPlayAssignment">QuickPlayAssignment</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="quickPlayMatched"><code style="text-decoration:none">quickPlayMatched</code><a href="#quickPlayMatched" class="hash-link" aria-label="Direct link to quickPlayMatched" title="Direct link to quickPlayMatched" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L174"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->quickPlayMatched<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Signal">Signal</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#QuickPlayAssignment">QuickPlayAssignment</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
 <p>
   Fires when a queued player is backfilled into a match that is already
   running, carrying the listing's published data. Only fires on the server that
@@ -308,13 +319,13 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
   Requires the <code>quickPlay</code> config; on a queue without it, nothing ever fires
   here. See <a href="/muster/api/QuickPlay">QuickPlay</a>.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="quickplay"><code style="text-decoration:none">quickplay</code><a href="#quickplay" class="hash-link" aria-label="Direct link to quickplay" title="Direct link to quickplay" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L181"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->quickplay<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/QuickPlay">QuickPlay</a></code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="quickplay"><code style="text-decoration:none">quickplay</code><a href="#quickplay" class="hash-link" aria-label="Direct link to quickplay" title="Direct link to quickplay" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L183"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.<!-- -->quickplay<!-- -->:<!-- --> </code> <code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/QuickPlay">QuickPlay</a></code></div><div>
 <p>
   Backfilling into live matches, sharing this queue's store. Built on first
   access and writes nothing until used. Throws on a queue with no <code>quickPlay</code>
   config; see <a href="/muster/api/QuickPlay">QuickPlay</a>.
 </p>
-</div><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L193"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><code>config<!-- -->: </code><code class="blue_P4bS">MatchmakerConfig</code><code>) → </code><code class="blue_P4bS">any</code></div><div>
+</div><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new"><code style="text-decoration:none">new</code><a href="#new" class="hash-link" aria-label="Direct link to new" title="Direct link to new" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L195"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">new</code><code>(</code><code>config<!-- -->: </code><code class="blue_P4bS">MatchmakerConfig</code><code>) → </code><code class="blue_P4bS">any</code></div><div>
 <p>
   Builds a queue. <code>name</code> and <code>size</code> are required; see the configuration table
   on <a href="/muster/api/Matchmaker">Matchmaker</a> for the rest.
@@ -323,13 +334,13 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
   Configuration problems throw rather than returning a <code>Result</code>, since they
   cannot be recovered from at runtime.
 </p>
-</div><h3>Errors</h3><table class="errorTable_jfN8"><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>&quot;Muster: ...&quot;</td><td>Reported at the call site, naming the offending field.</td></tr></tbody></table><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="enqueue"><code style="text-decoration:none">enqueue</code><a href="#enqueue" class="hash-link" aria-label="Direct link to enqueue" title="Direct link to enqueue" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L352"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">enqueue</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#EnqueueOptions">EnqueueOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
+</div><h3>Errors</h3><table class="errorTable_jfN8"><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>&quot;Muster: ...&quot;</td><td>Reported at the call site, naming the offending field.</td></tr></tbody></table><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="enqueue"><code style="text-decoration:none">enqueue</code><a href="#enqueue" class="hash-link" aria-label="Direct link to enqueue" title="Direct link to enqueue" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L354"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">enqueue</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#EnqueueOptions">EnqueueOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
 <p>Queues one player as a one-member ticket.</p>
 <p>
   On a rated queue, <code>options.rating</code> is required unless <code>rating.default</code> is
   configured; on an unrated queue, supplying one throws.
 </p>
-</div><h3>Errors</h3><table class="errorTable_jfN8"><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>&quot;Muster: queue \&quot;&lt;name&gt;\&quot; is rated but no rating was given&quot;</td><td>No rating and no default.</td></tr><tr><td>&quot;Muster: queue \&quot;&lt;name&gt;\&quot; is unrated, so `rating` cannot be supplied&quot;</td><td>Rating passed to an unrated queue.</td></tr></tbody></table><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="enqueueGroup"><code style="text-decoration:none">enqueueGroup</code><a href="#enqueueGroup" class="hash-link" aria-label="Direct link to enqueueGroup" title="Direct link to enqueueGroup" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L391"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">enqueueGroup</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userIds<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#GroupOptions">GroupOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
+</div><h3>Errors</h3><table class="errorTable_jfN8"><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>&quot;Muster: queue \&quot;&lt;name&gt;\&quot; is rated but no rating was given&quot;</td><td>No rating and no default.</td></tr><tr><td>&quot;Muster: queue \&quot;&lt;name&gt;\&quot; is unrated, so `rating` cannot be supplied&quot;</td><td>Rating passed to an unrated queue.</td></tr></tbody></table><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="enqueueGroup"><code style="text-decoration:none">enqueueGroup</code><a href="#enqueueGroup" class="hash-link" aria-label="Direct link to enqueueGroup" title="Direct link to enqueueGroup" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L394"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">enqueueGroup</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userIds<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#GroupOptions">GroupOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
 <p>
   Queues a set of players as one ticket. The group is never split across
   matches and is matched at its aggregate rating.
@@ -344,7 +355,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
   Groups larger than <code>size.max</code> are rejected with <code>InvalidPartySize</code>, and a
   repeated userId with <code>DuplicateMember</code>.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="enqueueParty"><code style="text-decoration:none">enqueueParty</code><a href="#enqueueParty" class="hash-link" aria-label="Direct link to enqueueParty" title="Direct link to enqueueParty" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L427"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">enqueueParty</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partyId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#GroupOptions">GroupOptions?</a></code><span class="inlineDescription_G7Er">-- <span>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="enqueueParty"><code style="text-decoration:none">enqueueParty</code><a href="#enqueueParty" class="hash-link" aria-label="Direct link to enqueueParty" title="Direct link to enqueueParty" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L431"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">enqueueParty</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>partyId<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#GroupOptions">GroupOptions?</a></code><span class="inlineDescription_G7Er">-- <span>
 <p><code>ratings</code> is keyed by userId.</p>
 </span></span></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
 <p>Queues a <a href="/muster/api/Party">Party</a> by id. Only the party's leader may call this.</p>
@@ -353,7 +364,7 @@ duels<span class="token punctuation">:</span><span class="token function">enqueu
   kicks, leaves, leadership transfers and disbanding all return <code>PartyLocked</code>
   until the ticket matches, is cancelled, or expires.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="quickPlay"><code style="text-decoration:none">quickPlay</code><a href="#quickPlay" class="hash-link" aria-label="Direct link to quickPlay" title="Direct link to quickPlay" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L545"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">quickPlay</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#EnqueueOptions">EnqueueOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="quickPlay"><code style="text-decoration:none">quickPlay</code><a href="#quickPlay" class="hash-link" aria-label="Direct link to quickPlay" title="Direct link to quickPlay" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L550"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">quickPlay</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#EnqueueOptions">EnqueueOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
 <p>Queues one player and looks for a live match to drop them into.</p>
 <p>
   This is <a href="/muster/api/Matchmaker#enqueue">Matchmaker:enqueue</a> with <code>quickPlay = true</code>: an ordinary ticket is
@@ -373,7 +384,7 @@ queue</strong>, and forms a fresh match the usual way. The two outcomes race, so
 
 casual<span class="token punctuation">:</span><span class="token function">quickPlay</span><span class="token punctuation">(</span>player<span class="token punctuation">.</span>UserId<span class="token punctuation">)</span>
 </code></pre>
-</div><h3>Errors</h3><table class="errorTable_jfN8"><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>&quot;Muster: queue \&quot;&lt;name&gt;\&quot; has no Quick Play&quot;</td><td>No `quickPlay` in the config.</td></tr></tbody></table><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="quickPlayGroup"><code style="text-decoration:none">quickPlayGroup</code><a href="#quickPlayGroup" class="hash-link" aria-label="Direct link to quickPlayGroup" title="Direct link to quickPlayGroup" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L568"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">quickPlayGroup</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userIds<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#GroupOptions">GroupOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
+</div><h3>Errors</h3><table class="errorTable_jfN8"><thead><tr><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>&quot;Muster: queue \&quot;&lt;name&gt;\&quot; has no Quick Play&quot;</td><td>No `quickPlay` in the config.</td></tr></tbody></table><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="quickPlayGroup"><code style="text-decoration:none">quickPlayGroup</code><a href="#quickPlayGroup" class="hash-link" aria-label="Direct link to quickPlayGroup" title="Direct link to quickPlayGroup" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L573"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">quickPlayGroup</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userIds<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code><code>,</code></div><div><code>options<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#GroupOptions">GroupOptions?</a></code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket</a></code><code class="op_lSLc">&gt;</code></div><div>
 <p>
   <a href="/muster/api/Matchmaker#enqueueGroup">Matchmaker:enqueueGroup</a> with Quick Play, for a group that should backfill
   together.
@@ -383,13 +394,13 @@ casual<span class="token punctuation">:</span><span class="token function">quick
   members, or it waits. A group larger than <code>quickPlay.capacity</code> can only ever
   form a fresh match.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cancel"><code style="text-decoration:none">cancel</code><a href="#cancel" class="hash-link" aria-label="Direct link to cancel" title="Direct link to cancel" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L588"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">cancel</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">true</code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cancel"><code style="text-decoration:none">cancel</code><a href="#cancel" class="hash-link" aria-label="Direct link to cancel" title="Direct link to cancel" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L593"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">cancel</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">true</code><code class="op_lSLc">&gt;</code></div><div>
 <p>Cancels a ticket.</p>
 <p>
   Only the ticket's leader may cancel it, and only while its state is
   <code>Queued</code>. A ticket already claimed for a match returns <code>NotQueued</code>.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cancelForUser"><code style="text-decoration:none">cancelForUser</code><a href="#cancelForUser" class="hash-link" aria-label="Direct link to cancelForUser" title="Direct link to cancelForUser" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L602"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">cancelForUser</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">boolean</code><code class="op_lSLc">&gt;</code><span class="inlineDescription_G7Er">-- <span>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cancelForUser"><code style="text-decoration:none">cancelForUser</code><a href="#cancelForUser" class="hash-link" aria-label="Direct link to cancelForUser" title="Direct link to cancelForUser" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L607"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">cancelForUser</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">boolean</code><code class="op_lSLc">&gt;</code><span class="inlineDescription_G7Er">-- <span>
 <p>True if a ticket was cancelled, false if the user had none queued.</p>
 </span></span></div><div>
 <p>Cancels whatever ticket a user currently holds, if any.</p>
@@ -398,24 +409,24 @@ casual<span class="token punctuation">:</span><span class="token function">quick
   leader, so it works for any member of a group. Connected to
   <code>Players.PlayerRemoving</code> unless <code>autoCancelOnLeave</code> is disabled.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getTicket"><code style="text-decoration:none">getTicket</code><a href="#getTicket" class="hash-link" aria-label="Direct link to getTicket" title="Direct link to getTicket" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L628"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">getTicket</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket?</a></code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getTicket"><code style="text-decoration:none">getTicket</code><a href="#getTicket" class="hash-link" aria-label="Direct link to getTicket" title="Direct link to getTicket" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L633"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">getTicket</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>userId<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Ticket">Ticket?</a></code><code class="op_lSLc">&gt;</code></div><div>
 <p>The ticket a user currently holds, or <code>nil</code>.</p>
 <p>
   Tickets are exclusive across every queue sharing a namespace, so this returns
   a ticket even if the user queued somewhere else.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getStatus"><code style="text-decoration:none">getStatus</code><a href="#getStatus" class="hash-link" aria-label="Direct link to getStatus" title="Direct link to getStatus" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L639"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">getStatus</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#QueueStatus">QueueStatus</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getStatus"><code style="text-decoration:none">getStatus</code><a href="#getStatus" class="hash-link" aria-label="Direct link to getStatus" title="Direct link to getStatus" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L644"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">getStatus</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#QueueStatus">QueueStatus</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
 <p>
   The state of a ticket: <code>Queued</code>, <code>Claiming</code>, <code>Matched</code>, <code>Cancelled</code>, or
   <code>Expired</code>. A <code>Matched</code> status carries the envelope.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getMatch"><code style="text-decoration:none">getMatch</code><a href="#getMatch" class="hash-link" aria-label="Direct link to getMatch" title="Direct link to getMatch" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L651"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">getMatch</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>matchId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatchEnvelope">MatchEnvelope</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="blue_P4bS">?</code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="getMatch"><code style="text-decoration:none">getMatch</code><a href="#getMatch" class="hash-link" aria-label="Direct link to getMatch" title="Direct link to getMatch" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L656"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">getMatch</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>matchId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatchEnvelope">MatchEnvelope</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="blue_P4bS">?</code><code class="op_lSLc">&gt;</code></div><div>
 <p>
   Reads a committed match by id, or <code>nil</code> if there is no ready match under that
   id. Matches remain readable for <code>matchExpiration</code> (300 s), which covers a
   player who rejoined on another server and needs the envelope again.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="acknowledge"><code style="text-decoration:none">acknowledge</code><a href="#acknowledge" class="hash-link" aria-label="Direct link to acknowledge" title="Direct link to acknowledge" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L667"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">acknowledge</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatchEnvelope">MatchEnvelope</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="acknowledge"><code style="text-decoration:none">acknowledge</code><a href="#acknowledge" class="hash-link" aria-label="Direct link to acknowledge" title="Direct link to acknowledge" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L672"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">acknowledge</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>requesterUserId<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>ticketId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Result">Result</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatchEnvelope">MatchEnvelope</a></code><code class="op_lSLc">&lt;</code><code class="blue_P4bS">T</code><code class="op_lSLc">&gt;</code><code class="op_lSLc">&gt;</code></div><div>
 <p>
   Releases a matched ticket's players so they may queue again, and unlocks its
   party.
@@ -426,7 +437,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
   follows the match, such as a teleport. A failure then leaves the players free
   to re-queue rather than locked out until their reservation expires.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step"><code style="text-decoration:none">step</code><a href="#step" class="hash-link" aria-label="Direct link to step" title="Direct link to step" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L680"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">step</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step"><code style="text-decoration:none">step</code><a href="#step" class="hash-link" aria-label="Direct link to step" title="Direct link to step" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L685"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">step</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   Runs one worker pass: ticket upkeep, lane acquisition, then a scan of each
   held lane.
@@ -435,24 +446,24 @@ casual<span class="token punctuation">:</span><span class="token function">quick
   The worker thread calls this on a loop. Calling it directly advances the
   system one step, which is how the test suite drives it without yielding.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="start"><code style="text-decoration:none">start</code><a href="#start" class="hash-link" aria-label="Direct link to start" title="Direct link to start" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L691"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">start</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="start"><code style="text-decoration:none">start</code><a href="#start" class="hash-link" aria-label="Direct link to start" title="Direct link to start" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L696"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">start</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   Starts the worker thread and subscribes for cross-server delivery. Called by
   the constructor unless <code>autoStart</code> is disabled. Calling it twice does
   nothing.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stop"><code style="text-decoration:none">stop</code><a href="#stop" class="hash-link" aria-label="Direct link to stop" title="Direct link to stop" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L702"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">stop</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stop"><code style="text-decoration:none">stop</code><a href="#stop" class="hash-link" aria-label="Direct link to stop" title="Direct link to stop" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L707"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">stop</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   Stops the worker and releases every lane lease this server holds, so another
   server can take them immediately instead of waiting out the 15-second
   timeout. Suitable for <code>game:BindToClose</code>.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="destroy"><code style="text-decoration:none">destroy</code><a href="#destroy" class="hash-link" aria-label="Direct link to destroy" title="Direct link to destroy" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L718"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">destroy</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="destroy"><code style="text-decoration:none">destroy</code><a href="#destroy" class="hash-link" aria-label="Direct link to destroy" title="Direct link to destroy" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L723"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">destroy</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><code>)</code></div><div>
 <p>
   Calls <a href="/muster/api/Matchmaker#stop">Matchmaker:stop</a>, disconnects the <code>PlayerRemoving</code> connection, and
   drops every signal handler.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="health"><code style="text-decoration:none">health</code><a href="#health" class="hash-link" aria-label="Direct link to health" title="Direct link to health" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L753"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">health</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS">any</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="health"><code style="text-decoration:none">health</code><a href="#health" class="hash-link" aria-label="Direct link to health" title="Direct link to health" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Matchmaker.luau#L758"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matchmaker<!-- -->.</code><code class="green_DgR4">health</code><code>(</code><code>self<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS">any</code></div><div>
 <p>
   A snapshot of this server's view of the queue, for logging or a debug
   command.
@@ -538,7 +549,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
                 }
             ],
             &quot;source&quot;: {
-                &quot;line&quot;: 193,
+                &quot;line&quot;: 195,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -580,7 +591,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
                 }
             ],
             &quot;source&quot;: {
-                &quot;line&quot;: 352,
+                &quot;line&quot;: 354,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -612,7 +623,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 391,
+                &quot;line&quot;: 394,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -649,7 +660,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 427,
+                &quot;line&quot;: 431,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -677,7 +688,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 505,
+                &quot;line&quot;: 510,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -715,7 +726,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
                 }
             ],
             &quot;source&quot;: {
-                &quot;line&quot;: 545,
+                &quot;line&quot;: 550,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -747,7 +758,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 568,
+                &quot;line&quot;: 573,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -779,7 +790,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 588,
+                &quot;line&quot;: 593,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -806,7 +817,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 602,
+                &quot;line&quot;: 607,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -833,7 +844,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 628,
+                &quot;line&quot;: 633,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -860,7 +871,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 639,
+                &quot;line&quot;: 644,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -887,7 +898,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 651,
+                &quot;line&quot;: 656,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -919,7 +930,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 667,
+                &quot;line&quot;: 672,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -936,7 +947,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 680,
+                &quot;line&quot;: 685,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -953,7 +964,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 691,
+                &quot;line&quot;: 696,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -970,7 +981,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 702,
+                &quot;line&quot;: 707,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -987,7 +998,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;returns&quot;: [],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 718,
+                &quot;line&quot;: 723,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -1009,7 +1020,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 753,
+                &quot;line&quot;: 758,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         }
@@ -1020,7 +1031,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;desc&quot;: &quot;Fires on every server holding at least one of the matched players. Does not\nfire on a server holding none of them.&quot;,
             &quot;lua_type&quot;: &quot;Signal&lt;MatchEnvelope&lt;T&gt;&gt;&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 130,
+                &quot;line&quot;: 132,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -1029,7 +1040,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;desc&quot;: &quot;Fires when a match that had already claimed its tickets failed to commit. Its\nplayers return to the queue. See [AbortReason].&quot;,
             &quot;lua_type&quot;: &quot;Signal&lt;AbortContext&gt;&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 138,
+                &quot;line&quot;: 140,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -1038,7 +1049,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;desc&quot;: &quot;Fires on this server when a ticket is successfully enqueued here.&quot;,
             &quot;lua_type&quot;: &quot;Signal&lt;Ticket&gt;&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 145,
+                &quot;line&quot;: 147,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -1047,7 +1058,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;desc&quot;: &quot;Fires on this server when a ticket it was tracking is cancelled.&quot;,
             &quot;lua_type&quot;: &quot;Signal&lt;Ticket&gt;&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 152,
+                &quot;line&quot;: 154,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -1056,7 +1067,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;desc&quot;: &quot;Cross-server parties sharing this queue&#x27;s store. Built on first access and\nwrites nothing until used; see [Party].&quot;,
             &quot;lua_type&quot;: &quot;Party&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 160,
+                &quot;line&quot;: 162,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -1065,7 +1076,7 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;desc&quot;: &quot;Fires when a queued player is backfilled into a match that is already\nrunning, carrying the listing&#x27;s published data. Only fires on the server that\nclaimed the seat, which is the server holding the players.\n\nRequires the `quickPlay` config; on a queue without it, nothing ever fires\nhere. See [QuickPlay].&quot;,
             &quot;lua_type&quot;: &quot;Signal&lt;QuickPlayAssignment&lt;T&gt;&gt;&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 172,
+                &quot;line&quot;: 174,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         },
@@ -1074,16 +1085,16 @@ casual<span class="token punctuation">:</span><span class="token function">quick
             &quot;desc&quot;: &quot;Backfilling into live matches, sharing this queue&#x27;s store. Built on first\naccess and writes nothing until used. Throws on a queue with no `quickPlay`\nconfig; see [QuickPlay].&quot;,
             &quot;lua_type&quot;: &quot;QuickPlay&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 181,
+                &quot;line&quot;: 183,
                 &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
             }
         }
     ],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;Matchmaker&quot;,
-    &quot;desc&quot;: &quot;A single queue. Construct one per game mode.\n\n```lua\nlocal duels = Muster.new({ name = \&quot;duels\&quot;, size = 2 })\n\nduels.matched:connect(function(match)\n\tfor _, member in match.members do\n\t\tprint(member.userId, \&quot;-&gt;\&quot;, match.matchId)\n\tend\nend)\n\nduels:enqueue(player.UserId)\n```\n\nConstructing a queue starts its worker thread, subscribes it for cross-server\ndelivery, and connects `Players.PlayerRemoving` to cancel tickets. Each of\nthose can be disabled with `autoStart`, `broadcast`, and `autoCancelOnLeave`.\n\n### Configuration\n\n`name` and `size` are required. Everything else has a default.\n\n| Field | Type | Default | Effect |\n| --- | --- | --- | --- |\n| `name` | `string` | required | Namespaces this queue&#x27;s keys. Max 16 characters, alphanumeric plus `_` and `-`. |\n| `size` | `number \\| SizeConfig` | required | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |\n| `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |\n| `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |\n| `finalize` | `Finalizer&lt;T&gt;?` | `nil` | Runs once per match; its return value becomes `match.data`. |\n| `finalizeTimeout` | `number` | `5` | Seconds. Must not exceed 15. |\n| `onAbort` | `AbortHandler?` | `nil` | Called when a match fails after its hook ran. Requires `finalize`. |\n| `partitionKey` | `function?` | `nil` | Returns a partition name per ticket. Partitions never match each other. |\n| `lanes` | `\&quot;auto\&quot; \\| number` | `\&quot;auto\&quot;` | Left on `\&quot;auto\&quot;`, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. See [LaneScaler]. |\n| `broadcast` | `boolean` | `true` | Publish match notifications over MessagingService. |\n| `autoStart` | `boolean` | `true` | Start the worker thread on construction. |\n| `autoCancelOnLeave` | `boolean` | `true` | Cancel a player&#x27;s ticket when they leave. |\n| `manualAcknowledge` | `boolean` | `false` | Require [Matchmaker:acknowledge] to release matched players. |\n| `quickPlay` | `QuickPlayConfig \\| boolean?` | `nil` | Present turns on backfilling into live matches. See [QuickPlay]. |\n| `ticketExpiration` | `number` | `180` | Seconds a ticket survives without a heartbeat. Minimum 30. |\n| `maxMetadataBytes` | `number` | `1024` | Per-ticket metadata budget. |\n| `maxMatchDataBytes` | `number` | `4096` | Budget for the finalizer&#x27;s return value. |\n| `namespace` | `string` | `\&quot;mu\&quot;` | Change to run independent deployments in one universe. |\n\nThese accept injected implementations, primarily for tests: `store`,\n`messaging`, `players`, `matcher`, `layout`, `logger`, `metrics`, `clock`,\n`monotonic`, `random`, `sleep`, `spawn`, `id`, `serverId`.\n\n### Delivery\n\n`matched` fires on every server holding at least one of the matched players.\nA server holding none of them does not receive the event, so a handler can\nassume it has someone to act on.\n\nMatches are written to MemoryStore before being announced, so delivery does\nnot depend on MessagingService. Typical latency is under 200 ms; if a message\nis dropped, a poll finds the match within `pollIntervalMax` (30 s). If\nMessagingService is unavailable the poll cap tightens to 5 s automatically.&quot;,
+    &quot;desc&quot;: &quot;A single queue. Construct one per game mode.\n\n```lua\nlocal duels = Muster.new({ name = \&quot;duels\&quot;, size = 2 })\n\nduels.matched:connect(function(match)\n\tfor _, member in match.members do\n\t\tprint(member.userId, \&quot;-&gt;\&quot;, match.matchId)\n\tend\nend)\n\nduels:enqueue(player.UserId)\n```\n\nConstructing a queue starts its worker thread, subscribes it for cross-server\ndelivery, and connects `Players.PlayerRemoving` to cancel tickets. Each of\nthose can be disabled with `autoStart`, `broadcast`, and `autoCancelOnLeave`.\n\n### Configuration\n\n`name` and `size` are required. Everything else has a default.\n\n| Field | Type | Default | Effect |\n| --- | --- | --- | --- |\n| `name` | `string` | required | Namespaces this queue&#x27;s keys. Max 16 characters, alphanumeric plus `_` and `-`. |\n| `size` | `number \\| SizeConfig` | required | `6` is shorthand for `{ min = 6, target = 6, max = 6 }`. |\n| `rules` | `{ [string]: AttributeRule }?` | `nil` | Independent attribute constraints and preferences for new matches. Rule queues use one lane; Quick Play bypasses these rules. |\n| `rating` | `RatingConfig?` | `nil` | Present makes the queue rated. See [RatingConfig]. |\n| `fallbackAfter` | `number` | `10` | Seconds before a below-`target` group is accepted. |\n| `finalize` | `Finalizer&lt;T&gt;?` | `nil` | Runs once per match; its return value becomes `match.data`. |\n| `finalizeTimeout` | `number` | `5` | Seconds. Must not exceed 15. |\n| `onAbort` | `AbortHandler?` | `nil` | Called when a match fails after its hook ran. Requires `finalize`. |\n| `partitionKey` | `function?` | `nil` | Returns a permanent pool name per ticket. Prefer attributes for regional preferences; partitions never match each other. |\n| `lanes` | `\&quot;auto\&quot; \\| number` | `\&quot;auto\&quot;` | Left on `\&quot;auto\&quot;`, a rated queue divides into rating bands and an unrated one into hashed shards, both sized at runtime. Pinning a number disables scaling and always hashes. With `rules`, auto resolves to one fixed lane and counts above one are rejected. See [LaneScaler]. |\n| `broadcast` | `boolean` | `true` | Publish match notifications over MessagingService. |\n| `autoStart` | `boolean` | `true` | Start the worker thread on construction. |\n| `autoCancelOnLeave` | `boolean` | `true` | Cancel a player&#x27;s ticket when they leave. |\n| `manualAcknowledge` | `boolean` | `false` | Require [Matchmaker:acknowledge] to release matched players. |\n| `quickPlay` | `QuickPlayConfig \\| boolean?` | `nil` | Present turns on backfilling into live matches. See [QuickPlay]. |\n| `ticketExpiration` | `number` | `180` | Seconds a ticket survives without a heartbeat. Minimum 30. |\n| `maxMetadataBytes` | `number` | `1024` | Per-ticket metadata budget. |\n| `maxMatchDataBytes` | `number` | `4096` | Budget for the finalizer&#x27;s return value. |\n| `namespace` | `string` | `\&quot;mu\&quot;` | Change to run independent deployments in one universe. |\n\nThese accept injected implementations, primarily for tests: `store`,\n`messaging`, `players`, `matcher`, `layout`, `logger`, `metrics`, `clock`,\n`monotonic`, `random`, `sleep`, `spawn`, `id`, `serverId`.\n\n### Delivery\n\n`matched` fires on every server holding at least one of the matched players.\nA server holding none of them does not receive the event, so a handler can\nassume it has someone to act on.\n\nMatches are written to MemoryStore before being announced, so delivery does\nnot depend on MessagingService. Notification time after commit depends on the\nbackend and is separate from time spent matching. If a message is dropped, a\npoll finds the match within `pollIntervalMax` (30 s). If\nMessagingService is unavailable the poll cap tightens to 5 s automatically.&quot;,
     &quot;source&quot;: {
-        &quot;line&quot;: 64,
+        &quot;line&quot;: 66,
         &quot;path&quot;: &quot;src/Matchmaker.luau&quot;
     }
 }</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#properties" class="table-of-contents__link toc-highlight">Properties</a><ul><li><a href="#aborted" class="table-of-contents__link toc-highlight">aborted</a></li><li><a href="#cancelled" class="table-of-contents__link toc-highlight">cancelled</a></li><li><a href="#matched" class="table-of-contents__link toc-highlight">matched</a></li><li><a href="#parties" class="table-of-contents__link toc-highlight">parties</a></li><li><a href="#queued" class="table-of-contents__link toc-highlight">queued</a></li><li><a href="#quickplay" class="table-of-contents__link toc-highlight">quickplay</a></li><li><a href="#quickPlayMatched" class="table-of-contents__link toc-highlight">quickPlayMatched</a></li></ul></li><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#acknowledge" class="table-of-contents__link toc-highlight">.acknowledge</a></li><li><a href="#cancel" class="table-of-contents__link toc-highlight">.cancel</a></li><li><a href="#cancelForUser" class="table-of-contents__link toc-highlight">.cancelForUser</a></li><li><a href="#destroy" class="table-of-contents__link toc-highlight">.destroy</a></li><li><a href="#enqueue" class="table-of-contents__link toc-highlight">.enqueue</a></li><li><a href="#enqueueGroup" class="table-of-contents__link toc-highlight">.enqueueGroup</a></li><li><a href="#enqueueParty" class="table-of-contents__link toc-highlight">.enqueueParty</a></li><li><a href="#getMatch" class="table-of-contents__link toc-highlight">.getMatch</a></li><li><a href="#getStatus" class="table-of-contents__link toc-highlight">.getStatus</a></li><li><a href="#getTicket" class="table-of-contents__link toc-highlight">.getTicket</a></li><li><a href="#health" class="table-of-contents__link toc-highlight">.health</a></li><li><a href="#new" class="table-of-contents__link toc-highlight">.new</a></li><li><a href="#quickPlay" class="table-of-contents__link toc-highlight">.quickPlay</a></li><li><a href="#quickPlayGroup" class="table-of-contents__link toc-highlight">.quickPlayGroup</a></li><li><a href="#start" class="table-of-contents__link toc-highlight">.start</a></li><li><a href="#step" class="table-of-contents__link toc-highlight">.step</a></li><li><a href="#stop" class="table-of-contents__link toc-highlight">.stop</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 shmeatley. Built with Moonwave and Docusaurus.</div></div></div></footer></div>

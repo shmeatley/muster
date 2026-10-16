@@ -14,8 +14,8 @@ table every other module reads.
 `resolve` returns `(settings, problem)` rather than throwing, so validation
 is directly testable and so [Matchmaker] can raise the error at the caller&#x27;s
 own `Muster.new` line rather than from inside this module."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Config"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Config" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Config" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.9518a441.js" defer="defer"></script>
-<script src="/muster/assets/js/main.fa7b4f58.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
+<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -31,14 +31,14 @@ own `Muster.new` line rather than from inside this module."><link data-rh="true"
   is directly testable and so <a href="/muster/api/Matchmaker">Matchmaker</a> can raise the error at the caller's
   own <code>Muster.new</code> line rather than from inside this module.
 </p>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="normalizePartition"><code style="text-decoration:none">normalizePartition</code><a href="#normalizePartition" class="hash-link" aria-label="Direct link to normalizePartition" title="Direct link to normalizePartition" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Config.luau#L232"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Config<!-- -->.</code><code class="green_DgR4">normalizePartition</code><code>(</code><code>value<!-- -->: </code><code class="blue_P4bS">string</code><code>) → </code><code class="blue_P4bS">string</code></div><div>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="normalizePartition"><code style="text-decoration:none">normalizePartition</code><a href="#normalizePartition" class="hash-link" aria-label="Direct link to normalizePartition" title="Direct link to normalizePartition" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Config.luau#L233"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Config<!-- -->.</code><code class="green_DgR4">normalizePartition</code><code>(</code><code>value<!-- -->: </code><code class="blue_P4bS">string</code><code>) → </code><code class="blue_P4bS">string</code></div><div>
 <p>Folds a partition key to something a MemoryStore name can hold.</p>
 <p>
   Keys of 32 characters or fewer made up of letters, digits, underscores and
   hyphens pass through unchanged, which keeps lane names readable in logs.
   Anything else is replaced by a hash.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="resolve"><code style="text-decoration:none">resolve</code><a href="#resolve" class="hash-link" aria-label="Direct link to resolve" title="Direct link to resolve" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Config.luau#L246"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Config<!-- -->.</code><code class="green_DgR4">resolve</code><code>(</code><code>raw<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">any</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="resolve"><code style="text-decoration:none">resolve</code><a href="#resolve" class="hash-link" aria-label="Direct link to resolve" title="Direct link to resolve" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Config.luau#L247"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Config<!-- -->.</code><code class="green_DgR4">resolve</code><code>(</code><code>raw<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">any</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
 <p>The frozen settings table, or <code>nil</code> when <code>problem</code> is set.</p>
 </span></span></div><div><code class="blue_P4bS">string?</code><span class="inlineDescription_G7Er">-- <span>
 <p>The validation failure, naming the offending field.</p>
@@ -74,7 +74,7 @@ own `Muster.new` line rather than from inside this module."><link data-rh="true"
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;private&quot;: true,
             &quot;source&quot;: {
-                &quot;line&quot;: 133,
+                &quot;line&quot;: 134,
                 &quot;path&quot;: &quot;src/Config.luau&quot;
             }
         },
@@ -96,7 +96,7 @@ own `Muster.new` line rather than from inside this module."><link data-rh="true"
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 232,
+                &quot;line&quot;: 233,
                 &quot;path&quot;: &quot;src/Config.luau&quot;
             }
         },
@@ -122,7 +122,7 @@ own `Muster.new` line rather than from inside this module."><link data-rh="true"
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 246,
+                &quot;line&quot;: 247,
                 &quot;path&quot;: &quot;src/Config.luau&quot;
             }
         }

@@ -52,8 +52,8 @@ now += 200            -- everything expires exactly like it would live
 
 [InMemoryStore:failNext] and [InMemoryStore:conflictNext] inject the two
 failure modes worth testing against."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/InMemoryStore"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/InMemoryStore" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/InMemoryStore" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.9518a441.js" defer="defer"></script>
-<script src="/muster/assets/js/main.fa7b4f58.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
+<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -108,7 +108,7 @@ now <span class="token operator">+</span><span class="token operator">=</span> <
   This is what catches a transform that fails to reset its own bookkeeping when
   re-entered, which every conditional write in Muster depends on.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="callCount"><code style="text-decoration:none">callCount</code><a href="#callCount" class="hash-link" aria-label="Direct link to callCount" title="Direct link to callCount" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/InMemory.luau#L286"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>InMemoryStore<!-- -->.</code><code class="green_DgR4">callCount</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/InMemoryStore">InMemoryStore</a></code><code>,</code></div><div><code>operation<!-- -->: </code><code class="blue_P4bS">string?</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="callCount"><code style="text-decoration:none">callCount</code><a href="#callCount" class="hash-link" aria-label="Direct link to callCount" title="Direct link to callCount" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/stores/InMemory.luau#L291"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>InMemoryStore<!-- -->.</code><code class="green_DgR4">callCount</code><code>(</code><div class="inset_uKQm"><div><code>self<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/InMemoryStore">InMemoryStore</a></code><code>,</code></div><div><code>operation<!-- -->: </code><code class="blue_P4bS">string?</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
 <p>
   Calls made, for one operation or in total. Muster's suite asserts against
   this to keep its request budget from regressing.
@@ -219,7 +219,7 @@ now <span class="token operator">+</span><span class="token operator">=</span> <
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 286,
+                &quot;line&quot;: 291,
                 &quot;path&quot;: &quot;src/stores/InMemory.luau&quot;
             }
         }

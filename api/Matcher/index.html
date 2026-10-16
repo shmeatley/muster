@@ -3,114 +3,102 @@
 <head>
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.10.1">
-<title data-rh="true">Matcher | Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/Matcher"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="Matcher | Muster"><meta data-rh="true" name="description" content="The grouping algorithm.
+<title data-rh="true">Matcher | Muster</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://shmeatley.github.io/muster/api/Matcher"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="Matcher | Muster"><meta data-rh="true" name="description" content="The grouping algorithm. It takes candidates, a policy and the current time;
+it does not read the store or clock itself. Tickets are never split.
 
-Pure: no store, no clock, no Roblox globals. It takes candidates and a policy
-and returns groups, so match quality can be tested without a queue.
+Candidates are visited oldest first, with ticket ID breaking ties. Without
+attribute rules, the subset-sum walk accepts the first target-sized group.
+It compares ratings against the anchor using the anchor&#x27;s queue time.
 
-Candidates are sorted oldest first, ties broken by ticket id. Each unused
-candidate in turn becomes an *anchor*, and a subset-sum walk over ticket
-sizes looks for a combination that fills the match. Tickets are indivisible,
-so a group is never split across matches.
+With attribute rules, the search keeps up to eight alternatives per size
+and considers all visible candidates for preferences. Every ticket must
+accept every other ticket, using each one&#x27;s own wait, and a party&#x27;s members
+must also be compatible internally. The search is bounded, so it can miss
+valid combinations; it does not find a global optimum.
 
-A combination reaching `targetSize` is taken immediately. A smaller one is
-accepted only once the anchor has waited `fallbackAfter` seconds, and then
-the largest viable size down to `minSize` wins. Five players waiting for a
-six-player match therefore end up playing five-a-side.
+The rules path prepares compatibility summaries once per scan and updates
+numeric/equality preference scores incrementally. It skips infeasible anchors
+and proposals that cannot improve a full bucket. A scan-wide compatibility
+check can avoid repeated pair checks. Custom scorers and matrix preferences
+use general fallback paths where those shortcuts do not apply.
 
-The rating window widens with the **anchor&#x27;s** wait rather than each
-candidate&#x27;s. Because anchors are visited oldest first, the longest-waiting
-player searches the widest, and an unmatched outlier does not block the
-compatible players behind it.
+Once the anchor reaches `fallbackAfter`, selection can accept the largest
+viable group from `maxSize` down to `minSize`. Fallback never disables rules.
 
-:::note Which full match wins
-The walk stops at the first combination reaching `targetSize` rather than
-continuing to find a tighter one. Candidates are visited oldest first, so
-this favours the longest wait, and rating spread is already bounded by the
-window each candidate had to pass. Scanning the rest would cost a full pass
-per anchor on every scan of every lane.
-:::"><meta data-rh="true" property="og:description" content="The grouping algorithm.
+This module only sees the candidates discovery supplies. In particular,
+rule queues currently use one lane per partition and a 100-ticket scan budget.
+Discovery alternates oldest-first scans with overlapping forward pages when
+needed. Selection cannot compare players in different windows unless they
+are brought into the same scan."><meta data-rh="true" property="og:description" content="The grouping algorithm. It takes candidates, a policy and the current time;
+it does not read the store or clock itself. Tickets are never split.
 
-Pure: no store, no clock, no Roblox globals. It takes candidates and a policy
-and returns groups, so match quality can be tested without a queue.
+Candidates are visited oldest first, with ticket ID breaking ties. Without
+attribute rules, the subset-sum walk accepts the first target-sized group.
+It compares ratings against the anchor using the anchor&#x27;s queue time.
 
-Candidates are sorted oldest first, ties broken by ticket id. Each unused
-candidate in turn becomes an *anchor*, and a subset-sum walk over ticket
-sizes looks for a combination that fills the match. Tickets are indivisible,
-so a group is never split across matches.
+With attribute rules, the search keeps up to eight alternatives per size
+and considers all visible candidates for preferences. Every ticket must
+accept every other ticket, using each one&#x27;s own wait, and a party&#x27;s members
+must also be compatible internally. The search is bounded, so it can miss
+valid combinations; it does not find a global optimum.
 
-A combination reaching `targetSize` is taken immediately. A smaller one is
-accepted only once the anchor has waited `fallbackAfter` seconds, and then
-the largest viable size down to `minSize` wins. Five players waiting for a
-six-player match therefore end up playing five-a-side.
+The rules path prepares compatibility summaries once per scan and updates
+numeric/equality preference scores incrementally. It skips infeasible anchors
+and proposals that cannot improve a full bucket. A scan-wide compatibility
+check can avoid repeated pair checks. Custom scorers and matrix preferences
+use general fallback paths where those shortcuts do not apply.
 
-The rating window widens with the **anchor&#x27;s** wait rather than each
-candidate&#x27;s. Because anchors are visited oldest first, the longest-waiting
-player searches the widest, and an unmatched outlier does not block the
-compatible players behind it.
+Once the anchor reaches `fallbackAfter`, selection can accept the largest
+viable group from `maxSize` down to `minSize`. Fallback never disables rules.
 
-:::note Which full match wins
-The walk stops at the first combination reaching `targetSize` rather than
-continuing to find a tighter one. Candidates are visited oldest first, so
-this favours the longest wait, and rating spread is already bounded by the
-window each candidate had to pass. Scanning the rest would cost a full pass
-per anchor on every scan of every lane.
-:::"><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Matcher"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matcher" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matcher" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.9518a441.js" defer="defer"></script>
-<script src="/muster/assets/js/main.fa7b4f58.js" defer="defer"></script>
+This module only sees the candidates discovery supplies. In particular,
+rule queues currently use one lane per partition and a 100-ticket scan budget.
+Discovery alternates oldest-first scans with overlapping forward pages when
+needed. Selection cannot compare players in different windows unless they
+are brought into the same scan."><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Matcher"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matcher" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Matcher" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
+<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
+<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
 <symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
 </defs></svg>
 <script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")),document.documentElement.setAttribute("data-theme-choice",t||"system")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/muster/"><b class="navbar__title text--truncate">Muster</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/muster/api/">API</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/shmeatley/muster" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search"><span aria-label="expand searchbar" role="button" class="search-icon" tabindex="0"></span><input id="search_input_react" type="search" placeholder="Loading..." aria-label="Search" class="navbar__search-input search-bar" disabled=""></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0 docPageContainer_wNNk"><div class="docPage_Dpn1"><div class="docSidebarContainer_o_re"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Broadcaster"><span title="​Broadcaster" class="linkLabel_WmDU">​Broadcaster</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Config"><span title="​Config" class="linkLabel_WmDU">​Config</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Defaults"><span title="​Defaults" class="linkLabel_WmDU">​Defaults</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Engine"><span title="​Engine" class="linkLabel_WmDU">​Engine</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Finalizer"><span title="​Finalizer" class="linkLabel_WmDU">​Finalizer</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Hash"><span title="​Hash" class="linkLabel_WmDU">​Hash</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/HostedListing"><span title="​Hosted​Listing" class="linkLabel_WmDU">​Hosted​Listing</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/InMemoryMessaging"><span title="​In​Memory​Messaging" class="linkLabel_WmDU">​In​Memory​Messaging</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/InMemoryStore"><span title="​In​Memory​Store" class="linkLabel_WmDU">​In​Memory​Store</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/LaneScaler"><span title="​Lane​Scaler" class="linkLabel_WmDU">​Lane​Scaler</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Lanes"><span title="​Lanes" class="linkLabel_WmDU">​Lanes</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/LeaseManager"><span title="​Lease​Manager" class="linkLabel_WmDU">​Lease​Manager</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Listings"><span title="​Listings" class="linkLabel_WmDU">​Listings</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" href="/muster/api/Matcher"><span title="​Matcher" class="linkLabel_WmDU">​Matcher</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Matchmaker"><span title="​Matchmaker" class="linkLabel_WmDU">​Matchmaker</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/MemoryStore"><span title="​Memory​Store" class="linkLabel_WmDU">​Memory​Store</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Muster"><span title="​Muster" class="linkLabel_WmDU">​Muster</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Party"><span title="​Party" class="linkLabel_WmDU">​Party</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/QuickPlay"><span title="​Quick​Play" class="linkLabel_WmDU">​Quick​Play</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/RequestExecutor"><span title="​Request​Executor" class="linkLabel_WmDU">​Request​Executor</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Result"><span title="​Result" class="linkLabel_WmDU">​Result</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/RobloxMessaging"><span title="​Roblox​Messaging" class="linkLabel_WmDU">​Roblox​Messaging</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Runtime"><span title="​Runtime" class="linkLabel_WmDU">​Runtime</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Serialize"><span title="​Serialize" class="linkLabel_WmDU">​Serialize</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Signal"><span title="​Signal" class="linkLabel_WmDU">​Signal</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/muster/api/Types"><span title="​Types" class="linkLabel_WmDU">​Types</span></a></li></ul></nav></div></div><main class="docMainContainer_HJE1"><div class="container padding-vert--lg"><div class="row"><div class="col docItemCol_MU3C"><div class="docItemContainer_Wv98"><article><div class="member_J0w1 markdown"><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_oUs_"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><header><h1 class="docTitle_mZRt" style="text-decoration:none"><span style="display:inline-block">Matcher</span></h1><div class="luaClassTags_EipM"></div><div>
-<p>The grouping algorithm.</p>
 <p>
-  Pure: no store, no clock, no Roblox globals. It takes candidates and a policy
-  and returns groups, so match quality can be tested without a queue.
+  The grouping algorithm. It takes candidates, a policy and the current time;
+  it does not read the store or clock itself. Tickets are never split.
 </p>
 <p>
-  Candidates are sorted oldest first, ties broken by ticket id. Each unused
-  candidate in turn becomes an <em>anchor</em>, and a subset-sum walk over ticket
-  sizes looks for a combination that fills the match. Tickets are indivisible,
-  so a group is never split across matches.
+  Candidates are visited oldest first, with ticket ID breaking ties. Without
+  attribute rules, the subset-sum walk accepts the first target-sized group.
+  It compares ratings against the anchor using the anchor's queue time.
 </p>
 <p>
-  A combination reaching <code>targetSize</code> is taken immediately. A smaller one is
-  accepted only once the anchor has waited <code>fallbackAfter</code> seconds, and then
-  the largest viable size down to <code>minSize</code> wins. Five players waiting for a
-  six-player match therefore end up playing five-a-side.
+  With attribute rules, the search keeps up to eight alternatives per size
+  and considers all visible candidates for preferences. Every ticket must
+  accept every other ticket, using each one's own wait, and a party's members
+  must also be compatible internally. The search is bounded, so it can miss
+  valid combinations; it does not find a global optimum.
 </p>
 <p>
-  The rating window widens with the <strong>anchor's</strong> wait rather than each
-  candidate's. Because anchors are visited oldest first, the longest-waiting
-  player searches the widest, and an unmatched outlier does not block the
-  compatible players behind it.
+  The rules path prepares compatibility summaries once per scan and updates
+  numeric/equality preference scores incrementally. It skips infeasible anchors
+  and proposals that cannot improve a full bucket. A scan-wide compatibility
+  check can avoid repeated pair checks. Custom scorers and matrix preferences
+  use general fallback paths where those shortcuts do not apply.
 </p>
-
-  
-    
-    
-      <div class="admonition admonition-note alert alert--secondary">
-        <div class="admonition-heading">
-          <h5><span class="admonition-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 14 16">
-                <path d="M6.3 5.69a.942.942 0 0 1-.28-.7c0-.28.09-.52.28-.7.19-.18.42-.28.7-.28.28 0 .52.09.7.28.18.19.28.42.28.7 0 .28-.09.52-.28.7a1 1 0 0 1-.7.3c-.28 0-.52-.11-.7-.3zM8 7.99c-.02-.25-.11-.48-.31-.69-.2-.19-.42-.3-.69-.31H6c-.27.02-.48.13-.69.31-.2.2-.3.44-.31.69h1v3c.02.27.11.5.31.69.2.2.42.31.69.31h1c.27 0 .48-.11.69-.31.2-.19.3-.42.31-.69H8V7.98v.01zM7 2.3c-3.14 0-5.7 2.54-5.7 5.68 0 3.14 2.56 5.7 5.7 5.7s5.7-2.55 5.7-5.7c0-3.15-2.56-5.69-5.7-5.69v.01zM7 .98c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.12-7-7 3.14-7 7-7z"></path>
-              </svg></span><span class="admonition-title">Which full match wins</span></h5>
-        </div>
-        <div class="admonition-content">
-          <p>
-            The walk stops at the first combination reaching <code>targetSize</code> rather than
-            continuing to find a tighter one. Candidates are visited oldest first, so
-            this favours the longest wait, and rating spread is already bounded by the
-            window each candidate had to pass. Scanning the rest would cost a full pass
-            per anchor on every scan of every lane.
-          </p>
-        </div>
-      </div>
-    
-  
-
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="spreadScore"><code style="text-decoration:none">spreadScore</code><a href="#spreadScore" class="hash-link" aria-label="Direct link to spreadScore" title="Direct link to spreadScore" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L55"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">spreadScore</code><code>(</code><div class="inset_uKQm"><div><code>candidates<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Candidate">Candidate</a></code><code class="purple_ieR2">}</code><code>,</code></div><div><code>indexes<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">number</code><code>,</code></div><div><code class="blue_P4bS">number</code></div></div><code>)</code></div><div>
+<p>
+  Once the anchor reaches <code>fallbackAfter</code>, selection can accept the largest
+  viable group from <code>maxSize</code> down to <code>minSize</code>. Fallback never disables rules.
+</p>
+<p>
+  This module only sees the candidates discovery supplies. In particular,
+  rule queues currently use one lane per partition and a 100-ticket scan budget.
+  Discovery alternates oldest-first scans with overlapping forward pages when
+  needed. Selection cannot compare players in different windows unless they
+  are brought into the same scan.
+</p>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="spreadScore"><code style="text-decoration:none">spreadScore</code><a href="#spreadScore" class="hash-link" aria-label="Direct link to spreadScore" title="Direct link to spreadScore" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L60"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">spreadScore</code><code>(</code><div class="inset_uKQm"><div><code>candidates<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Candidate">Candidate</a></code><code class="purple_ieR2">}</code><code>,</code></div><div><code>indexes<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code></div></div><code>) → </code><code>(</code><div class="inset_uKQm"><div><code class="blue_P4bS">number</code><code>,</code></div><div><code class="blue_P4bS">number</code></div></div><code>)</code></div><div>
 <p>
   The default scoring function: rating spread across individual members, then
   total queue time. Both are minimised, compared in that order.
@@ -123,12 +111,13 @@ per anchor on every scan of every lane.
   Returns a spread of 0 when no candidate carries a rating, leaving queue time
   as the whole ordering, which is the behaviour an unrated queue wants.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="policy"><code style="text-decoration:none">policy</code><a href="#policy" class="hash-link" aria-label="Direct link to policy" title="Direct link to policy" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L80"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">policy</code><code>(</code><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatcherPolicy">MatcherPolicy</a></code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="policy"><code style="text-decoration:none">policy</code><a href="#policy" class="hash-link" aria-label="Direct link to policy" title="Direct link to policy" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L86"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">policy</code><code>(</code><code>settings<!-- -->: </code><code class="blue_P4bS">any</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatcherPolicy">MatcherPolicy</a></code></div><div>
 <p>
   Builds the <a href="/muster/api/Types#MatcherPolicy">MatcherPolicy</a> a resolved config implies: a widening rating
-  window on a rated queue, or unconditional compatibility on an unrated one.
+  window for ratings, plus all-member attribute checks and preference scoring
+  when <code>rules</code> is configured. Without either, compatibility is unconditional.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="select"><code style="text-decoration:none">select</code><a href="#select" class="hash-link" aria-label="Direct link to select" title="Direct link to select" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L188"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">select</code><code>(</code><div class="inset_uKQm"><div><code>candidates<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Candidate">Candidate</a></code><code class="purple_ieR2">}</code><code>,</code></div><div><code>now<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="select"><code style="text-decoration:none">select</code><a href="#select" class="hash-link" aria-label="Direct link to select" title="Direct link to select" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/internal/Matcher.luau#L384"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Matcher<!-- -->.</code><code class="green_DgR4">select</code><code>(</code><div class="inset_uKQm"><div><code>candidates<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Candidate">Candidate</a></code><code class="purple_ieR2">}</code><code>,</code></div><div><code>now<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
 <p>Wall-clock seconds, compared against each candidate's <code>queuedAt</code>.</p>
 </span></span></div><div><code>policy<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#MatcherPolicy">MatcherPolicy</a></code></div></div><code>) → </code><code class="purple_ieR2">{</code><code class="green_DgR4">{</code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/muster/api/Types#Candidate">Candidate</a></code><code class="green_DgR4">}</code><code class="purple_ieR2">}</code></div><div>
 <p>Groups candidates into matches.</p>
@@ -165,13 +154,13 @@ per anchor on every scan of every lane.
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 55,
+                &quot;line&quot;: 60,
                 &quot;path&quot;: &quot;src/internal/Matcher.luau&quot;
             }
         },
         {
             &quot;name&quot;: &quot;policy&quot;,
-            &quot;desc&quot;: &quot;Builds the [MatcherPolicy] a resolved config implies: a widening rating\nwindow on a rated queue, or unconditional compatibility on an unrated one.&quot;,
+            &quot;desc&quot;: &quot;Builds the [MatcherPolicy] a resolved config implies: a widening rating\nwindow for ratings, plus all-member attribute checks and preference scoring\nwhen `rules` is configured. Without either, compatibility is unconditional.&quot;,
             &quot;params&quot;: [
                 {
                     &quot;name&quot;: &quot;settings&quot;,
@@ -187,7 +176,7 @@ per anchor on every scan of every lane.
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 80,
+                &quot;line&quot;: 86,
                 &quot;path&quot;: &quot;src/internal/Matcher.luau&quot;
             }
         },
@@ -219,7 +208,7 @@ per anchor on every scan of every lane.
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 188,
+                &quot;line&quot;: 384,
                 &quot;path&quot;: &quot;src/internal/Matcher.luau&quot;
             }
         }
@@ -227,7 +216,7 @@ per anchor on every scan of every lane.
     &quot;properties&quot;: [],
     &quot;types&quot;: [],
     &quot;name&quot;: &quot;Matcher&quot;,
-    &quot;desc&quot;: &quot;The grouping algorithm.\n\nPure: no store, no clock, no Roblox globals. It takes candidates and a policy\nand returns groups, so match quality can be tested without a queue.\n\nCandidates are sorted oldest first, ties broken by ticket id. Each unused\ncandidate in turn becomes an *anchor*, and a subset-sum walk over ticket\nsizes looks for a combination that fills the match. Tickets are indivisible,\nso a group is never split across matches.\n\nA combination reaching `targetSize` is taken immediately. A smaller one is\naccepted only once the anchor has waited `fallbackAfter` seconds, and then\nthe largest viable size down to `minSize` wins. Five players waiting for a\nsix-player match therefore end up playing five-a-side.\n\nThe rating window widens with the **anchor&#x27;s** wait rather than each\ncandidate&#x27;s. Because anchors are visited oldest first, the longest-waiting\nplayer searches the widest, and an unmatched outlier does not block the\ncompatible players behind it.\n\n:::note Which full match wins\nThe walk stops at the first combination reaching `targetSize` rather than\ncontinuing to find a tighter one. Candidates are visited oldest first, so\nthis favours the longest wait, and rating spread is already bounded by the\nwindow each candidate had to pass. Scanning the rest would cost a full pass\nper anchor on every scan of every lane.\n:::&quot;,
+    &quot;desc&quot;: &quot;The grouping algorithm. It takes candidates, a policy and the current time;\nit does not read the store or clock itself. Tickets are never split.\n\nCandidates are visited oldest first, with ticket ID breaking ties. Without\nattribute rules, the subset-sum walk accepts the first target-sized group.\nIt compares ratings against the anchor using the anchor&#x27;s queue time.\n\nWith attribute rules, the search keeps up to eight alternatives per size\nand considers all visible candidates for preferences. Every ticket must\naccept every other ticket, using each one&#x27;s own wait, and a party&#x27;s members\nmust also be compatible internally. The search is bounded, so it can miss\nvalid combinations; it does not find a global optimum.\n\nThe rules path prepares compatibility summaries once per scan and updates\nnumeric/equality preference scores incrementally. It skips infeasible anchors\nand proposals that cannot improve a full bucket. A scan-wide compatibility\ncheck can avoid repeated pair checks. Custom scorers and matrix preferences\nuse general fallback paths where those shortcuts do not apply.\n\nOnce the anchor reaches `fallbackAfter`, selection can accept the largest\nviable group from `maxSize` down to `minSize`. Fallback never disables rules.\n\nThis module only sees the candidates discovery supplies. In particular,\nrule queues currently use one lane per partition and a 100-ticket scan budget.\nDiscovery alternates oldest-first scans with overlapping forward pages when\nneeded. Selection cannot compare players in different windows unless they\nare brought into the same scan.&quot;,
     &quot;source&quot;: {
         &quot;line&quot;: 34,
         &quot;path&quot;: &quot;src/internal/Matcher.luau&quot;

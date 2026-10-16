@@ -22,8 +22,8 @@ will disagree about expiry and ownership.
 ```lua
 print(Muster.Defaults.LEASE_DURATION) -- 15
 ```"><link data-rh="true" rel="canonical" href="https://shmeatley.github.io/muster/api/Defaults"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Defaults" hreflang="en"><link data-rh="true" rel="alternate" href="https://shmeatley.github.io/muster/api/Defaults" hreflang="x-default"><link rel="stylesheet" href="/muster/assets/css/styles.e8e96400.css">
-<script src="/muster/assets/js/runtime~main.9518a441.js" defer="defer"></script>
-<script src="/muster/assets/js/main.fa7b4f58.js" defer="defer"></script>
+<script src="/muster/assets/js/runtime~main.0515381f.js" defer="defer"></script>
+<script src="/muster/assets/js/main.2805ae69.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -39,23 +39,23 @@ print(Muster.Defaults.LEASE_DURATION) -- 15
 </p>
 <pre class="language-lua"><code class="language-lua"><span class="token function">print</span><span class="token punctuation">(</span>Muster<span class="token punctuation">.</span>Defaults<span class="token punctuation">.</span>LEASE_DURATION<span class="token punctuation">)</span> <span class="token comment">-- 15</span>
 </code></pre>
-</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="aggregate"><code style="text-decoration:none">aggregate</code><a href="#aggregate" class="hash-link" aria-label="Direct link to aggregate" title="Direct link to aggregate" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Defaults.luau#L155"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Defaults<!-- -->.</code><code class="green_DgR4">aggregate</code><code>(</code><code>ratings<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code><code>) → </code><code class="blue_P4bS">number</code></div><div>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="aggregate"><code style="text-decoration:none">aggregate</code><a href="#aggregate" class="hash-link" aria-label="Direct link to aggregate" title="Direct link to aggregate" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Defaults.luau#L159"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Defaults<!-- -->.</code><code class="green_DgR4">aggregate</code><code>(</code><code>ratings<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">number</code><code class="purple_ieR2">}</code><code>) → </code><code class="blue_P4bS">number</code></div><div>
 <p>
   The default party rating: the mean of its members pulled
   <code>PARTY_RATING_MAX_BIAS</code> of the way toward the highest.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="ratingWindow"><code style="text-decoration:none">ratingWindow</code><a href="#ratingWindow" class="hash-link" aria-label="Direct link to ratingWindow" title="Direct link to ratingWindow" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Defaults.luau#L175"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Defaults<!-- -->.</code><code class="green_DgR4">ratingWindow</code><code>(</code><div class="inset_uKQm"><div><code>rating<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>waitSeconds<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="ratingWindow"><code style="text-decoration:none">ratingWindow</code><a href="#ratingWindow" class="hash-link" aria-label="Direct link to ratingWindow" title="Direct link to ratingWindow" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Defaults.luau#L179"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Defaults<!-- -->.</code><code class="green_DgR4">ratingWindow</code><code>(</code><div class="inset_uKQm"><div><code>rating<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>waitSeconds<!-- -->: </code><code class="blue_P4bS">number</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
 <p>
   The rating window after waiting <code>waitSeconds</code>: linear growth from <code>window</code> at
   <code>relax</code> per second, becoming unbounded at <code>unbounded</code>.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="scanDelay"><code style="text-decoration:none">scanDelay</code><a href="#scanDelay" class="hash-link" aria-label="Direct link to scanDelay" title="Direct link to scanDelay" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Defaults.luau#L189"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Defaults<!-- -->.</code><code class="green_DgR4">scanDelay</code><code>(</code><div class="inset_uKQm"><div><code>candidateCount<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>throttled<!-- -->: </code><code class="blue_P4bS">boolean</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="scanDelay"><code style="text-decoration:none">scanDelay</code><a href="#scanDelay" class="hash-link" aria-label="Direct link to scanDelay" title="Direct link to scanDelay" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Defaults.luau#L193"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Defaults<!-- -->.</code><code class="green_DgR4">scanDelay</code><code>(</code><div class="inset_uKQm"><div><code>candidateCount<!-- -->: </code><code class="blue_P4bS">number</code><code>,</code></div><div><code>throttled<!-- -->: </code><code class="blue_P4bS">boolean</code></div></div><code>) → </code><code class="blue_P4bS">number</code></div><div>
 <p>
   Delay before the next scan of a lane. Busy lanes are scanned more often,
   empty ones back off, and every delay doubles while the store reports
   throttling.
 </p>
-</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="batchSize"><code style="text-decoration:none">batchSize</code><a href="#batchSize" class="hash-link" aria-label="Direct link to batchSize" title="Direct link to batchSize" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Defaults.luau#L205"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Defaults<!-- -->.</code><code class="green_DgR4">batchSize</code><code>(</code><code>previousCount<!-- -->: </code><code class="blue_P4bS">number</code><code>) → </code><code class="blue_P4bS">number</code></div><div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="batchSize"><code style="text-decoration:none">batchSize</code><a href="#batchSize" class="hash-link" aria-label="Direct link to batchSize" title="Direct link to batchSize" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/shmeatley/muster/blob/main/src/Defaults.luau#L209"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Defaults<!-- -->.</code><code class="green_DgR4">batchSize</code><code>(</code><code>previousCount<!-- -->: </code><code class="blue_P4bS">number</code><code>) → </code><code class="blue_P4bS">number</code></div><div>
 <p>
   Candidates to read on the next scan, sized from the previous one so a quiet
   queue does not pay for a large range read.
@@ -80,7 +80,7 @@ print(Muster.Defaults.LEASE_DURATION) -- 15
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 155,
+                &quot;line&quot;: 159,
                 &quot;path&quot;: &quot;src/Defaults.luau&quot;
             }
         },
@@ -107,7 +107,7 @@ print(Muster.Defaults.LEASE_DURATION) -- 15
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 175,
+                &quot;line&quot;: 179,
                 &quot;path&quot;: &quot;src/Defaults.luau&quot;
             }
         },
@@ -134,7 +134,7 @@ print(Muster.Defaults.LEASE_DURATION) -- 15
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 189,
+                &quot;line&quot;: 193,
                 &quot;path&quot;: &quot;src/Defaults.luau&quot;
             }
         },
@@ -156,7 +156,7 @@ print(Muster.Defaults.LEASE_DURATION) -- 15
             ],
             &quot;function_type&quot;: &quot;static&quot;,
             &quot;source&quot;: {
-                &quot;line&quot;: 205,
+                &quot;line&quot;: 209,
                 &quot;path&quot;: &quot;src/Defaults.luau&quot;
             }
         }
